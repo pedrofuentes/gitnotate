@@ -138,14 +138,22 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
       scanAndHighlight();
     });
 
-    // Periodically re-scan to catch comments being added or removed
-    // (e.g., draft cancelled, new comment submitted)
+    // Re-scan when comment forms appear or disappear (not on every DOM change)
+    let lastCommentCount = 0;
+    let lastTextareaCount = 0;
     const rescanObserver = new MutationObserver(() => {
-      // Debounce: only re-scan after DOM settles
-      clearTimeout(rescanTimer);
-      rescanTimer = setTimeout(() => {
-        scanAndHighlight();
-      }, 500);
+      // Only re-scan if the number of comment bodies or textareas changed
+      const commentBodies = document.querySelectorAll('.comment-body, .markdown-body, [data-testid="markdown-body"]').length;
+      const textareas = document.querySelectorAll('textarea').length;
+      
+      if (commentBodies !== lastCommentCount || textareas !== lastTextareaCount) {
+        lastCommentCount = commentBodies;
+        lastTextareaCount = textareas;
+        clearTimeout(rescanTimer);
+        rescanTimer = setTimeout(() => {
+          scanAndHighlight();
+        }, 500);
+      }
     });
     let rescanTimer: ReturnType<typeof setTimeout>;
     rescanObserver.observe(document.body, { childList: true, subtree: true });

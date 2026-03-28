@@ -85,30 +85,33 @@ export function scanForGnComments(): GnReviewComment[] {
     });
   }
 
-  // Strategy 2: If nothing found above, do a raw innerHTML search as fallback
+  // Strategy 2: Search for rendered `@gn:` code tags (new format)
   if (results.length === 0) {
-    const allElements = document.querySelectorAll<HTMLElement>('*');
-    for (const el of allElements) {
-      // Only check leaf-ish elements to avoid duplicates
-      if (el.children.length > 10) continue;
-      if (!el.innerHTML.includes('@gn')) continue;
-      
-      const text = extractCommentText(el);
-      const parsed = parseGnComment(text);
+    const codeElements = document.querySelectorAll<HTMLElement>('code');
+    for (const code of codeElements) {
+      const text = code.textContent ?? '';
+      if (!text.startsWith('@gn:')) continue;
+
+      // Build the full comment text from the code's parent paragraph/container
+      const container = code.closest('p, div, td') ?? code.parentElement;
+      if (!container) continue;
+
+      const fullText = container.textContent ?? '';
+      const parsed = parseGnComment(fullText);
       if (!parsed) continue;
 
-      const filePath = resolveFilePath(el);
-      const lineNumber = resolveLineNumber(el);
+      // Walk up to find file path and line number
+      const filePath = resolveFilePath(container);
+      const lineNumber = resolveLineNumber(container);
 
-      console.log(`[Gitnotate] Found @gn comment (fallback): file=${filePath} line=${lineNumber}`);
+      console.log(`[Gitnotate] Found @gn tag in code element: file=${filePath} line=${lineNumber}`);
 
       results.push({
-        commentElement: el,
+        commentElement: container,
         parsed,
         filePath,
         lineNumber,
       });
-      break; // Just find the first one to avoid duplicates
     }
   }
 
