@@ -1,0 +1,10 @@
+name: 'Gitnotate Anchor Validator'
+description: 'Validates sidecar comment anchors and reports status on PRs'
+inputs:
+  github-token:
+    description: 'GitHub token for API access'
+    required: true
+    default: '${{ github.token }}'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
