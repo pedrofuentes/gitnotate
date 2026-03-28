@@ -4,20 +4,17 @@ function escapeMarkdown(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-export function buildGnComment(metadata: GnMetadata, userComment: string): string {
-  const json = JSON.stringify({
-    exact: metadata.exact,
-    start: metadata.start,
-    end: metadata.end,
-  });
+function truncate(text: string, maxLen = 50): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, maxLen) + '…';
+}
 
-  const metaLine = `<!-- @gn ${json} -->`;
-  const escapedExact = escapeMarkdown(metadata.exact);
-  const blockquote = `> 📌 **"${escapedExact}"** (chars ${metadata.start}–${metadata.end})`;
+export function buildGnComment(metadata: GnMetadata, userComment: string): string {
+  const metaLine = `<!-- @gn ${JSON.stringify({ s: metadata.start, e: metadata.end })} -->`;
 
   if (!userComment) {
-    return `${metaLine}\n${blockquote}`;
+    return metaLine;
   }
 
-  return `${metaLine}\n${blockquote}\n\n${userComment}`;
+  return `${metaLine}\n${userComment}`;
 }

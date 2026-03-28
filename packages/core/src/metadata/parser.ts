@@ -5,11 +5,19 @@ const GN_PATTERN = /^\s*<!--\s*@gn\s+(.*?)\s*-->\s*$/;
 function isValidMetadata(obj: unknown): obj is GnMetadata {
   if (typeof obj !== 'object' || obj === null) return false;
   const o = obj as Record<string, unknown>;
-  return (
-    typeof o.exact === 'string' &&
-    typeof o.start === 'number' &&
-    typeof o.end === 'number'
-  );
+
+  // Support compact format: { s, e } or full format: { exact, start, end }
+  const start = typeof o.s === 'number' ? o.s : typeof o.start === 'number' ? o.start : undefined;
+  const end = typeof o.e === 'number' ? o.e : typeof o.end === 'number' ? o.end : undefined;
+
+  return start !== undefined && end !== undefined;
+}
+
+function extractMetadata(obj: Record<string, unknown>): GnMetadata {
+  const start = typeof obj.s === 'number' ? obj.s : (obj.start as number);
+  const end = typeof obj.e === 'number' ? obj.e : (obj.end as number);
+  const exact = typeof obj.exact === 'string' ? obj.exact : '';
+  return { exact, start, end };
 }
 
 export function parseGnComment(commentBody: string): GnCommentBody | null {
@@ -26,7 +34,7 @@ export function parseGnComment(commentBody: string): GnCommentBody | null {
   try {
     const parsed = JSON.parse(match[1]);
     if (!isValidMetadata(parsed)) return null;
-    metadata = { exact: parsed.exact, start: parsed.start, end: parsed.end };
+    metadata = extractMetadata(parsed as unknown as Record<string, unknown>);
   } catch {
     return null;
   }

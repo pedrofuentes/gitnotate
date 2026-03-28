@@ -6,96 +6,149 @@ export interface SubmitCommentOptions {
   commentBody: string;
 }
 
-/**
- * Small delay helper to let GitHub's DOM settle after a click.
- */
 function waitForDOM(ms = 100): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
- * Find the existing inline comment textarea for a given file + line,
- * if GitHub's form is already open.
- */
-function findExistingTextarea(fileEl: HTMLElement, lineNumber: number): HTMLTextAreaElement | null {
-  // Look for a line-number cell matching this line
-  const lineNumCell = fileEl.querySelector<HTMLElement>(
-    `td.blob-num[data-line-number="${lineNumber}"]`,
-  );
-  if (!lineNumCell) return null;
-
-  const targetRow = lineNumCell.closest('tr');
-  if (!targetRow) return null;
-
-  // The comment form row is the next sibling with class js-inline-comments-container
-  let nextRow = targetRow.nextElementSibling;
-  while (nextRow) {
-    if (nextRow.classList.contains('js-inline-comments-container')) {
-      const textarea = nextRow.querySelector<HTMLTextAreaElement>(
-        'textarea.comment-form-textarea, textarea.js-comment-field',
-      );
-      if (textarea) return textarea;
-    }
-    // Only check immediate next sibling(s) that are comment containers
-    if (!nextRow.classList.contains('js-inline-comments-container')) break;
-    nextRow = nextRow.nextElementSibling;
-  }
-
-  return null;
-}
-
-/**
- * Set a textarea's value and dispatch an input event so that
- * GitHub's React/JS framework registers the change.
+ * Set a textarea's value and dispatch events so frameworks register the change.
  */
 function setTextareaValue(textarea: HTMLTextAreaElement, value: string): void {
-  textarea.value = value;
+  // For React-controlled inputs, we need to use the native setter
+  const nativeSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype, 'value'
+  )?.set;
+  if (nativeSetter) {
+    nativeSetter.call(textarea, value);
+  } else {
+    textarea.value = value;
+  }
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
   textarea.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 /**
- * Submit a comment by opening GitHub's native inline comment form and
- * pre-filling it with the @gn-formatted body.
- *
- * This piggybacks on the user's logged-in session — no separate auth needed.
- *
- * Returns `true` if the form was successfully populated, `false` otherwise.
+ * Try to find any open comment textarea on the page near the target line.
+ */
+function findAnyOpenTextarea(): HTMLTextAreaElement | null {
+  // New GitHub UI selectors
+  const selectors = [
+    'textarea[name="comment[body]"]',
+    'textarea.js-comment-field',
+    'textarea.comment-form-textarea',
+    'textarea[aria-label*="comment"]',
+    'textarea[aria-label*="Comment"]',
+    'textarea[placeholder*="comment"]',
+    'textarea[placeholder*="Leave a comment"]',
+    '.inline-comment-form textarea',
+    'file-attachment textarea',
+  ];
+
+  for (const sel of selectors) {
+    const ta = document.querySelector<HTMLTextAreaElement>(sel);
+    if (ta && ta.offsetParent !== null) return ta; // visible textarea
+  }
+  return null;
+}
+
+/**
+ * Try to click the "add comment" button on a diff line.
+ * Returns true if a button was found and clicked.
+ */
+function clickAddCommentButton(lineNumber: number): boolean {
+  // Old GitHub UI
+  const oldBtn = document.querySelector<HTMLButtonElement>(
+    `button.js-add-line-comment[data-line="${lineNumber}"]`
+  );
+  if (oldBtn) { oldBtn.click(); return true; }
+
+  // New GitHub UI: the "+" button appears on hover, often as a button
+  // inside the line number cell. Try various selectors.
+  const selectors = [
+    `button[data-line="${lineNumber}"][data-side]`,
+    `button[data-line-number="${lineNumber}"]`,
+    `[data-line-number="${lineNumber}"] button`,
+  ];
+  for (const sel of selectors) {
+    const btn = document.querySelector<HTMLButtonElement>(sel);
+    if (btn) { btn.click(); return true; }
+  }
+
+  // Try finding the row and triggering comment via the line number cell
+  const allLineNums = document.querySelectorAll<HTMLElement>(
+    `[data-line-number="${lineNumber}"]`
+  );
+  for (const el of allLineNums) {
+    const btn = el.querySelector<HTMLButtonElement>('button');
+    if (btn) { btn.click(); return true; }
+  }
+
+  return false;
+}
+
+/**
+ * Submit a comment by:
+ * 1. Trying to open GitHub's native inline comment form and pre-fill it
+ * 2. If that fails, copy the comment to clipboard for manual paste
  */
 export async function submitViaGitHubUI(options: SubmitCommentOptions): Promise<boolean> {
-  const { filePath, lineNumber, commentBody } = options;
+  const { lineNumber, commentBody } = options;
 
-  // Find the file container
-  const escapedPath = filePath.replace(/"/g, '\\"');
-  const fileEl = document.querySelector<HTMLElement>(`.file[data-path="${escapedPath}"]`);
-  if (!fileEl) return false;
+  // Strategy 1: Try to click the add-comment button on the line
+  const clicked = clickAddCommentButton(lineNumber);
 
-  // Check if the comment form is already open for this line
-  const existingTextarea = findExistingTextarea(fileEl, lineNumber);
+  if (clicked) {
+    // Wait for form to appear
+    await waitForDOM(300);
+
+    const textarea = findAnyOpenTextarea();
+    if (textarea) {
+      setTextareaValue(textarea, commentBody);
+      textarea.focus();
+      return true;
+    }
+
+    // Wait a bit more — some UIs are slow
+    await waitForDOM(500);
+
+    const textarea2 = findAnyOpenTextarea();
+    if (textarea2) {
+      setTextareaValue(textarea2, commentBody);
+      textarea2.focus();
+      return true;
+    }
+  }
+
+  // Strategy 2: Check if there's already an open textarea (user may have
+  // already clicked "+" manually)
+  const existingTextarea = findAnyOpenTextarea();
   if (existingTextarea) {
     setTextareaValue(existingTextarea, commentBody);
     existingTextarea.focus();
     return true;
   }
 
-  // Find the "+" button that opens the inline comment form
-  const addBtn = fileEl.querySelector<HTMLButtonElement>(
-    `button.js-add-line-comment[data-line="${lineNumber}"]`,
-  );
-  if (!addBtn) return false;
+  // Strategy 3: Copy to clipboard and let user paste manually
+  try {
+    await navigator.clipboard.writeText(commentBody);
+    // Return true since we got the comment ready — just needs paste
+    console.log('[Gitnotate] Comment copied to clipboard. Click "+" on the diff line and paste.');
+    
+    // Show a brief notification on the page
+    const notice = document.createElement('div');
+    notice.className = 'gn-clipboard-notice';
+    notice.textContent = '📋 Comment copied! Click the "+" on the diff line, then paste (Ctrl+V).';
+    notice.style.cssText = `
+      position: fixed; bottom: 20px; right: 20px; z-index: 2147483647;
+      background: #24292e; color: #fff; padding: 12px 20px; border-radius: 8px;
+      font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: gn-fade-in 0.2s ease-out;
+    `;
+    document.body.appendChild(notice);
+    setTimeout(() => notice.remove(), 5000);
 
-  // Click it to open GitHub's native comment form
-  addBtn.click();
-
-  // Wait for GitHub to inject the inline comment form
-  await waitForDOM(150);
-
-  // Find the textarea that GitHub just inserted
-  const textarea = findExistingTextarea(fileEl, lineNumber);
-  if (!textarea) return false;
-
-  setTextareaValue(textarea, commentBody);
-  textarea.focus();
-
-  return true;
+    return true;
+  } catch {
+    return false;
+  }
 }

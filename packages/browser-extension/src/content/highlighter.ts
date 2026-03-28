@@ -7,23 +7,34 @@ export interface HighlightInfo {
 }
 
 /**
- * Find the `.blob-code-inner` cell for a given file path + line number.
+ * Find the code cell for a given file path + line number.
+ * Supports both old (.blob-code-inner) and new (.diff-text-inner) GitHub UI.
  */
-function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null {
-  const fileEl = document.querySelector<HTMLElement>(
-    `.file[data-path="${filePath.replace(/"/g, '\\"')}"]`,
+function findCodeCell(_filePath: string, lineNumber: number): HTMLElement | null {
+  // New GitHub UI: td[data-line-number] contains .diff-text-inner
+  const newCell = document.querySelector<HTMLElement>(
+    `td[data-line-number="${lineNumber}"] .diff-text-inner`,
   );
-  if (!fileEl) return null;
+  if (newCell) return newCell;
 
-  const lineNumCell = fileEl.querySelector<HTMLElement>(
+  // Also try right-side cells specifically
+  const rightCell = document.querySelector<HTMLElement>(
+    `td.right-side-diff-cell[data-line-number="${lineNumber}"] .diff-text-inner`,
+  );
+  if (rightCell) return rightCell;
+
+  // Old GitHub UI fallback
+  const lineNumCell = document.querySelector<HTMLElement>(
     `td.blob-num[data-line-number="${lineNumber}"]`,
   );
-  if (!lineNumCell) return null;
+  if (lineNumCell) {
+    const row = lineNumCell.closest('tr');
+    if (row) {
+      return row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
+    }
+  }
 
-  const row = lineNumCell.closest('tr');
-  if (!row) return null;
-
-  return row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
+  return null;
 }
 
 /**

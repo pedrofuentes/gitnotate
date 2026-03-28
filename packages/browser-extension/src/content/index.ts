@@ -4,15 +4,10 @@ import { observeDiffContent } from './diff-observer';
 import { getSelectionInfo, type TextSelectionInfo } from './selection';
 import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
-import { showFloatButton, hideFloatButton } from './ui/float-button';
-import { showCommentForm, hideCommentForm } from './ui/comment-form';
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
-import { submitViaGitHubUI } from './comment-submitter';
 import { isRepoEnabled, enableRepo } from '../storage/repo-settings';
 import { initFileViewComments } from './file-view-handler';
 import './highlighter.css';
-import './ui/float-button.css';
-import './ui/comment-form.css';
 import './ui/optin-banner.css';
 
 let currentPageInfo: GitHubPageInfo = detectGitHubPage();
@@ -65,7 +60,6 @@ async function init(): Promise<void> {
 function activateFeatures(pageInfo: GitHubPageInfo): void {
   if (activated) return;
   activated = true;
-
   hideOptInBanner();
 
   if (pageInfo.type === 'file-view' && pageInfo.filePath) {
@@ -75,23 +69,69 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   if (pageInfo.type === 'pr-files-changed') {
     console.log('[Gitnotate] PR diff page detected, initializing...');
 
+    let pendingHighlight: HTMLElement | null = null;
+
+    // When user selects text while a comment textarea is open,
+    // inject @gn metadata into the textarea
     document.addEventListener('mouseup', () => {
       setTimeout(() => {
         const selInfo = getSelectionInfo();
-        if (selInfo) {
-          showFloatButton(selInfo, handleFloatButtonClick);
-        } else {
-          hideFloatButton();
+        if (!selInfo) return;
+
+        // Save the range before focus changes clear it
+        const sel = window.getSelection();
+        let savedRange: Range | null = null;
+        if (sel && sel.rangeCount > 0) {
+          savedRange = sel.getRangeAt(0).cloneRange();
+        }
+
+        const textarea = findOpenCommentTextarea();
+        if (!textarea) return;
+
+        console.log('[Gitnotate] Selection + open textarea detected, injecting @gn metadata');
+        injectGnMetadata(textarea, selInfo);
+
+        // Highlight the selected text using the saved range
+        if (savedRange) {
+          try {
+            // Remove previous pending highlight if any
+            removePendingHighlight();
+
+            const span = document.createElement('span');
+            span.className = 'gn-highlight gn-highlight-pending';
+            span.setAttribute('data-gn-comment-id', `gn-pending`);
+            savedRange.surroundContents(span);
+            pendingHighlight = span;
+            console.log('[Gitnotate] Text highlighted');
+          } catch (err) {
+            console.log('[Gitnotate] Could not highlight:', err);
+          }
         }
       }, 10);
     });
 
-    document.addEventListener('selectionchange', () => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed) {
-        hideFloatButton();
+    // Watch for comment forms being removed (cancel/submit)
+    // Remove pending highlight when the form disappears
+    const formObserver = new MutationObserver(() => {
+      if (pendingHighlight && !findOpenCommentTextarea()) {
+        console.log('[Gitnotate] Comment form closed, removing pending highlight');
+        removePendingHighlight();
       }
     });
+    formObserver.observe(document.body, { childList: true, subtree: true });
+
+    function removePendingHighlight(): void {
+      if (!pendingHighlight) return;
+      const parent = pendingHighlight.parentNode;
+      if (parent) {
+        while (pendingHighlight.firstChild) {
+          parent.insertBefore(pendingHighlight.firstChild, pendingHighlight);
+        }
+        parent.removeChild(pendingHighlight);
+        parent.normalize();
+      }
+      pendingHighlight = null;
+    }
 
     observeDiffContent((diffElements) => {
       console.log('[Gitnotate] Diff elements loaded:', diffElements.length);
@@ -100,11 +140,67 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   }
 }
 
-// Initial run
+// --- Find open comment textarea ---
+
+function findOpenCommentTextarea(): HTMLTextAreaElement | null {
+  const selectors = [
+    'textarea[name="comment[body]"]',
+    'textarea.js-comment-field',
+    'textarea.comment-form-textarea',
+    'textarea[aria-label*="comment" i]',
+    'textarea[aria-label*="review" i]',
+    'textarea[placeholder*="comment" i]',
+    'textarea[placeholder*="Leave" i]',
+    'textarea[placeholder*="write" i]',
+    'textarea[placeholder*="reply" i]',
+    '.inline-comment-form textarea',
+    'markdown-toolbar textarea',
+  ];
+
+  for (const sel of selectors) {
+    const textareas = document.querySelectorAll<HTMLTextAreaElement>(sel);
+    for (const ta of textareas) {
+      // Must be visible
+      if (ta.offsetParent !== null || ta.offsetHeight > 0) return ta;
+    }
+  }
+  return null;
+}
+
+function injectGnMetadata(textarea: HTMLTextAreaElement, selInfo: TextSelectionInfo): void {
+  const metadata = {
+    exact: selInfo.exact,
+    start: selInfo.start,
+    end: selInfo.end,
+  };
+  const prefix = buildGnComment(metadata, '');
+  const value = prefix + '\n\n';
+
+  // Use native setter to work with React-controlled inputs
+  const nativeSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype,
+    'value',
+  )?.set;
+
+  if (nativeSetter) {
+    nativeSetter.call(textarea, value);
+  } else {
+    textarea.value = value;
+  }
+
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  textarea.dispatchEvent(new Event('change', { bubbles: true }));
+
+  // Place cursor at the end so user can start typing
+  textarea.focus();
+  textarea.setSelectionRange(value.length, value.length);
+}
+
+// --- Init and navigation ---
+
 console.log('[Gitnotate] Running initial init()');
 init().catch(console.error);
 
-// Re-run on GitHub's SPA navigation (turbo/pjax)
 document.addEventListener('turbo:load', () => {
   console.log('[Gitnotate] turbo:load event fired');
   init().catch(console.error);
@@ -113,51 +209,33 @@ document.addEventListener('turbo:render', () => {
   console.log('[Gitnotate] turbo:render event fired');
   init().catch(console.error);
 });
-// Fallback: watch for URL changes via popstate
 window.addEventListener('popstate', () => {
   console.log('[Gitnotate] popstate event fired');
   init().catch(console.error);
 });
 
-/**
- * Handle the float button click: show the comment form.
- */
-function handleFloatButtonClick(selectionInfo: TextSelectionInfo): void {
-  hideFloatButton();
+let lastUrl = window.location.href;
+const urlObserver = new MutationObserver(() => {
+  if (window.location.href !== lastUrl) {
+    console.log('[Gitnotate] URL changed:', lastUrl, '→', window.location.href);
+    lastUrl = window.location.href;
+    init().catch(console.error);
+  }
+});
+urlObserver.observe(document.body, { childList: true, subtree: true });
 
-  showCommentForm({
-    selectionInfo,
-    onSubmit: async (userComment: string) => {
-      const metadata = {
-        exact: selectionInfo.exact,
-        start: selectionInfo.start,
-        end: selectionInfo.end,
-      };
-      const commentBody = buildGnComment(metadata, userComment);
+document.addEventListener('click', () => {
+  setTimeout(() => {
+    if (window.location.href !== lastUrl) {
+      console.log('[Gitnotate] URL changed (after click):', lastUrl, '→', window.location.href);
+      lastUrl = window.location.href;
+      init().catch(console.error);
+    }
+  }, 300);
+}, true);
 
-      const success = await submitViaGitHubUI({
-        filePath: selectionInfo.filePath,
-        lineNumber: selectionInfo.lineNumber,
-        side: selectionInfo.side,
-        commentBody,
-      });
+// --- Scan and highlight ---
 
-      if (!success) {
-        throw new Error('Could not open GitHub comment form. Try clicking the "+" on the line manually.');
-      }
-
-      // Re-scan after a short delay to pick up the new comment
-      setTimeout(scanAndHighlight, 500);
-    },
-    onCancel: () => {
-      hideCommentForm();
-    },
-  });
-}
-
-/**
- * Scan for @gn comments and highlight referenced text ranges.
- */
 function scanAndHighlight(): void {
   clearAllHighlights();
   const gnComments = scanForGnComments();
@@ -179,22 +257,15 @@ function scanAndHighlight(): void {
   }
 }
 
-/**
- * Hide the `<!-- @gn ... -->` metadata line and the blockquote fallback
- * from a review comment's visible body, since the extension handles
- * highlighting directly.
- */
 function hideGnMetadataInComment(commentEl: HTMLElement): void {
   const body = commentEl.querySelector('.comment-body');
   if (!body) return;
 
   for (const child of Array.from(body.children)) {
-    // Hide <p> containing the @gn metadata (escaped HTML comment)
     if (child.tagName === 'P' && child.textContent?.includes('<!-- @gn')) {
       (child as HTMLElement).style.display = 'none';
       continue;
     }
-    // Hide the blockquote fallback (📌 "..." (chars ...))
     if (child.tagName === 'BLOCKQUOTE' && child.textContent?.includes('📌')) {
       (child as HTMLElement).style.display = 'none';
     }

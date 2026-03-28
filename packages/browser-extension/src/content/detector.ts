@@ -15,7 +15,7 @@ export interface GitHubPageInfo {
 
 const GITHUB_HOST = 'github.com';
 
-const PR_FILES_RE = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)\/files\/?$/;
+const PR_FILES_RE = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)\/(files|changes)\/?$/;
 const PR_RE = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(\/.*)?$/;
 const BLOB_RE = /^\/([^/]+)\/([^/]+)\/blob\/([^/]+?)\/(.+)$/;
 

@@ -15,10 +15,11 @@ export interface TextSelectionInfo {
   lineElement: HTMLElement;
 }
 
-const CODE_CELL_SELECTOR = '.blob-code-inner';
-const LINE_NUM_SELECTOR = '.blob-num';
-const FILE_SELECTOR = '.file';
-const FILE_HEADER_SELECTOR = '.file-header';
+// Support both old and new GitHub diff UI class names
+const CODE_CELL_SELECTOR = '.blob-code-inner, .diff-text-inner';
+const LINE_NUM_SELECTOR = '.blob-num, .diff-line-num';
+const FILE_SELECTOR = '.file, [data-diff-anchor]';
+const FILE_HEADER_SELECTOR = '.file-header, .diff-blob-header';
 
 /**
  * Find the closest blob-code-inner ancestor (or self) of a node.
@@ -58,6 +59,13 @@ function determineSide(codeCell: HTMLElement): 'LEFT' | 'RIGHT' {
   if (codeCell.classList.contains('blob-code-deletion')) return 'LEFT';
   if (codeCell.classList.contains('blob-code-addition')) return 'RIGHT';
 
+  // New GitHub UI: check parent td for side class
+  const parentTd = codeCell.closest('td');
+  if (parentTd) {
+    if (parentTd.classList.contains('left-side-diff-cell')) return 'LEFT';
+    if (parentTd.classList.contains('right-side-diff-cell')) return 'RIGHT';
+  }
+
   const row = codeCell.closest('tr');
   if (!row) return 'RIGHT';
 
@@ -78,9 +86,9 @@ function extractLineNumber(codeCell: HTMLElement): number | null {
   const row = codeCell.closest('tr');
   if (!row) return null;
 
-  // Walk backwards from the code cell to find the closest blob-num with a value
+  // Walk backwards from the code cell to find the closest blob-num/diff-line-num with a value
   const cells = Array.from(row.children);
-  const idx = cells.indexOf(codeCell);
+  const idx = cells.indexOf(codeCell.closest('td') ?? codeCell);
 
   for (let i = idx - 1; i >= 0; i--) {
     const attr = cells[i].getAttribute('data-line-number');
@@ -89,13 +97,27 @@ function extractLineNumber(codeCell: HTMLElement): number | null {
     }
   }
 
-  // Also check all blob-num cells if not found walking backwards
+  // Check all line number cells in the row
   const numCells = row.querySelectorAll<HTMLElement>(LINE_NUM_SELECTOR);
   for (const nc of numCells) {
     const attr = nc.getAttribute('data-line-number');
     if (attr != null && attr !== '') {
       return Number(attr);
     }
+  }
+
+  // New GitHub UI: check for data-line-number on the row itself or on buttons
+  const lineBtn = row.querySelector<HTMLElement>('[data-line-number]');
+  if (lineBtn) {
+    const attr = lineBtn.getAttribute('data-line-number');
+    if (attr) return Number(attr);
+  }
+
+  // Try data-hunk attribute or line-number buttons
+  const lineNumButton = row.querySelector<HTMLElement>('button[data-line]');
+  if (lineNumButton) {
+    const attr = lineNumButton.getAttribute('data-line');
+    if (attr) return Number(attr);
   }
 
   return null;
@@ -105,6 +127,7 @@ function extractLineNumber(codeCell: HTMLElement): number | null {
  * Extract the file path from the closest `.file` or `.file-header` element.
  */
 function extractFilePath(codeCell: HTMLElement): string | null {
+  // Try old GitHub UI
   const fileEl = codeCell.closest<HTMLElement>(FILE_SELECTOR);
   if (fileEl) {
     const path = fileEl.getAttribute('data-path');
@@ -119,6 +142,26 @@ function extractFilePath(codeCell: HTMLElement): string | null {
       if (link) return link.title;
     }
   }
+
+  // New GitHub UI: look for data-path on ancestor elements
+  let el: HTMLElement | null = codeCell;
+  while (el) {
+    const path = el.getAttribute('data-path');
+    if (path) return path;
+    el = el.parentElement;
+  }
+
+  // Try finding the file path from a nearby copilot-diff-entry or similar
+  const diffEntry = codeCell.closest<HTMLElement>('[data-file-path]');
+  if (diffEntry) return diffEntry.getAttribute('data-file-path');
+
+  // Try the diff header link
+  const diffAnchor = codeCell.closest<HTMLElement>('[data-diff-anchor]');
+  if (diffAnchor) {
+    const anchor = diffAnchor.getAttribute('data-diff-anchor');
+    if (anchor) return anchor;
+  }
+
   return null;
 }
 
