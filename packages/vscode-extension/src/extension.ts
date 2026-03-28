@@ -17,8 +17,8 @@ async function updatePRStatusBar(): Promise<void> {
   }
 
   if (pr) {
-    statusBarItem.text = ``$(git-pull-request) Gitnotate: PR #${pr.number}``;
-    statusBarItem.tooltip = ``${pr.owner}/#${pr.number}``;
+    statusBarItem.text = `$(git-pull-request) Gitnotate: PR #${pr.number}`;
+    statusBarItem.tooltip = `${pr.owner}/${pr.repo}#${pr.number}`;
     statusBarItem.show();
   } else {
     statusBarItem.hide();
