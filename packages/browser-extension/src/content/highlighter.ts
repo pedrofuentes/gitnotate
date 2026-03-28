@@ -10,21 +10,28 @@ export interface HighlightInfo {
  * Find the code cell for a given file path + line number.
  * Supports both old (.blob-code-inner) and new (.diff-text-inner) GitHub UI.
  */
-function findCodeCell(_filePath: string, lineNumber: number): HTMLElement | null {
+function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null {
+  // Scope search to the correct file container when filePath is available
+  const scope = filePath
+    ? document.querySelector<HTMLElement>(
+        `.file[data-path="${filePath}"], [data-diff-anchor="${filePath}"]`,
+      ) ?? document
+    : document;
+
   // New GitHub UI: td[data-line-number] contains .diff-text-inner
-  const newCell = document.querySelector<HTMLElement>(
+  const newCell = scope.querySelector<HTMLElement>(
     `td[data-line-number="${lineNumber}"] .diff-text-inner`,
   );
   if (newCell) return newCell;
 
   // Also try right-side cells specifically
-  const rightCell = document.querySelector<HTMLElement>(
+  const rightCell = scope.querySelector<HTMLElement>(
     `td.right-side-diff-cell[data-line-number="${lineNumber}"] .diff-text-inner`,
   );
   if (rightCell) return rightCell;
 
-  // Old GitHub UI fallback
-  const lineNumCell = document.querySelector<HTMLElement>(
+  // Old GitHub UI fallback: blob-num + blob-code-inner in the same row
+  const lineNumCell = scope.querySelector<HTMLElement>(
     `td.blob-num[data-line-number="${lineNumber}"]`,
   );
   if (lineNumCell) {
@@ -32,6 +39,21 @@ function findCodeCell(_filePath: string, lineNumber: number): HTMLElement | null
     if (row) {
       return row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
     }
+  }
+
+  // New GitHub UI fallback: line number and code cell are SIBLING <td>s
+  // in the same <tr>.  Find the line-number cell, then search its row
+  // for the code cell.
+  const lineNumCells = scope.querySelectorAll<HTMLElement>(
+    `[data-line-number="${lineNumber}"]`,
+  );
+  for (const cell of lineNumCells) {
+    const row = cell.closest('tr');
+    if (!row) continue;
+    const codeCell =
+      row.querySelector<HTMLElement>('.diff-text-inner') ??
+      row.querySelector<HTMLElement>('.blob-code-inner');
+    if (codeCell) return codeCell;
   }
 
   return null;
