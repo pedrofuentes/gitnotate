@@ -62,8 +62,8 @@ export function findClosestTextarea(
   // Match by line number — most reliable approach
   if (lineNumber !== undefined) {
     for (const ta of pool) {
-      const taLine = getTextareaLineNumber(ta);
-      if (taLine !== null && taLine === lineNumber) {
+      const taLines = getTextareaLineNumbers(ta);
+      if (taLines.includes(lineNumber)) {
         return ta;
       }
     }
@@ -83,29 +83,31 @@ export function findClosestTextarea(
 }
 
 /**
- * Determine which diff line number a textarea's inline comment form
+ * Determine which diff line numbers a textarea's inline comment form
  * belongs to.  Walks backward from the textarea's `<tr>` to find the
- * nearest code row with a `data-line-number` cell.
+ * nearest code row and returns ALL `data-line-number` values (both
+ * sides of a split-view diff).
  */
-export function getTextareaLineNumber(
+export function getTextareaLineNumbers(
   textarea: HTMLTextAreaElement,
-): number | null {
+): number[] {
   const row = textarea.closest('tr');
-  if (!row) return null;
+  if (!row) return [];
 
-  // Walk backward through sibling rows to find a code row with a line number
+  // Walk backward through sibling rows to find a code row with line numbers
   let sibling = row.previousElementSibling;
-  // Check at most a few rows back (inline comment rows may have nested structure)
   for (let i = 0; i < 3 && sibling; i++) {
-    const lineCell = sibling.querySelector<HTMLElement>('[data-line-number]');
-    if (lineCell) {
-      const num = Number(lineCell.getAttribute('data-line-number'));
-      if (!isNaN(num)) return num;
+    const lineCells = sibling.querySelectorAll<HTMLElement>('[data-line-number]');
+    const numbers: number[] = [];
+    for (const cell of lineCells) {
+      const num = Number(cell.getAttribute('data-line-number'));
+      if (!isNaN(num)) numbers.push(num);
     }
+    if (numbers.length > 0) return numbers;
     sibling = sibling.previousElementSibling;
   }
 
-  return null;
+  return [];
 }
 
 /**

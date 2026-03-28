@@ -3,7 +3,7 @@ import {
   findClosestTextarea,
   injectGnMetadata,
   isTextareaNearSelection,
-  getTextareaLineNumber,
+  getTextareaLineNumbers,
   TEXTAREA_SELECTORS,
 } from '../../src/content/textarea-target';
 import type { TextSelectionInfo } from '../../src/content/selection';
@@ -410,10 +410,10 @@ describe('isTextareaNearSelection', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getTextareaLineNumber
+// getTextareaLineNumbers
 // ---------------------------------------------------------------------------
 
-describe('getTextareaLineNumber', () => {
+describe('getTextareaLineNumbers', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
   });
@@ -428,17 +428,17 @@ describe('getTextareaLineNumber', () => {
       },
     ]);
 
-    expect(getTextareaLineNumber(textareas[0])).toBe(7);
+    expect(getTextareaLineNumbers(textareas[0])).toContain(7);
   });
 
-  it('should return null when textarea is not in a table row', () => {
+  it('should return empty array when textarea is not in a table row', () => {
     const textarea = document.createElement('textarea');
     document.body.appendChild(textarea);
 
-    expect(getTextareaLineNumber(textarea)).toBeNull();
+    expect(getTextareaLineNumbers(textarea)).toEqual([]);
   });
 
-  it('should return null when no line number cell exists', () => {
+  it('should return empty array when no line number cell exists', () => {
     const table = document.createElement('table');
     const row1 = document.createElement('tr');
     const cell1 = document.createElement('td');
@@ -455,6 +455,43 @@ describe('getTextareaLineNumber', () => {
 
     document.body.appendChild(table);
 
-    expect(getTextareaLineNumber(textarea)).toBeNull();
+    expect(getTextareaLineNumbers(textarea)).toEqual([]);
+  });
+
+  it('should return both line numbers in a split-view row', () => {
+    // Build a split-view row with TWO line number cells
+    const table = document.createElement('table');
+
+    const codeRow = document.createElement('tr');
+    const leftNum = document.createElement('td');
+    leftNum.className = 'blob-num';
+    leftNum.setAttribute('data-line-number', '4');
+    const leftCode = document.createElement('td');
+    leftCode.className = 'blob-code-inner';
+    leftCode.textContent = 'old code';
+    const rightNum = document.createElement('td');
+    rightNum.className = 'blob-num';
+    rightNum.setAttribute('data-line-number', '5');
+    const rightCode = document.createElement('td');
+    rightCode.className = 'blob-code-inner';
+    rightCode.textContent = 'new code';
+    codeRow.append(leftNum, leftCode, rightNum, rightCode);
+    table.appendChild(codeRow);
+
+    const commentRow = document.createElement('tr');
+    commentRow.className = 'inline-comments';
+    const commentCell = document.createElement('td');
+    commentCell.colSpan = 4;
+    const textarea = document.createElement('textarea');
+    textarea.name = 'comment[body]';
+    commentCell.appendChild(textarea);
+    commentRow.appendChild(commentCell);
+    table.appendChild(commentRow);
+
+    document.body.appendChild(table);
+
+    const lineNums = getTextareaLineNumbers(textarea);
+    expect(lineNums).toContain(4);
+    expect(lineNums).toContain(5);
   });
 });
