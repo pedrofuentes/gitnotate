@@ -1,0 +1,74 @@
+export interface RepoSettings {
+  enabled: boolean;
+  enabledAt?: string; // ISO 8601 timestamp
+}
+
+function storageKey(owner: string, repo: string): string {
+  return `repo:${owner}/${repo}`;
+}
+
+export async function getRepoSettings(
+  owner: string,
+  repo: string
+): Promise<RepoSettings | null> {
+  const key = storageKey(owner, repo);
+  const result = await chrome.storage.local.get([key]);
+  const settings = result[key] as RepoSettings | undefined;
+  return settings ?? null;
+}
+
+export async function isRepoEnabled(
+  owner: string,
+  repo: string
+): Promise<boolean> {
+  const settings = await getRepoSettings(owner, repo);
+  return settings?.enabled === true;
+}
+
+export async function enableRepo(
+  owner: string,
+  repo: string
+): Promise<void> {
+  const key = storageKey(owner, repo);
+  const existing = await getRepoSettings(owner, repo);
+
+  // Idempotent: preserve original timestamp if already enabled
+  const enabledAt =
+    existing?.enabled && existing.enabledAt
+      ? existing.enabledAt
+      : new Date().toISOString();
+
+  const settings: RepoSettings = { enabled: true, enabledAt };
+  await chrome.storage.local.set({ [key]: settings });
+}
+
+export async function disableRepo(
+  owner: string,
+  repo: string
+): Promise<void> {
+  const key = storageKey(owner, repo);
+  const existing = await getRepoSettings(owner, repo);
+
+  const settings: RepoSettings = {
+    enabled: false,
+    enabledAt: existing?.enabledAt,
+  };
+  await chrome.storage.local.set({ [key]: settings });
+}
+
+export async function getAllEnabledRepos(): Promise<string[]> {
+  const allItems = await chrome.storage.local.get(null);
+  const prefix = 'repo:';
+  const enabled: string[] = [];
+
+  for (const [key, value] of Object.entries(allItems)) {
+    if (key.startsWith(prefix)) {
+      const settings = value as RepoSettings;
+      if (settings.enabled) {
+        enabled.push(key.slice(prefix.length));
+      }
+    }
+  }
+
+  return enabled;
+}
