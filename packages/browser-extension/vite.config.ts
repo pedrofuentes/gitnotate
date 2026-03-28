@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import { copyFileSync } from 'fs';
 
 export default defineConfig({
   build: {
@@ -13,9 +14,22 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
+        assetFileNames: 'assets/[name][extname]',
+        chunkFileNames: 'assets/[name].js',
       },
     },
   },
+  plugins: [
+    {
+      name: 'copy-manifest',
+      closeBundle() {
+        copyFileSync(
+          resolve(__dirname, 'manifest.json'),
+          resolve(__dirname, 'dist/manifest.json'),
+        );
+      },
+    },
+  ],
   test: {
     passWithNoTests: true,
   },
