@@ -6,7 +6,8 @@ import { scanForGnComments, type GnReviewComment } from '../../src/content/comme
  *
  * A `.file[data-path]` wraps a `.diff-table` with numbered lines.
  * Review comments sit inside the same `.file` container, after the
- * diff row they refer to.
+ * diff row they refer to.  The `@gn:start:end` tag lives inside a
+ * `<code>` element (as GitHub renders backtick code spans).
  */
 function buildDiffFileDOM(opts: {
   filePath: string;
@@ -15,10 +16,15 @@ function buildDiffFileDOM(opts: {
     line: number;
     bodyHTML: string;
   }[];
+  useDataDiffAnchor?: boolean;
 }): HTMLElement {
   const file = document.createElement('div');
   file.className = 'file';
-  file.setAttribute('data-path', opts.filePath);
+  if (opts.useDataDiffAnchor) {
+    file.setAttribute('data-diff-anchor', opts.filePath);
+  } else {
+    file.setAttribute('data-path', opts.filePath);
+  }
 
   const table = document.createElement('table');
   table.className = 'diff-table';
@@ -45,7 +51,7 @@ function buildDiffFileDOM(opts: {
   for (const comment of opts.comments ?? []) {
     const reviewComment = document.createElement('div');
     reviewComment.className = 'review-comment';
-    reviewComment.setAttribute('data-line', String(comment.line));
+    reviewComment.setAttribute('data-line-number', String(comment.line));
 
     const commentBody = document.createElement('div');
     commentBody.className = 'comment-body';
@@ -58,11 +64,18 @@ function buildDiffFileDOM(opts: {
   return file;
 }
 
-const GN_COMMENT_HTML = [
-  '<p>&lt;!-- @gn {"exact":"revenue growth exceeded expectations","start":11,"end":47} --&gt;</p>',
-  '<blockquote>📌 <strong>"revenue growth exceeded expectations"</strong> (chars 11–47)</blockquote>',
-  '<p>Can we add the exact percentage here?</p>',
-].join('\n');
+/**
+ * Build a @gn comment body HTML using the `@gn:start:end` format.
+ *
+ * The tag is rendered inside a `<code>` element (as GitHub renders
+ * backtick code spans).  Backtick text nodes surround the `<code>`
+ * so that the container's textContent includes the backticks the
+ * parser requires.
+ */
+function gnCommentHTML(start: number, end: number, userComment?: string): string {
+  const tag = `\`<code>@gn:${start}:${end}</code>\``;
+  return userComment ? `${tag} ${userComment}` : tag;
+}
 
 const PLAIN_COMMENT_HTML = '<p>Looks good to me!</p>';
 
@@ -77,19 +90,22 @@ describe('scanForGnComments', () => {
       lines: [
         { number: 3, text: 'In Q3, our revenue growth exceeded expectations by a significant margin.' },
       ],
-      comments: [{ line: 3, bodyHTML: GN_COMMENT_HTML }],
+      comments: [
+        {
+          line: 3,
+          bodyHTML: gnCommentHTML(11, 47, 'Can we add the exact percentage here?'),
+        },
+      ],
     });
     document.body.appendChild(file);
 
     const results = scanForGnComments();
 
     expect(results).toHaveLength(1);
-    expect(results[0].parsed.metadata.exact).toBe('revenue growth exceeded expectations');
     expect(results[0].parsed.metadata.start).toBe(11);
     expect(results[0].parsed.metadata.end).toBe(47);
-    expect(results[0].parsed.userComment).toBe(
-      '📌 "revenue growth exceeded expectations" (chars 11–47)\nCan we add the exact percentage here?',
-    );
+    expect(results[0].parsed.metadata.exact).toBe('');
+    expect(results[0].parsed.userComment).toBe('Can we add the exact percentage here?');
   });
 
   it('should return empty array when no @gn comments exist', () => {
@@ -112,11 +128,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 10,
-          bodyHTML: [
-            '<p>&lt;!-- @gn {"exact":"compute(x, y)","start":15,"end":29} --&gt;</p>',
-            '<blockquote>📌 <strong>"compute(x, y)"</strong> (chars 15–29)</blockquote>',
-            '<p>Should we validate inputs first?</p>',
-          ].join('\n'),
+          bodyHTML: gnCommentHTML(15, 29, 'Should we validate inputs first?'),
         },
       ],
     });
@@ -126,13 +138,11 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].parsed.metadata).toEqual({
-      exact: 'compute(x, y)',
+      exact: '',
       start: 15,
       end: 29,
     });
-    expect(results[0].parsed.userComment).toBe(
-      '📌 "compute(x, y)" (chars 15–29)\nShould we validate inputs first?',
-    );
+    expect(results[0].parsed.userComment).toBe('Should we validate inputs first?');
   });
 
   it('should extract file path from parent structure', () => {
@@ -142,11 +152,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 5,
-          bodyHTML: [
-            '<p>&lt;!-- @gn {"exact":"helper","start":16,"end":22} --&gt;</p>',
-            '<blockquote>📌 <strong>"helper"</strong> (chars 16–22)</blockquote>',
-            '<p>Rename this function</p>',
-          ].join('\n'),
+          bodyHTML: gnCommentHTML(16, 22, 'Rename this function'),
         },
       ],
     });
@@ -165,11 +171,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 42,
-          bodyHTML: [
-            '<p>&lt;!-- @gn {"exact":"code","start":5,"end":9} --&gt;</p>',
-            '<blockquote>📌 <strong>"code"</strong> (chars 5–9)</blockquote>',
-            '<p>Clarify this</p>',
-          ].join('\n'),
+          bodyHTML: gnCommentHTML(5, 9, 'Clarify this'),
         },
       ],
     });
@@ -192,11 +194,7 @@ describe('scanForGnComments', () => {
         { line: 1, bodyHTML: PLAIN_COMMENT_HTML },
         {
           line: 2,
-          bodyHTML: [
-            '<p>&lt;!-- @gn {"exact":"two","start":5,"end":8} --&gt;</p>',
-            '<blockquote>📌 <strong>"two"</strong> (chars 5–8)</blockquote>',
-            '<p>Fix this</p>',
-          ].join('\n'),
+          bodyHTML: gnCommentHTML(5, 8, 'Fix this'),
         },
       ],
     });
@@ -215,11 +213,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: [
-            '<p>&lt;!-- @gn {"exact":"alpha","start":0,"end":5} --&gt;</p>',
-            '<blockquote>📌 <strong>"alpha"</strong> (chars 0–5)</blockquote>',
-            '<p>Comment A</p>',
-          ].join('\n'),
+          bodyHTML: gnCommentHTML(0, 5, 'Comment A'),
         },
       ],
     });
@@ -230,11 +224,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 7,
-          bodyHTML: [
-            '<p>&lt;!-- @gn {"exact":"epsilon","start":6,"end":13} --&gt;</p>',
-            '<blockquote>📌 <strong>"epsilon"</strong> (chars 6–13)</blockquote>',
-            '<p>Comment B</p>',
-          ].join('\n'),
+          bodyHTML: gnCommentHTML(6, 13, 'Comment B'),
         },
       ],
     });
@@ -246,9 +236,11 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(2);
     expect(results[0].filePath).toBe('a.ts');
-    expect(results[0].parsed.metadata.exact).toBe('alpha');
+    expect(results[0].parsed.metadata.start).toBe(0);
+    expect(results[0].parsed.metadata.end).toBe(5);
     expect(results[1].filePath).toBe('b.ts');
-    expect(results[1].parsed.metadata.exact).toBe('epsilon');
+    expect(results[1].parsed.metadata.start).toBe(6);
+    expect(results[1].parsed.metadata.end).toBe(13);
   });
 
   it('should return the comment DOM element reference', () => {
@@ -258,11 +250,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: [
-            '<p>&lt;!-- @gn {"exact":"hello","start":0,"end":5} --&gt;</p>',
-            '<blockquote>📌 <strong>"hello"</strong> (chars 0–5)</blockquote>',
-            '<p>Greeting</p>',
-          ].join('\n'),
+          bodyHTML: gnCommentHTML(0, 5, 'Greeting'),
         },
       ],
     });
@@ -272,19 +260,17 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].commentElement).toBeInstanceOf(HTMLElement);
-    expect(results[0].commentElement.classList.contains('review-comment')).toBe(true);
+    expect(results[0].commentElement.classList.contains('comment-body')).toBe(true);
   });
 
-  it('should handle @gn metadata when HTML comment is rendered as visible text', () => {
-    // Some GitHub rendering may show the <!-- --> as escaped text in textContent
+  it('should handle @gn tag inside a paragraph with code element', () => {
     const file = buildDiffFileDOM({
       filePath: 'file.ts',
       lines: [{ number: 1, text: 'hello world' }],
       comments: [
         {
           line: 1,
-          bodyHTML:
-            '<!-- @gn {"exact":"hello","start":0,"end":5} -->\n<blockquote>📌 <strong>"hello"</strong> (chars 0–5)</blockquote>\n<p>Hidden meta</p>',
+          bodyHTML: '<p>`<code>@gn:0:5</code>` Review this greeting</p>',
         },
       ],
     });
@@ -293,49 +279,28 @@ describe('scanForGnComments', () => {
     const results = scanForGnComments();
 
     expect(results).toHaveLength(1);
-    expect(results[0].parsed.metadata.exact).toBe('hello');
+    expect(results[0].parsed.metadata.start).toBe(0);
+    expect(results[0].parsed.metadata.end).toBe(5);
   });
 
-  it('should handle timeline-comment variant selector', () => {
-    const file = document.createElement('div');
-    file.className = 'file';
-    file.setAttribute('data-path', 'README.md');
-
-    const table = document.createElement('table');
-    table.className = 'diff-table';
-    const tbody = document.createElement('tbody');
-    const tr = document.createElement('tr');
-    const numTd = document.createElement('td');
-    numTd.className = 'blob-num';
-    numTd.setAttribute('data-line-number', '1');
-    tr.appendChild(numTd);
-    const codeTd = document.createElement('td');
-    codeTd.className = 'blob-code blob-code-inner';
-    codeTd.textContent = 'Hello world';
-    tr.appendChild(codeTd);
-    tbody.appendChild(tr);
-    table.appendChild(tbody);
-    file.appendChild(table);
-
-    // Use timeline-comment variant
-    const comment = document.createElement('div');
-    comment.className = 'timeline-comment';
-    comment.setAttribute('data-line', '1');
-    const body = document.createElement('div');
-    body.className = 'comment-body';
-    body.innerHTML = [
-      '<p>&lt;!-- @gn {"exact":"Hello","start":0,"end":5} --&gt;</p>',
-      '<blockquote>📌 <strong>"Hello"</strong> (chars 0–5)</blockquote>',
-      '<p>Use greeting</p>',
-    ].join('\n');
-    comment.appendChild(body);
-    file.appendChild(comment);
+  it('should resolve file path from data-diff-anchor attribute', () => {
+    const file = buildDiffFileDOM({
+      filePath: 'README.md',
+      lines: [{ number: 1, text: 'Hello world' }],
+      comments: [
+        {
+          line: 1,
+          bodyHTML: gnCommentHTML(0, 5, 'Use greeting'),
+        },
+      ],
+      useDataDiffAnchor: true,
+    });
 
     document.body.appendChild(file);
 
     const results = scanForGnComments();
 
     expect(results).toHaveLength(1);
-    expect(results[0].parsed.metadata.exact).toBe('Hello');
+    expect(results[0].filePath).toBe('README.md');
   });
 });
