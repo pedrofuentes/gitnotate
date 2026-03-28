@@ -9,12 +9,28 @@
   <body>
     <div id="app">
       <h1>Gitnotate</h1>
+      <p class="gn-subtitle">Sub-line commenting for GitHub PRs</p>
 
-      <!-- Auth section -->
-      <div id="gn-auth" class="gn-section">
+      <!-- Status section -->
+      <div id="gn-status" class="gn-section">
+        <p id="gn-status-text" class="gn-label">Ready — select text in a PR diff to comment</p>
+      </div>
+
+      <!-- Enabled repos section -->
+      <div id="gn-repos" class="gn-section">
+        <h2 class="gn-section-title">Enabled Repositories</h2>
+        <div id="gn-repo-list">
+          <p class="gn-muted">No repos enabled yet. Visit a PR and click "Enable" when prompted.</p>
+        </div>
+      </div>
+
+      <!-- Advanced: API access (for sidecar mode) -->
+      <details id="gn-advanced" class="gn-section">
+        <summary class="gn-section-title gn-clickable">API Access (optional)</summary>
+        <p class="gn-muted">A GitHub token is only needed for file-view commenting (sidecar mode). PR commenting works without it.</p>
+
         <!-- Signed-out state -->
         <div id="gn-auth-signed-out" class="gn-auth-state" hidden>
-          <p class="gn-label">Not signed in</p>
           <input
             id="gn-pat-input"
             type="password"
@@ -43,7 +59,7 @@
             Sign out
           </button>
         </div>
-      </div>
+      </details>
     </div>
     <script type="module" src="popup.ts"></script>
   </body>

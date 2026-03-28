@@ -1,54 +1,123 @@
 import { buildGnComment } from '@gitnotate/core';
-import { detectGitHubPage } from './detector';
+import { detectGitHubPage, type GitHubPageInfo } from './detector';
 import { observeDiffContent } from './diff-observer';
 import { getSelectionInfo, type TextSelectionInfo } from './selection';
 import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
 import { showFloatButton, hideFloatButton } from './ui/float-button';
 import { showCommentForm, hideCommentForm } from './ui/comment-form';
+import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
 import { submitViaGitHubUI } from './comment-submitter';
+import { isRepoEnabled, enableRepo } from '../storage/repo-settings';
+import { initFileViewComments } from './file-view-handler';
 import './highlighter.css';
 import './ui/float-button.css';
 import './ui/comment-form.css';
+import './ui/optin-banner.css';
 
-const pageInfo = detectGitHubPage();
-console.log('[Gitnotate] Page detected:', pageInfo);
+let currentPageInfo: GitHubPageInfo = detectGitHubPage();
+let activated = false;
 
-if (pageInfo.type === 'file-view' && pageInfo.filePath) {
-  import('./file-view-handler').then(({ initFileViewComments }) => {
-    initFileViewComments(pageInfo);
-  });
+console.log('[Gitnotate] Content script loaded at:', window.location.href);
+
+async function init(): Promise<void> {
+  currentPageInfo = detectGitHubPage();
+  activated = false;
+  console.log('[Gitnotate] init() called');
+  console.log('[Gitnotate] URL:', window.location.pathname);
+  console.log('[Gitnotate] Page detected:', JSON.stringify(currentPageInfo));
+
+  if (currentPageInfo.type === 'other' || !currentPageInfo.owner || !currentPageInfo.repo) {
+    console.log('[Gitnotate] Skipping — page type is "other" or missing owner/repo');
+    return;
+  }
+
+  console.log('[Gitnotate] Checking if repo is enabled:', `${currentPageInfo.owner}/${currentPageInfo.repo}`);
+  const enabled = await isRepoEnabled(currentPageInfo.owner, currentPageInfo.repo);
+  console.log('[Gitnotate] Repo enabled:', enabled);
+
+  if (!enabled) {
+    console.log('[Gitnotate] Repo not enabled, page type:', currentPageInfo.type);
+    if (currentPageInfo.type === 'pr-files-changed' || currentPageInfo.type === 'pr-conversation') {
+      console.log('[Gitnotate] Showing opt-in banner');
+      const pageRef = currentPageInfo;
+      showOptInBanner(
+        pageRef.owner,
+        pageRef.repo,
+        async () => {
+          await enableRepo(pageRef.owner, pageRef.repo);
+          console.log(`[Gitnotate] Enabled for ${pageRef.owner}/${pageRef.repo}`);
+          activateFeatures(pageRef);
+        },
+        () => {
+          console.log('[Gitnotate] User dismissed opt-in');
+        },
+      );
+    } else {
+      console.log('[Gitnotate] Not a PR page, skipping opt-in banner');
+    }
+    return;
+  }
+
+  activateFeatures(currentPageInfo);
 }
 
-if (pageInfo.type === 'pr-files-changed') {
-  console.log('[Gitnotate] PR diff page detected, initializing...');
+function activateFeatures(pageInfo: GitHubPageInfo): void {
+  if (activated) return;
+  activated = true;
 
-  // Listen for text selection to show the float button
-  document.addEventListener('mouseup', () => {
-    // Delay to let the browser finalize the selection
-    setTimeout(() => {
-      const selInfo = getSelectionInfo();
-      if (selInfo) {
-        showFloatButton(selInfo, handleFloatButtonClick);
-      } else {
+  hideOptInBanner();
+
+  if (pageInfo.type === 'file-view' && pageInfo.filePath) {
+    initFileViewComments(pageInfo);
+  }
+
+  if (pageInfo.type === 'pr-files-changed') {
+    console.log('[Gitnotate] PR diff page detected, initializing...');
+
+    document.addEventListener('mouseup', () => {
+      setTimeout(() => {
+        const selInfo = getSelectionInfo();
+        if (selInfo) {
+          showFloatButton(selInfo, handleFloatButtonClick);
+        } else {
+          hideFloatButton();
+        }
+      }, 10);
+    });
+
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) {
         hideFloatButton();
       }
-    }, 10);
-  });
+    });
 
-  // Clear float button when selection is lost
-  document.addEventListener('selectionchange', () => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) {
-      hideFloatButton();
-    }
-  });
-
-  observeDiffContent((diffElements) => {
-    console.log('[Gitnotate] Diff elements loaded:', diffElements.length);
-    scanAndHighlight();
-  });
+    observeDiffContent((diffElements) => {
+      console.log('[Gitnotate] Diff elements loaded:', diffElements.length);
+      scanAndHighlight();
+    });
+  }
 }
+
+// Initial run
+console.log('[Gitnotate] Running initial init()');
+init().catch(console.error);
+
+// Re-run on GitHub's SPA navigation (turbo/pjax)
+document.addEventListener('turbo:load', () => {
+  console.log('[Gitnotate] turbo:load event fired');
+  init().catch(console.error);
+});
+document.addEventListener('turbo:render', () => {
+  console.log('[Gitnotate] turbo:render event fired');
+  init().catch(console.error);
+});
+// Fallback: watch for URL changes via popstate
+window.addEventListener('popstate', () => {
+  console.log('[Gitnotate] popstate event fired');
+  init().catch(console.error);
+});
 
 /**
  * Handle the float button click: show the comment form.

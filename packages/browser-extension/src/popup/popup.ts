@@ -70,32 +70,21 @@ function setupAuthListeners(): void {
 // --- Enabled repos ---
 
 async function renderEnabledRepos(): Promise<void> {
-  const app = document.getElementById('app');
-  if (!app) return;
+  const container = document.getElementById('gn-repo-list');
+  if (!container) return;
 
   const repos = await getAllEnabledRepos();
 
-  const existing = app.querySelector('#gn-repo-list');
-  if (existing) existing.remove();
-
-  const container = document.createElement('div');
-  container.id = 'gn-repo-list';
+  container.innerHTML = '';
 
   if (repos.length === 0) {
     const msg = document.createElement('p');
-    msg.textContent = 'No repos enabled yet';
+    msg.className = 'gn-muted';
+    msg.textContent = 'No repos enabled yet. Visit a PR and click "Enable" when prompted.';
     container.appendChild(msg);
   } else {
-    const heading = document.createElement('h2');
-    heading.textContent = 'Enabled repos';
-    heading.style.fontSize = '14px';
-    heading.style.margin = '12px 0 8px';
-    container.appendChild(heading);
-
     const list = document.createElement('ul');
-    list.style.margin = '0';
-    list.style.paddingLeft = '18px';
-    list.style.fontSize = '13px';
+    list.className = 'gn-repo-list';
 
     for (const repo of repos) {
       const li = document.createElement('li');
@@ -104,8 +93,6 @@ async function renderEnabledRepos(): Promise<void> {
     }
     container.appendChild(list);
   }
-
-  app.appendChild(container);
 }
 
 // --- Bootstrap ---

@@ -9,7 +9,7 @@
     {
       "matches": ["https://github.com/*"],
       "js": ["content.js"],
-      "css": ["assets/content.css"]
+      "css": ["assets/browser-extension.css"]
     }
   ],
   "background": {
