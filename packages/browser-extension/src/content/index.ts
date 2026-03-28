@@ -14,6 +14,12 @@ import './ui/comment-form.css';
 const pageInfo = detectGitHubPage();
 console.log('[Gitnotate] Page detected:', pageInfo);
 
+if (pageInfo.type === 'file-view' && pageInfo.filePath) {
+  import('./file-view-handler').then(({ initFileViewComments }) => {
+    initFileViewComments(pageInfo);
+  });
+}
+
 if (pageInfo.type === 'pr-files-changed') {
   console.log('[Gitnotate] PR diff page detected, initializing...');
 

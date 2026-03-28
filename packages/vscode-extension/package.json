@@ -27,6 +27,10 @@
       {
         "command": "gitnotate.addComment",
         "title": "Gitnotate: Add Comment"
+      },
+      {
+        "command": "gitnotate.addFileComment",
+        "title": "Gitnotate: Add File Comment"
       }
     ],
     "configuration": {

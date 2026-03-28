@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { enableWorkspace, disableWorkspace } from './settings';
 import { DecorationManager } from './decoration-manager';
 import { addCommentCommand } from './comment-command';
+import { addFileCommentCommand } from './file-comment-command';
 import { detectCurrentPR } from './pr-detector';
 
 let decorationManager: DecorationManager | undefined;
@@ -51,6 +52,9 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand('gitnotate.addComment', () =>
       addCommentCommand(context)
+    ),
+    vscode.commands.registerCommand('gitnotate.addFileComment', () =>
+      addFileCommentCommand()
     )
   );
 
