@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Gitnotate",
+  "version": "0.0.1",
+  "description": "Sub-line commenting for Markdown files in GitHub PR reviews",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["https://github.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
