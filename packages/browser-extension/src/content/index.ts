@@ -69,7 +69,9 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   if (pageInfo.type === 'pr-files-changed') {
     console.log('[Gitnotate] PR diff page detected, initializing...');
 
-    let pendingHighlight: HTMLElement | null = null;
+    // Track one pending highlight per textarea so multiple selections
+    // can coexist across different inline comment forms.
+    const pendingHighlights = new Map<HTMLTextAreaElement, HTMLElement>();
 
     // When user selects text while a comment textarea is open,
     // inject @gn metadata into the textarea
@@ -94,14 +96,14 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
         // Highlight the selected text using the saved range
         if (savedRange) {
           try {
-            // Remove previous pending highlight if any
-            removePendingHighlight();
+            // Remove previous pending highlight for THIS textarea only
+            removePendingHighlightFor(textarea);
 
             const span = document.createElement('span');
             span.className = 'gn-highlight gn-highlight-pending';
             span.setAttribute('data-gn-comment-id', `gn-pending`);
             savedRange.surroundContents(span);
-            pendingHighlight = span;
+            pendingHighlights.set(textarea, span);
             console.log('[Gitnotate] Text highlighted');
           } catch (err) {
             console.log('[Gitnotate] Could not highlight:', err);
@@ -111,26 +113,29 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
     });
 
     // Watch for comment forms being removed (cancel/submit)
-    // Remove pending highlight when the form disappears
+    // Remove pending highlights for textareas that are no longer in the DOM
     const formObserver = new MutationObserver(() => {
-      if (pendingHighlight && !findClosestTextarea()) {
-        console.log('[Gitnotate] Comment form closed, removing pending highlight');
-        removePendingHighlight();
+      for (const [textarea] of pendingHighlights) {
+        if (!textarea.isConnected) {
+          console.log('[Gitnotate] Comment form closed, removing pending highlight');
+          removePendingHighlightFor(textarea);
+        }
       }
     });
     formObserver.observe(document.body, { childList: true, subtree: true });
 
-    function removePendingHighlight(): void {
-      if (!pendingHighlight) return;
-      const parent = pendingHighlight.parentNode;
+    function removePendingHighlightFor(textarea: HTMLTextAreaElement): void {
+      const highlight = pendingHighlights.get(textarea);
+      if (!highlight) return;
+      const parent = highlight.parentNode;
       if (parent) {
-        while (pendingHighlight.firstChild) {
-          parent.insertBefore(pendingHighlight.firstChild, pendingHighlight);
+        while (highlight.firstChild) {
+          parent.insertBefore(highlight.firstChild, highlight);
         }
-        parent.removeChild(pendingHighlight);
+        parent.removeChild(highlight);
         parent.normalize();
       }
-      pendingHighlight = null;
+      pendingHighlights.delete(textarea);
     }
 
     observeDiffContent((diffElements) => {
