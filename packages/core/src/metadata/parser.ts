@@ -1,4 +1,4 @@
-import type { GnCommentBody, GnMetadata } from './types';
+import type { GnCommentBody } from './types';
 
 // Matches `@gn:start:end` — the primary format (survives GitHub sanitization)
 const GN_TAG_RE = /`@gn:(\d+):(\d+)`/;

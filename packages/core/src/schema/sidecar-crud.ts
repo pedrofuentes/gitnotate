@@ -1,4 +1,4 @@
-import type { SidecarFile, Annotation, Reply, Author, TextQuoteSelector } from './types';
+import type { SidecarFile, Annotation, Reply, Author } from './types';
 
 const SCHEMA_URL = 'https://gitnotate.dev/schemas/sidecar-v1.json';
 
@@ -102,7 +102,7 @@ export function reopenAnnotation(
     throw new Error(`Annotation with ID "${annotationId}" not found`);
   }
 
-  const { resolvedBy: _, resolvedAt: __, ...rest } = sidecar.annotations[index];
+  const { resolvedBy: _resolvedBy, resolvedAt: _resolvedAt, ...rest } = sidecar.annotations[index];
   const updatedAnnotation: Annotation = {
     ...rest,
     resolved: false,

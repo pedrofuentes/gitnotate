@@ -5,7 +5,6 @@ import {
   createSelector,
   addAnnotation,
   createSidecarFile,
-  type SidecarFile,
 } from '@gitnotate/core';
 import { readSidecarFile, writeSidecarFile } from './sidecar-client';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
