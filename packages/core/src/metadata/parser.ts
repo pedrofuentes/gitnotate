@@ -1,7 +1,9 @@
 import type { GnCommentBody } from './types';
 
 // Matches `@gn:start:end` — the primary format (survives GitHub sanitization)
-const GN_TAG_RE = /`@gn:(\d+):(\d+)`/;
+// Also matches without backticks (GitHub renders backticks as <code> elements,
+// stripping them from textContent in submitted comments).
+const GN_TAG_RE = /`?@gn:(\d+):(\d+)`?/;
 
 // Legacy: <!-- @gn {...} --> (HTML comment — may be stripped by GitHub)
 const GN_HTML_RE = /<!--\s*@gn\s+(\{.*?\})\s*-->/;

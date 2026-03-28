@@ -12,11 +12,12 @@ export interface HighlightInfo {
  */
 function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null {
   // Scope search to the correct file container when filePath is available
-  const scope = filePath
+  const scopeEl = filePath
     ? document.querySelector<HTMLElement>(
         `.file[data-path="${filePath}"], [data-diff-anchor="${filePath}"]`,
-      ) ?? document
-    : document;
+      )
+    : null;
+  const scope: ParentNode = scopeEl ?? document;
 
   // New GitHub UI: td[data-line-number] contains .diff-text-inner
   const newCell = scope.querySelector<HTMLElement>(
@@ -37,13 +38,12 @@ function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null 
   if (lineNumCell) {
     const row = lineNumCell.closest('tr');
     if (row) {
-      return row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
+      const cell = row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
+      if (cell) return cell;
     }
   }
 
   // New GitHub UI fallback: line number and code cell are SIBLING <td>s
-  // in the same <tr>.  Find the line-number cell, then search its row
-  // for the code cell.
   const lineNumCells = scope.querySelectorAll<HTMLElement>(
     `[data-line-number="${lineNumber}"]`,
   );
@@ -95,7 +95,11 @@ export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
   span.className = 'gn-highlight';
   span.setAttribute('data-gn-comment-id', info.commentId);
 
-  range.surroundContents(span);
+  try {
+    range.surroundContents(span);
+  } catch {
+    return null;
+  }
 
   return span;
 }

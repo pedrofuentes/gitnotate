@@ -49,12 +49,14 @@ describe('parseGnComment', () => {
     expect(parseGnComment('`@gn:`')).toBeNull();
   });
 
-  it('should handle tag without backticks (raw text)', () => {
-    // In textContent, backticks are stripped — should still NOT match
-    // since the format requires backticks
+  it('should handle tag without backticks (rendered in <code> element)', () => {
+    // GitHub renders `@gn:12:47` as <code>@gn:12:47</code>,
+    // stripping backticks from textContent. Must still parse.
     const result = parseGnComment('@gn:12:47');
 
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result!.metadata.start).toBe(12);
+    expect(result!.metadata.end).toBe(47);
   });
 
   // Legacy format support
