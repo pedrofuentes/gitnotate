@@ -1,12 +1,12 @@
-import { buildGnComment } from '@gitnotate/core';
 import { detectGitHubPage, type GitHubPageInfo } from './detector';
 import { observeDiffContent } from './diff-observer';
-import { getSelectionInfo, type TextSelectionInfo } from './selection';
+import { getSelectionInfo } from './selection';
 import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
 import { isRepoEnabled, enableRepo } from '../storage/repo-settings';
 import { initFileViewComments } from './file-view-handler';
+import { findClosestTextarea, injectGnMetadata } from './textarea-target';
 import './highlighter.css';
 import './ui/optin-banner.css';
 
@@ -85,7 +85,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
           savedRange = sel.getRangeAt(0).cloneRange();
         }
 
-        const textarea = findOpenCommentTextarea();
+        const textarea = findClosestTextarea(selInfo.lineElement);
         if (!textarea) return;
 
         console.log('[Gitnotate] Selection + open textarea detected, injecting @gn metadata');
@@ -113,7 +113,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
     // Watch for comment forms being removed (cancel/submit)
     // Remove pending highlight when the form disappears
     const formObserver = new MutationObserver(() => {
-      if (pendingHighlight && !findOpenCommentTextarea()) {
+      if (pendingHighlight && !findClosestTextarea()) {
         console.log('[Gitnotate] Comment form closed, removing pending highlight');
         removePendingHighlight();
       }
@@ -160,61 +160,6 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   }
 }
 
-// --- Find open comment textarea ---
-
-function findOpenCommentTextarea(): HTMLTextAreaElement | null {
-  const selectors = [
-    'textarea[name="comment[body]"]',
-    'textarea.js-comment-field',
-    'textarea.comment-form-textarea',
-    'textarea[aria-label*="comment" i]',
-    'textarea[aria-label*="review" i]',
-    'textarea[placeholder*="comment" i]',
-    'textarea[placeholder*="Leave" i]',
-    'textarea[placeholder*="write" i]',
-    'textarea[placeholder*="reply" i]',
-    '.inline-comment-form textarea',
-    'markdown-toolbar textarea',
-  ];
-
-  for (const sel of selectors) {
-    const textareas = document.querySelectorAll<HTMLTextAreaElement>(sel);
-    for (const ta of textareas) {
-      // Must be visible
-      if (ta.offsetParent !== null || ta.offsetHeight > 0) return ta;
-    }
-  }
-  return null;
-}
-
-function injectGnMetadata(textarea: HTMLTextAreaElement, selInfo: TextSelectionInfo): void {
-  const metadata = {
-    exact: selInfo.exact,
-    start: selInfo.start,
-    end: selInfo.end,
-  };
-  const prefix = buildGnComment(metadata, '');
-  const value = prefix + '\n\n';
-
-  // Use native setter to work with React-controlled inputs
-  const nativeSetter = Object.getOwnPropertyDescriptor(
-    window.HTMLTextAreaElement.prototype,
-    'value',
-  )?.set;
-
-  if (nativeSetter) {
-    nativeSetter.call(textarea, value);
-  } else {
-    textarea.value = value;
-  }
-
-  textarea.dispatchEvent(new Event('input', { bubbles: true }));
-  textarea.dispatchEvent(new Event('change', { bubbles: true }));
-
-  // Place cursor at the end so user can start typing
-  textarea.focus();
-  textarea.setSelectionRange(value.length, value.length);
-}
 
 // --- Init and navigation ---
 
