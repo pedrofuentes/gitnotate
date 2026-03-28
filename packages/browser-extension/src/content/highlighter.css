@@ -1,0 +1,31 @@
+.gn-highlight {
+  background-color: rgba(255, 213, 79, 0.4);
+  border-bottom: 2px solid #f9a825;
+  cursor: pointer;
+  position: relative;
+}
+
+.gn-highlight:hover {
+  background-color: rgba(255, 213, 79, 0.7);
+}
+
+.gn-highlight-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1b1f23;
+  color: #e1e4e8;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.gn-highlight:hover .gn-highlight-tooltip {
+  display: block;
+}

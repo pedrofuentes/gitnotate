@@ -1,0 +1,149 @@
+export interface HighlightInfo {
+  filePath: string;
+  lineNumber: number;
+  start: number;
+  end: number;
+  commentId: string;
+}
+
+/**
+ * Find the `.blob-code-inner` cell for a given file path + line number.
+ */
+function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null {
+  const fileEl = document.querySelector<HTMLElement>(
+    `.file[data-path="${filePath.replace(/"/g, '\\"')}"]`,
+  );
+  if (!fileEl) return null;
+
+  const lineNumCell = fileEl.querySelector<HTMLElement>(
+    `td.blob-num[data-line-number="${lineNumber}"]`,
+  );
+  if (!lineNumCell) return null;
+
+  const row = lineNumCell.closest('tr');
+  if (!row) return null;
+
+  return row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
+}
+
+/**
+ * Highlight a character range `[start, end)` inside a diff line by wrapping
+ * it in a `<span class="gn-highlight">`.
+ *
+ * Returns the created span, or `null` if the line/range could not be resolved.
+ */
+export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
+  const codeCell = findCodeCell(info.filePath, info.lineNumber);
+  if (!codeCell) return null;
+
+  const fullText = codeCell.textContent ?? '';
+  const textLength = fullText.length;
+
+  // Validate offsets
+  if (info.start >= textLength || info.start < 0 || info.end <= info.start) {
+    return null;
+  }
+
+  const clampedEnd = Math.min(info.end, textLength);
+
+  // Walk text nodes to find the ones spanning [start, end)
+  const boundary = findTextBoundary(codeCell, info.start, clampedEnd);
+  if (!boundary) return null;
+
+  const range = document.createRange();
+  try {
+    range.setStart(boundary.startNode, boundary.startOffset);
+    range.setEnd(boundary.endNode, boundary.endOffset);
+  } catch {
+    return null;
+  }
+
+  const span = document.createElement('span');
+  span.className = 'gn-highlight';
+  span.setAttribute('data-gn-comment-id', info.commentId);
+
+  range.surroundContents(span);
+
+  return span;
+}
+
+interface TextBoundary {
+  startNode: Text;
+  startOffset: number;
+  endNode: Text;
+  endOffset: number;
+}
+
+/**
+ * Walk text nodes within `el` and find the nodes + local offsets for
+ * the character range `[start, end)` in the overall textContent.
+ */
+function findTextBoundary(el: HTMLElement, start: number, end: number): TextBoundary | null {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let cumulative = 0;
+  let startNode: Text | null = null;
+  let startOffset = 0;
+  let endNode: Text | null = null;
+  let endOffset = 0;
+
+  let node = walker.nextNode() as Text | null;
+  while (node) {
+    const nodeLen = (node.textContent ?? '').length;
+    const nodeStart = cumulative;
+    const nodeEnd = cumulative + nodeLen;
+
+    if (!startNode && start < nodeEnd) {
+      startNode = node;
+      startOffset = start - nodeStart;
+    }
+
+    if (startNode && end <= nodeEnd) {
+      endNode = node;
+      endOffset = end - nodeStart;
+      break;
+    }
+
+    cumulative = nodeEnd;
+    node = walker.nextNode() as Text | null;
+  }
+
+  if (!startNode || !endNode) return null;
+  return { startNode, startOffset, endNode, endOffset };
+}
+
+/**
+ * Remove all `.gn-highlight` spans from the page, restoring original text.
+ */
+export function clearAllHighlights(): void {
+  const highlights = document.querySelectorAll<HTMLElement>('.gn-highlight');
+  for (const span of highlights) {
+    unwrapSpan(span);
+  }
+}
+
+/**
+ * Remove highlights for a specific comment ID.
+ */
+export function clearHighlight(commentId: string): void {
+  const spans = document.querySelectorAll<HTMLElement>(
+    `.gn-highlight[data-gn-comment-id="${commentId.replace(/"/g, '\\"')}"]`,
+  );
+  for (const span of spans) {
+    unwrapSpan(span);
+  }
+}
+
+/**
+ * Replace a span with its text content, merging adjacent text nodes.
+ */
+function unwrapSpan(span: HTMLElement): void {
+  const parent = span.parentNode;
+  if (!parent) return;
+
+  while (span.firstChild) {
+    parent.insertBefore(span.firstChild, span);
+  }
+  parent.removeChild(span);
+  parent.normalize();
+}
+

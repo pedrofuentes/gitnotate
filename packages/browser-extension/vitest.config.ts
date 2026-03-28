@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      '@gitnotate/core': resolve(__dirname, '../core/src/metadata/index.ts'),
     },
   },
   test: {

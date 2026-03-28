@@ -1,0 +1,230 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  highlightTextRange,
+  clearAllHighlights,
+  clearHighlight,
+  type HighlightInfo,
+} from '../../src/content/highlighter';
+
+/**
+ * Build a minimal diff line DOM: a `.file[data-path]` with a single
+ * `.diff-table` row containing `.blob-num[data-line-number]` and
+ * `.blob-code.blob-code-inner` with the given text.
+ */
+function buildDiffLine(filePath: string, lineNumber: number, text: string): HTMLElement {
+  const file = document.createElement('div');
+  file.className = 'file';
+  file.setAttribute('data-path', filePath);
+
+  const table = document.createElement('table');
+  table.className = 'diff-table';
+  const tbody = document.createElement('tbody');
+  const tr = document.createElement('tr');
+
+  const numTd = document.createElement('td');
+  numTd.className = 'blob-num';
+  numTd.setAttribute('data-line-number', String(lineNumber));
+  tr.appendChild(numTd);
+
+  const codeTd = document.createElement('td');
+  codeTd.className = 'blob-code blob-code-inner';
+  codeTd.textContent = text;
+  tr.appendChild(codeTd);
+
+  tbody.appendChild(tr);
+  table.appendChild(tbody);
+  file.appendChild(table);
+
+  return file;
+}
+
+function makeInfo(overrides: Partial<HighlightInfo> = {}): HighlightInfo {
+  return {
+    filePath: 'docs/proposal.md',
+    lineNumber: 3,
+    start: 11,
+    end: 47,
+    commentId: 'c1',
+    ...overrides,
+  };
+}
+
+describe('highlightTextRange', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should highlight a text range within a line element', () => {
+    const file = buildDiffLine(
+      'docs/proposal.md',
+      3,
+      'In Q3, our revenue growth exceeded expectations by a significant margin.',
+    );
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(makeInfo());
+
+    expect(span).not.toBeNull();
+    expect(span!.textContent).toBe('revenue growth exceeded expectations');
+  });
+
+  it('should create a span with gn-highlight class', () => {
+    const file = buildDiffLine('docs/proposal.md', 3, 'In Q3, our revenue growth exceeded expectations by a significant margin.');
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(makeInfo());
+
+    expect(span).not.toBeNull();
+    expect(span!.classList.contains('gn-highlight')).toBe(true);
+  });
+
+  it('should set data-gn-comment-id attribute', () => {
+    const file = buildDiffLine('docs/proposal.md', 3, 'In Q3, our revenue growth exceeded expectations by a significant margin.');
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(makeInfo({ commentId: 'review-42' }));
+
+    expect(span).not.toBeNull();
+    expect(span!.getAttribute('data-gn-comment-id')).toBe('review-42');
+  });
+
+  it('should handle text offsets correctly', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'c2' }),
+    );
+
+    expect(span).not.toBeNull();
+    expect(span!.textContent).toBe('beta');
+  });
+
+  it('should handle offset at start of line (start=0)', () => {
+    const file = buildDiffLine('file.ts', 1, 'hello world');
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'c3' }),
+    );
+
+    expect(span).not.toBeNull();
+    expect(span!.textContent).toBe('hello');
+  });
+
+  it('should handle offset at end of line', () => {
+    const text = 'hello world';
+    const file = buildDiffLine('file.ts', 1, text);
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(
+      makeInfo({
+        filePath: 'file.ts',
+        lineNumber: 1,
+        start: 6,
+        end: text.length,
+        commentId: 'c4',
+      }),
+    );
+
+    expect(span).not.toBeNull();
+    expect(span!.textContent).toBe('world');
+  });
+
+  it('should handle offset beyond line length gracefully (no crash)', () => {
+    const file = buildDiffLine('file.ts', 1, 'short');
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 100, end: 200, commentId: 'c5' }),
+    );
+
+    expect(span).toBeNull();
+  });
+
+  it('should return null when file element is not found', () => {
+    // No DOM elements added
+    const span = highlightTextRange(makeInfo({ filePath: 'missing.ts' }));
+
+    expect(span).toBeNull();
+  });
+
+  it('should return null when line number is not found', () => {
+    const file = buildDiffLine('file.ts', 1, 'hello');
+    document.body.appendChild(file);
+
+    const span = highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 999, commentId: 'c6' }),
+    );
+
+    expect(span).toBeNull();
+  });
+});
+
+describe('clearHighlight', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should clear a specific highlight by comment ID', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'keep' }),
+    );
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'remove' }),
+    );
+
+    expect(document.querySelectorAll('.gn-highlight')).toHaveLength(2);
+
+    clearHighlight('remove');
+
+    const remaining = document.querySelectorAll('.gn-highlight');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].getAttribute('data-gn-comment-id')).toBe('keep');
+  });
+
+  it('should not crash when clearing a non-existent highlight', () => {
+    expect(() => clearHighlight('does-not-exist')).not.toThrow();
+  });
+});
+
+describe('clearAllHighlights', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should clear all highlights', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'h1' }),
+    );
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'h2' }),
+    );
+
+    expect(document.querySelectorAll('.gn-highlight')).toHaveLength(2);
+
+    clearAllHighlights();
+
+    expect(document.querySelectorAll('.gn-highlight')).toHaveLength(0);
+  });
+
+  it('should restore original text content after clearing', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'h1' }),
+    );
+
+    clearAllHighlights();
+
+    const codeCell = document.querySelector('.blob-code-inner');
+    expect(codeCell?.textContent).toBe('alpha beta gamma');
+  });
+});
