@@ -283,6 +283,41 @@ describe('findClosestTextarea', () => {
     const result = findClosestTextarea(nearLine5, 5);
     expect(result).toBe(textareas[0]);
   });
+
+  it('should match textarea with ±1 line tolerance for GitHub DOM off-by-one', () => {
+    const { textareas, codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 4, code: 'line 4', hasTextarea: true },
+          { num: 5, code: 'line 5' },
+          { num: 6, code: 'line 6' },
+        ],
+      },
+    ]);
+
+    // Textarea reports line 4, but selection is on line 5 (off-by-one)
+    const nearLine5 = codeCells.get('a.ts:5')!;
+    const result = findClosestTextarea(nearLine5, 5);
+    expect(result).toBe(textareas[0]);
+  });
+
+  it('should prefer exact match over ±1 tolerance', () => {
+    const { textareas, codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 4, code: 'line 4', hasTextarea: true },
+          { num: 5, code: 'line 5', hasTextarea: true },
+        ],
+      },
+    ]);
+
+    // Both textareas are within ±1 of line 5, but textarea on line 5 is exact
+    const nearLine5 = codeCells.get('a.ts:5')!;
+    const result = findClosestTextarea(nearLine5, 5);
+    expect(result).toBe(textareas[1]);
+  });
 });
 
 // ---------------------------------------------------------------------------

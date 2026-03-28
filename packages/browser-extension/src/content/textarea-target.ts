@@ -59,11 +59,22 @@ export function findClosestTextarea(
 
   if (pool.length === 0) return null;
 
-  // Match by line number — most reliable approach
+  // Match by line number — exact match first, then ±1 tolerance
+  // (GitHub's diff DOM sometimes has the inline comment form one row
+  // away from the actual code row, causing an off-by-one in the line
+  // number extracted from the textarea's nearest code row.)
   if (lineNumber !== undefined) {
+    // Pass 1: exact match
     for (const ta of pool) {
       const taLines = getTextareaLineNumbers(ta);
       if (taLines.includes(lineNumber)) {
+        return ta;
+      }
+    }
+    // Pass 2: ±1 tolerance (handles off-by-one from GitHub DOM structure)
+    for (const ta of pool) {
+      const taLines = getTextareaLineNumbers(ta);
+      if (taLines.some((n) => Math.abs(n - lineNumber) <= 1)) {
         return ta;
       }
     }
