@@ -9,6 +9,41 @@
   <body>
     <div id="app">
       <h1>Gitnotate</h1>
+
+      <!-- Auth section -->
+      <div id="gn-auth" class="gn-section">
+        <!-- Signed-out state -->
+        <div id="gn-auth-signed-out" class="gn-auth-state" hidden>
+          <p class="gn-label">Not signed in</p>
+          <input
+            id="gn-pat-input"
+            type="password"
+            placeholder="ghp_... (Personal Access Token)"
+            class="gn-input"
+          />
+          <div class="gn-row">
+            <button id="gn-pat-save" class="gn-btn gn-btn-primary">Save</button>
+            <a
+              href="https://github.com/settings/tokens/new?scopes=repo&description=Gitnotate"
+              target="_blank"
+              class="gn-link"
+              >Create PAT ↗</a
+            >
+          </div>
+          <p id="gn-auth-error" class="gn-error" hidden></p>
+        </div>
+
+        <!-- Signed-in state -->
+        <div id="gn-auth-signed-in" class="gn-auth-state" hidden>
+          <p class="gn-label">
+            Signed in as <strong id="gn-username"></strong>
+          </p>
+          <p id="gn-scopes" class="gn-detail"></p>
+          <button id="gn-sign-out" class="gn-btn gn-btn-danger">
+            Sign out
+          </button>
+        </div>
+      </div>
     </div>
     <script type="module" src="popup.ts"></script>
   </body>
