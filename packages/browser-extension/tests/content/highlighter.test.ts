@@ -38,6 +38,41 @@ function buildDiffLine(filePath: string, lineNumber: number, text: string): HTML
   return file;
 }
 
+/**
+ * Build a new GitHub UI diff line: line number and code content are in
+ * SIBLING `<td>` elements within the same `<tr>`, wrapped in a
+ * `[data-diff-anchor]` table.
+ */
+function buildNewUiDiffLine(filePath: string, lineNumber: number, text: string): HTMLElement {
+  const table = document.createElement('table');
+  table.setAttribute('data-diff-anchor', filePath);
+
+  const tr = document.createElement('tr');
+
+  // Left side: empty (new file addition)
+  const emptyLeft = document.createElement('td');
+  emptyLeft.className = 'focusable-grid-cell empty-diff-line left-side';
+  tr.appendChild(emptyLeft);
+
+  // Right side: line number cell
+  const numTd = document.createElement('td');
+  numTd.setAttribute('data-line-number', String(lineNumber));
+  numTd.className = 'focusable-grid-cell';
+  tr.appendChild(numTd);
+
+  // Right side: code cell
+  const codeTd = document.createElement('td');
+  codeTd.className = 'focusable-grid-cell';
+  const codeInner = document.createElement('div');
+  codeInner.className = 'diff-text-inner';
+  codeInner.textContent = text;
+  codeTd.appendChild(codeInner);
+  tr.appendChild(codeTd);
+
+  table.appendChild(tr);
+  return table;
+}
+
 function makeInfo(overrides: Partial<HighlightInfo> = {}): HighlightInfo {
   return {
     filePath: 'docs/proposal.md',
@@ -158,6 +193,30 @@ describe('highlightTextRange', () => {
     );
 
     expect(span).toBeNull();
+  });
+
+  it('should highlight in new GitHub UI where line number and code are sibling cells', () => {
+    const table = buildNewUiDiffLine('diff-abc123', 35, 'The system uses PostgreSQL as the primary database.');
+    document.body.appendChild(table);
+
+    const span = highlightTextRange(
+      makeInfo({ filePath: 'diff-abc123', lineNumber: 35, start: 16, end: 26, commentId: 'new-ui-1' }),
+    );
+
+    expect(span).not.toBeNull();
+    expect(span!.textContent).toBe('PostgreSQL');
+  });
+
+  it('should find code cell in new UI even without blob-num class', () => {
+    const table = buildNewUiDiffLine('diff-xyz', 10, 'import React from "react";');
+    document.body.appendChild(table);
+
+    const span = highlightTextRange(
+      makeInfo({ filePath: 'diff-xyz', lineNumber: 10, start: 7, end: 12, commentId: 'new-ui-2' }),
+    );
+
+    expect(span).not.toBeNull();
+    expect(span!.textContent).toBe('React');
   });
 });
 
