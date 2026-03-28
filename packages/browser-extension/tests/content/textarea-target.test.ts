@@ -3,6 +3,7 @@ import {
   findClosestTextarea,
   injectGnMetadata,
   isTextareaNearSelection,
+  getTextareaLineNumber,
   TEXTAREA_SELECTORS,
 } from '../../src/content/textarea-target';
 import type { TextSelectionInfo } from '../../src/content/selection';
@@ -151,7 +152,7 @@ describe('findClosestTextarea', () => {
     expect(result).toBe(textareas[1]);
   });
 
-  it('should return closest textarea when multiple exist and nearElement is provided', () => {
+  it('should return closest textarea when multiple exist and nearElement + lineNumber provided', () => {
     const { textareas, codeCells } = buildDiffDom([
       {
         path: 'a.ts',
@@ -163,9 +164,9 @@ describe('findClosestTextarea', () => {
       },
     ]);
 
-    // Select text near line 3 — should get textarea on line 3, not line 1
+    // Select text on line 3 — should get textarea on line 3, not line 1
     const nearLine3 = codeCells.get('a.ts:3')!;
-    const result = findClosestTextarea(nearLine3);
+    const result = findClosestTextarea(nearLine3, 3);
     expect(result).toBe(textareas[1]);
   });
 
@@ -202,11 +203,11 @@ describe('findClosestTextarea', () => {
 
     // nearElement is in file-b.ts → should get file-b.ts textarea
     const nearFileB = codeCells.get('file-b.ts:1')!;
-    const result = findClosestTextarea(nearFileB);
+    const result = findClosestTextarea(nearFileB, 1);
     expect(result).toBe(textareas[1]);
   });
 
-  it('should prefer textarea after nearElement in DOM order', () => {
+  it('should prefer textarea on the matching line in DOM order', () => {
     const { textareas, codeCells } = buildDiffDom([
       {
         path: 'a.ts',
@@ -219,9 +220,9 @@ describe('findClosestTextarea', () => {
       },
     ]);
 
-    // Selecting text on line 3 — textarea on line 4 (after) is closer
-    const nearLine3 = codeCells.get('a.ts:3')!;
-    const result = findClosestTextarea(nearLine3);
+    // Selecting text on line 4 — should get textarea on line 4
+    const nearLine4 = codeCells.get('a.ts:4')!;
+    const result = findClosestTextarea(nearLine4, 4);
     expect(result).toBe(textareas[1]);
   });
 
@@ -260,13 +261,13 @@ describe('findClosestTextarea', () => {
       },
     ]);
 
-    // Textarea is on line 1, selection is on line 10 (many rows away)
+    // Textarea is on line 1, selection is on line 10 — no match
     const nearLine10 = codeCells.get('a.ts:10')!;
-    const result = findClosestTextarea(nearLine10);
+    const result = findClosestTextarea(nearLine10, 10);
     expect(result).toBeNull();
   });
 
-  it('should return textarea when selection is on an adjacent line', () => {
+  it('should return textarea when selection is on the same line', () => {
     const { textareas, codeCells } = buildDiffDom([
       {
         path: 'a.ts',
@@ -277,9 +278,9 @@ describe('findClosestTextarea', () => {
       },
     ]);
 
-    // Textarea is on line 5, selection on line 6 (adjacent)
-    const nearLine6 = codeCells.get('a.ts:6')!;
-    const result = findClosestTextarea(nearLine6);
+    // Textarea is on line 5, selection on line 5 — exact match
+    const nearLine5 = codeCells.get('a.ts:5')!;
+    const result = findClosestTextarea(nearLine5, 5);
     expect(result).toBe(textareas[0]);
   });
 });
@@ -405,5 +406,55 @@ describe('isTextareaNearSelection', () => {
     document.body.appendChild(textarea);
 
     expect(isTextareaNearSelection(textarea, div1)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTextareaLineNumber
+// ---------------------------------------------------------------------------
+
+describe('getTextareaLineNumber', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should return the line number from the previous code row', () => {
+    const { textareas } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 7, code: 'line 7', hasTextarea: true },
+        ],
+      },
+    ]);
+
+    expect(getTextareaLineNumber(textareas[0])).toBe(7);
+  });
+
+  it('should return null when textarea is not in a table row', () => {
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+
+    expect(getTextareaLineNumber(textarea)).toBeNull();
+  });
+
+  it('should return null when no line number cell exists', () => {
+    const table = document.createElement('table');
+    const row1 = document.createElement('tr');
+    const cell1 = document.createElement('td');
+    cell1.textContent = 'code';
+    row1.appendChild(cell1);
+    table.appendChild(row1);
+
+    const row2 = document.createElement('tr');
+    const cell2 = document.createElement('td');
+    const textarea = document.createElement('textarea');
+    cell2.appendChild(textarea);
+    row2.appendChild(cell2);
+    table.appendChild(row2);
+
+    document.body.appendChild(table);
+
+    expect(getTextareaLineNumber(textarea)).toBeNull();
   });
 });

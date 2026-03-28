@@ -20,17 +20,18 @@ export const TEXTAREA_SELECTORS = [
 ];
 
 /**
- * Find the open comment textarea closest to the given DOM element.
+ * Find the open comment textarea associated with a specific line.
  *
- * When `nearElement` is provided and multiple visible textareas exist,
- * the search is scoped to the same `.file` container and the closest
- * textarea by DOM order is returned.
+ * When `nearElement` and `lineNumber` are provided, the search is
+ * scoped to the same `.file` container and only a textarea whose
+ * inline comment form belongs to a matching line is returned.
  *
- * Falls back to the first visible textarea when no proximity hint is
- * given or when scoping does not narrow the candidates.
+ * Returns `null` when no textarea is associated with the given line,
+ * preventing metadata from being injected into an unrelated comment.
  */
 export function findClosestTextarea(
   nearElement?: HTMLElement,
+  lineNumber?: number,
 ): HTMLTextAreaElement | null {
   // Collect all visible textareas, deduplicating across selectors
   const seen = new Set<HTMLTextAreaElement>();
@@ -58,19 +59,53 @@ export function findClosestTextarea(
 
   if (pool.length === 0) return null;
 
-  // Pick the closest textarea by DOM order
+  // Match by line number — most reliable approach
+  if (lineNumber !== undefined) {
+    for (const ta of pool) {
+      const taLine = getTextareaLineNumber(ta);
+      if (taLine !== null && taLine === lineNumber) {
+        return ta;
+      }
+    }
+    // No textarea for this line — don't inject into an unrelated one
+    return null;
+  }
+
+  // Fallback when no line number available: DOM proximity
   const closest =
     pool.length === 1 ? pool[0] : findClosestByDomOrder(pool, nearElement);
 
-  // Validate: the textarea must be near the selection's table row.
-  // GitHub places inline comment forms in <tr> elements adjacent to
-  // the code row.  If the textarea's row is far away, the selection
-  // has no associated comment form — do NOT inject.
   if (!isTextareaNearSelection(closest, nearElement)) {
     return null;
   }
 
   return closest;
+}
+
+/**
+ * Determine which diff line number a textarea's inline comment form
+ * belongs to.  Walks backward from the textarea's `<tr>` to find the
+ * nearest code row with a `data-line-number` cell.
+ */
+export function getTextareaLineNumber(
+  textarea: HTMLTextAreaElement,
+): number | null {
+  const row = textarea.closest('tr');
+  if (!row) return null;
+
+  // Walk backward through sibling rows to find a code row with a line number
+  let sibling = row.previousElementSibling;
+  // Check at most a few rows back (inline comment rows may have nested structure)
+  for (let i = 0; i < 3 && sibling; i++) {
+    const lineCell = sibling.querySelector<HTMLElement>('[data-line-number]');
+    if (lineCell) {
+      const num = Number(lineCell.getAttribute('data-line-number'));
+      if (!isNaN(num)) return num;
+    }
+    sibling = sibling.previousElementSibling;
+  }
+
+  return null;
 }
 
 /**

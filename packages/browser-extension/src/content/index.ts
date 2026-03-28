@@ -11,13 +11,12 @@ import './highlighter.css';
 import './ui/optin-banner.css';
 
 let currentPageInfo: GitHubPageInfo = detectGitHubPage();
-let activated = false;
+let featureAbort: AbortController | null = null;
 
 console.log('[Gitnotate] Content script loaded at:', window.location.href);
 
 async function init(): Promise<void> {
   currentPageInfo = detectGitHubPage();
-  activated = false;
   console.log('[Gitnotate] init() called');
   console.log('[Gitnotate] URL:', window.location.pathname);
   console.log('[Gitnotate] Page detected:', JSON.stringify(currentPageInfo));
@@ -58,8 +57,12 @@ async function init(): Promise<void> {
 }
 
 function activateFeatures(pageInfo: GitHubPageInfo): void {
-  if (activated) return;
-  activated = true;
+  // Abort previous event listeners to avoid double-registration
+  // when init() is called again (e.g. turbo:load navigation).
+  featureAbort?.abort();
+  featureAbort = new AbortController();
+  const { signal } = featureAbort;
+
   hideOptInBanner();
 
   if (pageInfo.type === 'file-view' && pageInfo.filePath) {
@@ -87,7 +90,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
           savedRange = sel.getRangeAt(0).cloneRange();
         }
 
-        const textarea = findClosestTextarea(selInfo.lineElement);
+        const textarea = findClosestTextarea(selInfo.lineElement, selInfo.lineNumber);
         if (!textarea) return;
 
         console.log('[Gitnotate] Selection + open textarea detected, injecting @gn metadata');
@@ -110,7 +113,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
           }
         }
       }, 10);
-    });
+    }, { signal });
 
     // Watch for comment forms being removed (cancel/submit)
     // Remove pending highlights for textareas that are no longer in the DOM
