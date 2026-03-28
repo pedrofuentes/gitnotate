@@ -8,3 +8,4 @@ coverage/
 *.crx
 *.pem
 *.zip
+docs/internal/
