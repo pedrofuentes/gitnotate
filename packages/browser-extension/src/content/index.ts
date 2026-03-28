@@ -1,38 +1,107 @@
+import { buildGnComment } from '@gitnotate/core';
 import { detectGitHubPage } from './detector';
 import { observeDiffContent } from './diff-observer';
+import { getSelectionInfo, type TextSelectionInfo } from './selection';
 import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
+import { showFloatButton, hideFloatButton } from './ui/float-button';
+import { showCommentForm, hideCommentForm } from './ui/comment-form';
+import { submitViaGitHubUI } from './comment-submitter';
 import './highlighter.css';
+import './ui/float-button.css';
+import './ui/comment-form.css';
 
 const pageInfo = detectGitHubPage();
 console.log('[Gitnotate] Page detected:', pageInfo);
 
 if (pageInfo.type === 'pr-files-changed') {
   console.log('[Gitnotate] PR diff page detected, initializing...');
-  observeDiffContent((diffElements) => {
-    console.log('[Gitnotate] Diff elements loaded:', diffElements.length);
 
-    // Scan for @gn-enhanced review comments and highlight referenced text
-    clearAllHighlights();
-    const gnComments = scanForGnComments();
-    console.log(`[Gitnotate] Found ${gnComments.length} @gn comment(s)`);
+  // Listen for text selection to show the float button
+  document.addEventListener('mouseup', () => {
+    // Delay to let the browser finalize the selection
+    setTimeout(() => {
+      const selInfo = getSelectionInfo();
+      if (selInfo) {
+        showFloatButton(selInfo, handleFloatButtonClick);
+      } else {
+        hideFloatButton();
+      }
+    }, 10);
+  });
 
-    for (const gc of gnComments) {
-      const { metadata } = gc.parsed;
-      const commentId = gc.commentElement.id || `gn-${gc.filePath}-${gc.lineNumber}`;
-
-      highlightTextRange({
-        filePath: gc.filePath,
-        lineNumber: gc.lineNumber,
-        start: metadata.start,
-        end: metadata.end,
-        commentId,
-      });
-
-      // Hide the @gn metadata line and blockquote fallback from the comment display
-      hideGnMetadataInComment(gc.commentElement);
+  // Clear float button when selection is lost
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) {
+      hideFloatButton();
     }
   });
+
+  observeDiffContent((diffElements) => {
+    console.log('[Gitnotate] Diff elements loaded:', diffElements.length);
+    scanAndHighlight();
+  });
+}
+
+/**
+ * Handle the float button click: show the comment form.
+ */
+function handleFloatButtonClick(selectionInfo: TextSelectionInfo): void {
+  hideFloatButton();
+
+  showCommentForm({
+    selectionInfo,
+    onSubmit: async (userComment: string) => {
+      const metadata = {
+        exact: selectionInfo.exact,
+        start: selectionInfo.start,
+        end: selectionInfo.end,
+      };
+      const commentBody = buildGnComment(metadata, userComment);
+
+      const success = await submitViaGitHubUI({
+        filePath: selectionInfo.filePath,
+        lineNumber: selectionInfo.lineNumber,
+        side: selectionInfo.side,
+        commentBody,
+      });
+
+      if (!success) {
+        throw new Error('Could not open GitHub comment form. Try clicking the "+" on the line manually.');
+      }
+
+      // Re-scan after a short delay to pick up the new comment
+      setTimeout(scanAndHighlight, 500);
+    },
+    onCancel: () => {
+      hideCommentForm();
+    },
+  });
+}
+
+/**
+ * Scan for @gn comments and highlight referenced text ranges.
+ */
+function scanAndHighlight(): void {
+  clearAllHighlights();
+  const gnComments = scanForGnComments();
+  console.log(`[Gitnotate] Found ${gnComments.length} @gn comment(s)`);
+
+  for (const gc of gnComments) {
+    const { metadata } = gc.parsed;
+    const commentId = gc.commentElement.id || `gn-${gc.filePath}-${gc.lineNumber}`;
+
+    highlightTextRange({
+      filePath: gc.filePath,
+      lineNumber: gc.lineNumber,
+      start: metadata.start,
+      end: metadata.end,
+      commentId,
+    });
+
+    hideGnMetadataInComment(gc.commentElement);
+  }
 }
 
 /**
