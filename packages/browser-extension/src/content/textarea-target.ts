@@ -48,19 +48,29 @@ export function findClosestTextarea(
   }
 
   if (candidates.length === 0) return null;
-  if (candidates.length === 1 || !nearElement) return candidates[0];
+  if (!nearElement) return candidates[0];
 
   // Scope to the same file container as the selection
   const fileContainer = nearElement.closest('.file, [data-diff-anchor]');
-  if (fileContainer) {
-    const inFile = candidates.filter((ta) => fileContainer.contains(ta));
-    if (inFile.length === 1) return inFile[0];
-    if (inFile.length > 1) {
-      return findClosestByDomOrder(inFile, nearElement);
-    }
+  const pool = fileContainer
+    ? candidates.filter((ta) => fileContainer.contains(ta))
+    : candidates;
+
+  if (pool.length === 0) return null;
+
+  // Pick the closest textarea by DOM order
+  const closest =
+    pool.length === 1 ? pool[0] : findClosestByDomOrder(pool, nearElement);
+
+  // Validate: the textarea must be near the selection's table row.
+  // GitHub places inline comment forms in <tr> elements adjacent to
+  // the code row.  If the textarea's row is far away, the selection
+  // has no associated comment form — do NOT inject.
+  if (!isTextareaNearSelection(closest, nearElement)) {
+    return null;
   }
 
-  return candidates[0];
+  return closest;
 }
 
 /**
@@ -98,6 +108,45 @@ function findClosestByDomOrder(
   }
 
   return closestAfter ?? closestBefore ?? textareas[0];
+}
+
+/**
+ * Check whether a textarea is in a table row near the selection's row.
+ *
+ * GitHub places inline comment forms in `<tr>` elements that are
+ * direct siblings of the code `<tr>` being commented on.  If the
+ * textarea's row is more than `maxRows` siblings away from the
+ * selection's row, it belongs to a different comment context and
+ * should not receive the metadata.
+ */
+export function isTextareaNearSelection(
+  textarea: HTMLTextAreaElement,
+  nearElement: HTMLElement,
+  maxRows = 5,
+): boolean {
+  const selRow = nearElement.closest('tr');
+  const taRow = textarea.closest('tr');
+
+  // If either element is not inside a table row, we can't determine
+  // proximity — allow injection as a safe fallback.
+  if (!selRow || !taRow) return true;
+  if (selRow === taRow) return true;
+
+  // Walk forward from selRow
+  let current: Element | null = selRow.nextElementSibling;
+  for (let i = 0; i < maxRows && current; i++) {
+    if (current === taRow) return true;
+    current = current.nextElementSibling;
+  }
+
+  // Walk backward from selRow (selection might be after the comment form)
+  current = selRow.previousElementSibling;
+  for (let i = 0; i < maxRows && current; i++) {
+    if (current === taRow) return true;
+    current = current.previousElementSibling;
+  }
+
+  return false;
 }
 
 /**

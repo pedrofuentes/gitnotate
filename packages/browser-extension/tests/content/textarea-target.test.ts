@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   findClosestTextarea,
   injectGnMetadata,
+  isTextareaNearSelection,
   TEXTAREA_SELECTORS,
 } from '../../src/content/textarea-target';
 import type { TextSelectionInfo } from '../../src/content/selection';
@@ -156,15 +157,15 @@ describe('findClosestTextarea', () => {
         path: 'a.ts',
         lines: [
           { num: 1, code: 'const a = 1;', hasTextarea: true },
-          { num: 5, code: 'const b = 2;' },
-          { num: 10, code: 'const c = 3;', hasTextarea: true },
+          { num: 2, code: 'const b = 2;' },
+          { num: 3, code: 'const c = 3;', hasTextarea: true },
         ],
       },
     ]);
 
-    // Select text near line 10 — should get textarea on line 10, not line 1
-    const nearLine10 = codeCells.get('a.ts:10')!;
-    const result = findClosestTextarea(nearLine10);
+    // Select text near line 3 — should get textarea on line 3, not line 1
+    const nearLine3 = codeCells.get('a.ts:3')!;
+    const result = findClosestTextarea(nearLine3);
     expect(result).toBe(textareas[1]);
   });
 
@@ -239,6 +240,48 @@ describe('findClosestTextarea', () => {
     const result = findClosestTextarea();
     expect(result).toBe(textareas[0]);
   });
+
+  it('should return null when selection is far from all textareas', () => {
+    const { codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 1, code: 'line 1', hasTextarea: true },
+          { num: 2, code: 'line 2' },
+          { num: 3, code: 'line 3' },
+          { num: 4, code: 'line 4' },
+          { num: 5, code: 'line 5' },
+          { num: 6, code: 'line 6' },
+          { num: 7, code: 'line 7' },
+          { num: 8, code: 'line 8' },
+          { num: 9, code: 'line 9' },
+          { num: 10, code: 'line 10' },
+        ],
+      },
+    ]);
+
+    // Textarea is on line 1, selection is on line 10 (many rows away)
+    const nearLine10 = codeCells.get('a.ts:10')!;
+    const result = findClosestTextarea(nearLine10);
+    expect(result).toBeNull();
+  });
+
+  it('should return textarea when selection is on an adjacent line', () => {
+    const { textareas, codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 5, code: 'line 5', hasTextarea: true },
+          { num: 6, code: 'line 6' },
+        ],
+      },
+    ]);
+
+    // Textarea is on line 5, selection on line 6 (adjacent)
+    const nearLine6 = codeCells.get('a.ts:6')!;
+    const result = findClosestTextarea(nearLine6);
+    expect(result).toBe(textareas[0]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -287,5 +330,80 @@ describe('injectGnMetadata', () => {
     // Cursor should be at the end of the injected value
     expect(textarea.selectionStart).toBe(textarea.value.length);
     expect(textarea.selectionEnd).toBe(textarea.value.length);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isTextareaNearSelection
+// ---------------------------------------------------------------------------
+
+describe('isTextareaNearSelection', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should return true when textarea row directly follows selection row', () => {
+    const { textareas, codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 1, code: 'line 1', hasTextarea: true },
+          { num: 2, code: 'line 2' },
+        ],
+      },
+    ]);
+
+    const codeCell = codeCells.get('a.ts:1')!;
+    expect(isTextareaNearSelection(textareas[0], codeCell)).toBe(true);
+  });
+
+  it('should return false when textarea is many rows away', () => {
+    const { textareas, codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 1, code: 'line 1', hasTextarea: true },
+          { num: 2, code: 'line 2' },
+          { num: 3, code: 'line 3' },
+          { num: 4, code: 'line 4' },
+          { num: 5, code: 'line 5' },
+          { num: 6, code: 'line 6' },
+          { num: 7, code: 'line 7' },
+          { num: 8, code: 'line 8' },
+          { num: 9, code: 'line 9' },
+          { num: 10, code: 'line 10' },
+        ],
+      },
+    ]);
+
+    const farCell = codeCells.get('a.ts:10')!;
+    expect(isTextareaNearSelection(textareas[0], farCell)).toBe(false);
+  });
+
+  it('should return true when selection is a few rows before the textarea', () => {
+    const { textareas, codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 1, code: 'line 1' },
+          { num: 2, code: 'line 2' },
+          { num: 3, code: 'line 3', hasTextarea: true },
+        ],
+      },
+    ]);
+
+    // Line 1 is 2 code rows + 0 comment rows before the textarea — within range
+    const nearLine1 = codeCells.get('a.ts:1')!;
+    expect(isTextareaNearSelection(textareas[0], nearLine1)).toBe(true);
+  });
+
+  it('should return true when elements are not in table rows', () => {
+    // Fallback: no <tr> → allow injection (can't determine proximity)
+    const div1 = document.createElement('div');
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(div1);
+    document.body.appendChild(textarea);
+
+    expect(isTextareaNearSelection(textarea, div1)).toBe(true);
   });
 });
