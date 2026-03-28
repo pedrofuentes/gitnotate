@@ -1,0 +1,82 @@
+{
+  "name": "@gitnotate/vscode-extension",
+  "displayName": "Gitnotate",
+  "description": "Sub-line commenting for Markdown files in GitHub PR reviews",
+  "version": "0.0.1",
+  "publisher": "pedrofuentes",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onView:gitnotate"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitnotate.enable",
+        "title": "Gitnotate: Enable for Workspace"
+      },
+      {
+        "command": "gitnotate.disable",
+        "title": "Gitnotate: Disable for Workspace"
+      },
+      {
+        "command": "gitnotate.addComment",
+        "title": "Gitnotate: Add Comment"
+      }
+    ],
+    "configuration": {
+      "title": "Gitnotate",
+      "properties": {
+        "gitnotate.enabledRepos": {
+          "type": "array",
+          "default": [],
+          "description": "List of repository paths where Gitnotate is enabled",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitnotate",
+          "title": "Gitnotate",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "gitnotate": [
+        {
+          "id": "gitnotateComments",
+          "name": "Comments"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
+    "watch": "pnpm build --watch",
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@gitnotate/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1",
+    "vitest": "^3.0.4"
+  }
+}
