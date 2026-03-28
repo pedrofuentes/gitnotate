@@ -1,130 +1,86 @@
 import { describe, it, expect } from 'vitest';
 import { parseGnComment } from '../../src/metadata/parser';
-import type { GnCommentBody } from '../../src/metadata/types';
 
 describe('parseGnComment', () => {
-  it('should parse a well-formed @gn comment', () => {
-    const input = [
-      '<!-- @gn {"exact":"revenue growth exceeded expectations","start":12,"end":47} -->',
-      '> 📌 **"revenue growth exceeded expectations"** (chars 12–47)',
-      '',
-      'Can we add the exact percentage here?',
-    ].join('\n');
-
-    const result = parseGnComment(input);
+  it('should parse `@gn:start:end` format', () => {
+    const result = parseGnComment('My comment `@gn:12:47`');
 
     expect(result).not.toBeNull();
-    expect(result!.metadata).toEqual({
-      exact: 'revenue growth exceeded expectations',
-      start: 12,
-      end: 47,
-    });
-    expect(result!.userComment).toBe('Can we add the exact percentage here?');
+    expect(result!.metadata.start).toBe(12);
+    expect(result!.metadata.end).toBe(47);
+    expect(result!.userComment).toBe('My comment');
   });
 
-  it('should return null for a comment without @gn metadata', () => {
-    const input = 'This is a regular PR comment with no metadata.';
-    expect(parseGnComment(input)).toBeNull();
+  it('should return null for comment without @gn tag', () => {
+    const result = parseGnComment('Just a regular comment');
+
+    expect(result).toBeNull();
   });
 
-  it('should handle extra whitespace', () => {
-    const input = [
-      '  <!-- @gn  {"exact":"hello","start":0,"end":5}  -->  ',
-      '> 📌 **"hello"** (chars 0–5)',
-      '',
-      '  Some comment with leading spaces  ',
-    ].join('\n');
-
-    const result = parseGnComment(input);
+  it('should handle tag-only comment (no user text)', () => {
+    const result = parseGnComment('`@gn:0:10`');
 
     expect(result).not.toBeNull();
-    expect(result!.metadata.exact).toBe('hello');
-    expect(result!.userComment).toBe('  Some comment with leading spaces  ');
-  });
-
-  it('should handle multi-line user comments', () => {
-    const input = [
-      '<!-- @gn {"exact":"foo","start":0,"end":3} -->',
-      '> 📌 **"foo"** (chars 0–3)',
-      '',
-      'First line of comment.',
-      '',
-      'Second paragraph.',
-      '- A list item',
-    ].join('\n');
-
-    const result = parseGnComment(input);
-
-    expect(result).not.toBeNull();
-    expect(result!.userComment).toBe(
-      'First line of comment.\n\nSecond paragraph.\n- A list item'
-    );
-  });
-
-  it('should return null for malformed JSON in @gn metadata', () => {
-    const input = '<!-- @gn {bad json} -->\nSome comment';
-    expect(parseGnComment(input)).toBeNull();
-  });
-
-  it('should handle special characters in exact text (quotes, angle brackets)', () => {
-    const input = [
-      '<!-- @gn {"exact":"say \\"hello\\" <world>","start":0,"end":20} -->',
-      '> 📌 **"say \\"hello\\" <world>"** (chars 0–20)',
-      '',
-      'Interesting quote.',
-    ].join('\n');
-
-    const result = parseGnComment(input);
-
-    expect(result).not.toBeNull();
-    expect(result!.metadata.exact).toBe('say "hello" <world>');
     expect(result!.metadata.start).toBe(0);
-    expect(result!.metadata.end).toBe(20);
-  });
-
-  it('should handle empty user comment', () => {
-    const input = [
-      '<!-- @gn {"exact":"text","start":0,"end":4} -->',
-      '> 📌 **"text"** (chars 0–4)',
-    ].join('\n');
-
-    const result = parseGnComment(input);
-
-    expect(result).not.toBeNull();
-    expect(result!.metadata.exact).toBe('text');
+    expect(result!.metadata.end).toBe(10);
     expect(result!.userComment).toBe('');
   });
 
-  it('should parse @gn metadata when there is no blockquote fallback', () => {
-    const input = [
-      '<!-- @gn {"exact":"text","start":0,"end":4} -->',
-      '',
-      'Just a comment, no blockquote.',
-    ].join('\n');
-
-    const result = parseGnComment(input);
+  it('should handle multi-line user comment with tag at end', () => {
+    const result = parseGnComment('First line.\n\nSecond paragraph. `@gn:5:20`');
 
     expect(result).not.toBeNull();
-    expect(result!.metadata.exact).toBe('text');
-    expect(result!.userComment).toBe('Just a comment, no blockquote.');
+    expect(result!.metadata.start).toBe(5);
+    expect(result!.metadata.end).toBe(20);
+    expect(result!.userComment).toBe('First line.\n\nSecond paragraph.');
   });
 
-  it('should ignore non-@gn HTML comments', () => {
-    const input = [
-      '<!-- some other comment -->',
-      'This is a normal comment.',
-    ].join('\n');
+  it('should handle large offsets', () => {
+    const result = parseGnComment('Comment `@gn:1000:2000`');
 
-    expect(parseGnComment(input)).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result!.metadata.start).toBe(1000);
+    expect(result!.metadata.end).toBe(2000);
   });
 
-  it('should return null when required fields are missing from metadata', () => {
-    const input = '<!-- @gn {"exact":"text"} -->\nComment';
-    expect(parseGnComment(input)).toBeNull();
+  it('should return null for malformed tag', () => {
+    expect(parseGnComment('`@gn:abc:def`')).toBeNull();
+    expect(parseGnComment('`@gn:12`')).toBeNull();
+    expect(parseGnComment('`@gn:`')).toBeNull();
   });
 
-  it('should return null when exact is not a string', () => {
-    const input = '<!-- @gn {"exact":123,"start":0,"end":3} -->\nComment';
-    expect(parseGnComment(input)).toBeNull();
+  it('should handle tag without backticks (raw text)', () => {
+    // In textContent, backticks are stripped — should still NOT match
+    // since the format requires backticks
+    const result = parseGnComment('@gn:12:47');
+
+    expect(result).toBeNull();
+  });
+
+  // Legacy format support
+  it('should parse legacy <!-- @gn --> format', () => {
+    const result = parseGnComment('<!-- @gn {"s":12,"e":47} -->\nMy comment');
+
+    expect(result).not.toBeNull();
+    expect(result!.metadata.start).toBe(12);
+    expect(result!.metadata.end).toBe(47);
+    expect(result!.userComment).toBe('My comment');
+  });
+
+  it('should parse legacy format with full field names', () => {
+    const result = parseGnComment('<!-- @gn {"exact":"test","start":5,"end":9} -->\nComment');
+
+    expect(result).not.toBeNull();
+    expect(result!.metadata.start).toBe(5);
+    expect(result!.metadata.end).toBe(9);
+  });
+
+  it('should prefer `@gn:` format over legacy when both present', () => {
+    const result = parseGnComment('<!-- @gn {"s":1,"e":2} -->\nComment `@gn:10:20`');
+
+    expect(result).not.toBeNull();
+    // Primary format should win
+    expect(result!.metadata.start).toBe(10);
+    expect(result!.metadata.end).toBe(20);
   });
 });

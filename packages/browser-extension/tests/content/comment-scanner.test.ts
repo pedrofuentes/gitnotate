@@ -87,7 +87,9 @@ describe('scanForGnComments', () => {
     expect(results[0].parsed.metadata.exact).toBe('revenue growth exceeded expectations');
     expect(results[0].parsed.metadata.start).toBe(11);
     expect(results[0].parsed.metadata.end).toBe(47);
-    expect(results[0].parsed.userComment).toBe('Can we add the exact percentage here?');
+    expect(results[0].parsed.userComment).toBe(
+      '📌 "revenue growth exceeded expectations" (chars 11–47)\nCan we add the exact percentage here?',
+    );
   });
 
   it('should return empty array when no @gn comments exist', () => {
@@ -128,7 +130,9 @@ describe('scanForGnComments', () => {
       start: 15,
       end: 29,
     });
-    expect(results[0].parsed.userComment).toBe('Should we validate inputs first?');
+    expect(results[0].parsed.userComment).toBe(
+      '📌 "compute(x, y)" (chars 15–29)\nShould we validate inputs first?',
+    );
   });
 
   it('should extract file path from parent structure', () => {

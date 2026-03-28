@@ -86,6 +86,12 @@ function simulateGitHubFormInjection(fileEl: HTMLElement, lineNumber: number): v
 describe('submitViaGitHubUI', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
+    // JSDOM doesn't calculate layout, so offsetParent is always null.
+    // Mock it so findAnyOpenTextarea's visibility check works.
+    Object.defineProperty(HTMLElement.prototype, 'offsetParent', {
+      get() { return this.parentElement; },
+      configurable: true,
+    });
   });
 
   it('should find the line add-comment button for given line number', async () => {

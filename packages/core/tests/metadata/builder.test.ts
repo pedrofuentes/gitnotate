@@ -4,107 +4,63 @@ import { parseGnComment } from '../../src/metadata/parser';
 import type { GnMetadata } from '../../src/metadata/types';
 
 describe('buildGnComment', () => {
-  it('should build a well-formed @gn comment body', () => {
+  it('should build comment with @gn tag at end', () => {
     const metadata: GnMetadata = {
       exact: 'revenue growth exceeded expectations',
       start: 12,
       end: 47,
     };
-    const userComment = 'Can we add the exact percentage here?';
+    const result = buildGnComment(metadata, 'Can we add the exact percentage?');
 
-    const result = buildGnComment(metadata, userComment);
-
-    expect(result).toContain('<!-- @gn');
-    expect(result).toContain('-->');
-    expect(result).toContain('> 📌 **"revenue growth exceeded expectations"** (chars 12–47)');
-    expect(result).toContain('Can we add the exact percentage here?');
+    expect(result).toBe('Can we add the exact percentage? `@gn:12:47`');
   });
 
-  it('should properly escape special characters in exact text', () => {
-    const metadata: GnMetadata = {
-      exact: 'say "hello" <world>',
-      start: 0,
-      end: 20,
-    };
-
-    const result = buildGnComment(metadata, 'Test comment');
-
-    // The JSON inside the HTML comment should have escaped quotes
-    expect(result).toContain('@gn');
-    expect(result).toContain('-->');
-
-    // The blockquote should escape angle brackets for markdown rendering
-    const lines = result.split('\n');
-    const blockquoteLine = lines.find((l) => l.startsWith('>'));
-    expect(blockquoteLine).toBeDefined();
-    // Angle brackets should be escaped in blockquote for safe markdown rendering
-    expect(blockquoteLine).toContain('&lt;');
-    expect(blockquoteLine).toContain('&gt;');
-  });
-
-  it('should handle empty user comment', () => {
+  it('should return just the tag for empty user comment', () => {
     const metadata: GnMetadata = { exact: 'text', start: 0, end: 4 };
 
     const result = buildGnComment(metadata, '');
 
-    expect(result).toContain('<!-- @gn');
-    expect(result).toContain('> 📌');
-    // Should not have trailing newlines for empty comment
-    const lines = result.split('\n');
-    const lastNonEmpty = lines.filter((l) => l.length > 0);
-    expect(lastNonEmpty[lastNonEmpty.length - 1]).toMatch(/^>/);
+    expect(result).toBe('`@gn:0:4`');
   });
 
   it('should handle multi-line user comments', () => {
     const metadata: GnMetadata = { exact: 'foo', start: 0, end: 3 };
-    const userComment = 'First line.\n\nSecond paragraph.';
 
-    const result = buildGnComment(metadata, userComment);
+    const result = buildGnComment(metadata, 'First line.\n\nSecond paragraph.');
 
-    expect(result).toContain('First line.\n\nSecond paragraph.');
+    expect(result).toBe('First line.\n\nSecond paragraph. `@gn:0:3`');
   });
 
   it('should produce output that parser can round-trip', () => {
     const metadata: GnMetadata = {
-      exact: 'revenue growth exceeded expectations',
+      exact: 'revenue growth',
       start: 12,
       end: 47,
     };
-    const userComment = 'Can we add the exact percentage here?';
 
-    const built = buildGnComment(metadata, userComment);
+    const built = buildGnComment(metadata, 'Add the exact percentage');
     const parsed = parseGnComment(built);
 
     expect(parsed).not.toBeNull();
-    expect(parsed!.metadata).toEqual(metadata);
-    expect(parsed!.userComment).toBe(userComment);
+    expect(parsed!.metadata.start).toBe(12);
+    expect(parsed!.metadata.end).toBe(47);
+    expect(parsed!.userComment).toBe('Add the exact percentage');
   });
 
-  it('should handle unicode characters in exact text', () => {
-    const metadata: GnMetadata = {
-      exact: '日本語テスト 🚀 café',
-      start: 0,
-      end: 14,
-    };
-    const userComment = 'Unicode works!';
+  it('should handle special characters in user comment', () => {
+    const metadata: GnMetadata = { exact: 'test', start: 5, end: 9 };
 
-    const built = buildGnComment(metadata, userComment);
-    const parsed = parseGnComment(built);
+    const result = buildGnComment(metadata, 'Check "this" & <that>');
 
-    expect(parsed).not.toBeNull();
-    expect(parsed!.metadata.exact).toBe('日本語テスト 🚀 café');
+    expect(result).toContain('Check "this" & <that>');
+    expect(result).toContain('`@gn:5:9`');
   });
 
-  it('should handle very long exact text', () => {
-    const longText = 'a'.repeat(500);
-    const metadata: GnMetadata = { exact: longText, start: 0, end: 500 };
-    const userComment = 'Long text test.';
+  it('should handle large offsets', () => {
+    const metadata: GnMetadata = { exact: 'text', start: 1000, end: 2000 };
 
-    const built = buildGnComment(metadata, userComment);
-    const parsed = parseGnComment(built);
+    const result = buildGnComment(metadata, 'Comment');
 
-    expect(parsed).not.toBeNull();
-    expect(parsed!.metadata.exact).toBe(longText);
-    expect(parsed!.userComment).toBe(userComment);
+    expect(result).toBe('Comment `@gn:1000:2000`');
   });
 });

@@ -1,58 +1,48 @@
 import type { GnCommentBody, GnMetadata } from './types';
 
-const GN_PATTERN = /^\s*<!--\s*@gn\s+(.*?)\s*-->\s*$/;
+// Matches `@gn:start:end` — the primary format (survives GitHub sanitization)
+const GN_TAG_RE = /`@gn:(\d+):(\d+)`/;
 
-function isValidMetadata(obj: unknown): obj is GnMetadata {
-  if (typeof obj !== 'object' || obj === null) return false;
-  const o = obj as Record<string, unknown>;
-
-  // Support compact format: { s, e } or full format: { exact, start, end }
-  const start = typeof o.s === 'number' ? o.s : typeof o.start === 'number' ? o.start : undefined;
-  const end = typeof o.e === 'number' ? o.e : typeof o.end === 'number' ? o.end : undefined;
-
-  return start !== undefined && end !== undefined;
-}
-
-function extractMetadata(obj: Record<string, unknown>): GnMetadata {
-  const start = typeof obj.s === 'number' ? obj.s : (obj.start as number);
-  const end = typeof obj.e === 'number' ? obj.e : (obj.end as number);
-  const exact = typeof obj.exact === 'string' ? obj.exact : '';
-  return { exact, start, end };
-}
+// Legacy: <!-- @gn {...} --> (HTML comment — may be stripped by GitHub)
+const GN_HTML_RE = /<!--\s*@gn\s+(\{.*?\})\s*-->/;
 
 export function parseGnComment(commentBody: string): GnCommentBody | null {
-  const lines = commentBody.split('\n');
-
-  // Find the @gn metadata line
-  const metaLineIndex = lines.findIndex((line) => GN_PATTERN.test(line));
-  if (metaLineIndex === -1) return null;
-
-  const match = lines[metaLineIndex].match(GN_PATTERN);
-  if (!match) return null;
-
-  let metadata: GnMetadata;
-  try {
-    const parsed = JSON.parse(match[1]);
-    if (!isValidMetadata(parsed)) return null;
-    metadata = extractMetadata(parsed as unknown as Record<string, unknown>);
-  } catch {
-    return null;
+  // Try primary format: `gn:start:end`
+  const tagMatch = commentBody.match(GN_TAG_RE);
+  if (tagMatch) {
+    const start = Number(tagMatch[1]);
+    const end = Number(tagMatch[2]);
+    if (!isNaN(start) && !isNaN(end)) {
+      const userComment = commentBody.replace(GN_TAG_RE, '').trim();
+      return {
+        metadata: { exact: '', start, end },
+        userComment,
+      };
+    }
   }
 
-  // Extract user comment: skip metadata line, optional blockquote, and separator
-  let commentStartIndex = metaLineIndex + 1;
+  // Fallback: legacy HTML comment format
+  const htmlMatch = commentBody.match(GN_HTML_RE);
+  if (htmlMatch) {
+    try {
+      const obj = JSON.parse(htmlMatch[1]);
+      const start = typeof obj.s === 'number' ? obj.s : typeof obj.start === 'number' ? obj.start : undefined;
+      const end = typeof obj.e === 'number' ? obj.e : typeof obj.end === 'number' ? obj.end : undefined;
 
-  // Skip blockquote line (starts with ">")
-  if (commentStartIndex < lines.length && lines[commentStartIndex].trimStart().startsWith('>')) {
-    commentStartIndex++;
+      if (start !== undefined && end !== undefined) {
+        const userComment = commentBody
+          .replace(GN_HTML_RE, '')
+          .replace(/^>\s*📌.*$/m, '') // remove blockquote fallback
+          .trim();
+        return {
+          metadata: { exact: typeof obj.exact === 'string' ? obj.exact : '', start, end },
+          userComment,
+        };
+      }
+    } catch {
+      // Invalid JSON
+    }
   }
 
-  // Skip empty separator lines between blockquote and user comment
-  while (commentStartIndex < lines.length && lines[commentStartIndex].trim() === '') {
-    commentStartIndex++;
-  }
-
-  const userComment = lines.slice(commentStartIndex).join('\n');
-
-  return { metadata, userComment };
+  return null;
 }

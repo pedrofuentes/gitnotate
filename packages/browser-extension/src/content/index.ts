@@ -137,6 +137,18 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
       console.log('[Gitnotate] Diff elements loaded:', diffElements.length);
       scanAndHighlight();
     });
+
+    // Periodically re-scan to catch comments being added or removed
+    // (e.g., draft cancelled, new comment submitted)
+    const rescanObserver = new MutationObserver(() => {
+      // Debounce: only re-scan after DOM settles
+      clearTimeout(rescanTimer);
+      rescanTimer = setTimeout(() => {
+        scanAndHighlight();
+      }, 500);
+    });
+    let rescanTimer: ReturnType<typeof setTimeout>;
+    rescanObserver.observe(document.body, { childList: true, subtree: true });
   }
 }
 

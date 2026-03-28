@@ -29,25 +29,16 @@ const COMMENT_BODY_SELECTOR = '.comment-body, .js-comment-body, [data-testid="ma
 function extractCommentText(body: HTMLElement): string {
   const lines: string[] = [];
 
-  // First, check innerHTML for a real HTML comment (<!-- @gn ... -->)
-  // that won't appear in textContent.
+  // Check innerHTML for HTML comments (<!-- @gn ... -->) that textContent hides
   const htmlCommentMatch = body.innerHTML.match(/<!--\s*@gn\s+.*?-->/);
   if (htmlCommentMatch) {
     lines.push(htmlCommentMatch[0]);
   }
 
-  for (const child of body.childNodes) {
-    if (child instanceof HTMLElement && child.tagName === 'BLOCKQUOTE') {
-      // Emit as a blockquote line so the core parser skips it
-      lines.push(`> ${child.textContent ?? ''}`);
-      continue;
-    }
-    const text = child.textContent?.trim();
-    if (text) {
-      // Don't duplicate the @gn line we already extracted from innerHTML
-      if (htmlCommentMatch && text.includes('<!-- @gn')) continue;
-      lines.push(text);
-    }
+  // Get the full text content — this will include rendered `gn:start:end` code spans
+  const fullText = body.textContent?.trim() ?? '';
+  if (fullText) {
+    lines.push(fullText);
   }
 
   return lines.join('\n');
