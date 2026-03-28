@@ -1,1 +1,2 @@
-// @gitnotate/core barrel export
+export * from './metadata';
+
