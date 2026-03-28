@@ -1,0 +1,55 @@
+# Architecture Decision Records — Gitnotate
+
+> **Record every significant technical decision here.** When choosing between approaches,
+> document what was chosen and why. This prevents future agents and developers from
+> re-debating settled decisions or accidentally reversing them.
+>
+> Do NOT write decisions to AGENTS.md — they belong here.
+
+## Format
+
+```markdown
+### ADR-NNN: Decision Title
+**Date**: YYYY-MM-DD
+**Status**: Proposed / Accepted / Superseded by ADR-NNN
+**Context**: What problem or question prompted this decision?
+**Decision**: What was decided?
+**Alternatives considered**: What other options were evaluated?
+**Consequences**: What are the trade-offs? What does this enable or prevent?
+```
+
+## Decisions
+
+<!-- Add new decisions below this line, most recent first -->
+
+### ADR-001: Monorepo with pnpm Workspaces
+**Date**: 2026-03-27
+**Status**: Accepted
+**Context**: Gitnotate has shared core logic used by both a browser extension and a VSCode extension. Code duplication across separate repos would be a maintenance burden.
+**Decision**: Use a pnpm workspaces monorepo with a shared `packages/core/` library.
+**Alternatives considered**: Separate repos with npm package publishing; single-repo without workspaces.
+**Consequences**: Enables atomic cross-package changes and shared TypeScript types. Requires pnpm workspace awareness in CI and build tooling.
+
+### ADR-002: `@gn` Metadata in PR Comments
+**Date**: 2026-03-27
+**Status**: Accepted
+**Context**: Need a way to store sub-line comment anchoring data within GitHub's existing PR comment system without requiring extra infrastructure.
+**Decision**: Embed `<!-- @gn {...} -->` hidden metadata in comment bodies with a human-readable `> 📌 "quoted text"` fallback.
+**Alternatives considered**: Separate database; GitHub Labels; custom file in repo; Hypothesis-style external storage.
+**Consequences**: Zero infrastructure, graceful degradation without extension, uses all existing GitHub features. Character offsets are fragile if line is edited.
+
+### ADR-003: W3C TextQuoteSelector for Sidecar Anchoring
+**Date**: 2026-03-27
+**Status**: Accepted
+**Context**: Sidecar files need resilient text anchoring that survives nearby edits to the document.
+**Decision**: Use W3C TextQuoteSelector pattern (`exact` + `prefix` + `suffix` context) for anchor resolution.
+**Alternatives considered**: Character offsets only; line numbers; CriticMarkup-style inline syntax.
+**Consequences**: More resilient to edits than offsets. Requires fuzzy matching logic. Aligns with web annotation standards.
+
+### ADR-004: GitHub OAuth with PAT Fallback
+**Date**: 2026-03-27
+**Status**: Accepted
+**Context**: Browser extension needs authenticated GitHub API access for creating PR comments.
+**Decision**: Primary auth via GitHub OAuth App; Personal Access Token as fallback.
+**Alternatives considered**: PAT only; GitHub App installation tokens.
+**Consequences**: OAuth provides better UX for most users. PAT fallback supports enterprise/restricted environments.
