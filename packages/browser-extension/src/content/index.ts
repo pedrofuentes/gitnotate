@@ -5,6 +5,7 @@ import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights, HIGHLIGHT_COLORS } from './highlighter';
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
 import { isRepoEnabled, enableRepo, isRepoBlocked, blockRepo } from '../storage/repo-settings';
+import { getHighlightStyle, applyHighlightStyle } from '../storage/highlight-style';
 import { initFileViewComments } from './file-view-handler';
 import { findClosestTextarea, injectGnMetadata } from './textarea-target';
 import './highlighter.css';
@@ -19,6 +20,10 @@ debug('[Gitnotate] Content script loaded at:', window.location.href);
 async function init(): Promise<void> {
   currentPageInfo = detectGitHubPage();
   debug('[Gitnotate] init() called');
+
+  // Apply highlight style preference
+  const style = await getHighlightStyle();
+  applyHighlightStyle(style);
   debug('[Gitnotate] URL:', window.location.pathname);
   debug('[Gitnotate] Page detected:', JSON.stringify(currentPageInfo));
 

@@ -4,6 +4,11 @@ import {
   disableRepo,
   unblockRepo,
 } from '../storage/repo-settings.js';
+import {
+  getHighlightStyle,
+  setHighlightStyle,
+  type HighlightStyle,
+} from '../storage/highlight-style.js';
 import { getAuthState, setToken, clearToken } from '../auth/oauth.js';
 
 // --- Auth UI ---
@@ -156,6 +161,20 @@ async function renderBlockedRepos(): Promise<void> {
   }
 }
 
+// --- Highlight style ---
+
+async function renderHighlightStyle(): Promise<void> {
+  const select = document.getElementById('gn-style-select') as HTMLSelectElement | null;
+  if (!select) return;
+
+  const current = await getHighlightStyle();
+  select.value = current;
+
+  select.addEventListener('change', async () => {
+    await setHighlightStyle(select.value as HighlightStyle);
+  });
+}
+
 // --- Bootstrap ---
 
 async function init(): Promise<void> {
@@ -163,6 +182,7 @@ async function init(): Promise<void> {
   await renderAuthState();
   await renderEnabledRepos();
   await renderBlockedRepos();
+  await renderHighlightStyle();
 }
 
 init().catch(console.error);

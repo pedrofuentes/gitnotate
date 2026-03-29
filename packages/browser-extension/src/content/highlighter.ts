@@ -16,11 +16,11 @@ export const HIGHLIGHT_COLOR_COUNT = 6;
 
 export const HIGHLIGHT_COLORS = [
   '#f9a825', // yellow
-  '#43a047', // green
   '#1e88e5', // blue
-  '#e53935', // red
   '#8e24aa', // purple
   '#ef6c00', // orange
+  '#00897b', // teal
+  '#c2185b', // pink
 ];
 
 // Track how many highlights exist per line to assign distinct colors
