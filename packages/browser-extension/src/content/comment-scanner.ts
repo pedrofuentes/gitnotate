@@ -31,7 +31,7 @@ export function scanForGnComments(): GnReviewComment[] {
     const el = node.parentElement;
     if (!el) continue;
 
-    const container = el.closest('p, div, td, li') ?? el;
+    const container = (el.closest('p, div, td, li') ?? el) as HTMLElement;
     const fullText = container.textContent ?? '';
 
     const parsed = parseGnComment(fullText);
