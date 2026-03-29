@@ -266,4 +266,35 @@ describe('github-action run()', () => {
       expect.stringContaining('Action failed'),
     );
   });
+
+  it('should continue processing other sidecar files when one getContent throws (I-15)', async () => {
+    mockListFiles.mockResolvedValue({
+      data: [
+        { filename: '.comments/src/a.ts.json', status: 'added' },
+        { filename: '.comments/src/b.ts.json', status: 'added' },
+      ],
+    });
+
+    // First sidecar getContent throws, second succeeds
+    mockGetContent
+      .mockRejectedValueOnce(new Error('Network error fetching sidecar A'))
+      .mockResolvedValueOnce({
+        data: { content: base64(validSidecar), encoding: 'base64' },
+      })
+      .mockResolvedValueOnce({
+        data: { content: base64('const x = 1;'), encoding: 'base64' },
+      });
+
+    vi.mocked(validateAnchors).mockResolvedValue([
+      { annotationId: 'ann-1', filePath: 'src/utils.ts', status: 'valid', message: 'OK' },
+    ]);
+    vi.mocked(buildSummaryComment).mockReturnValue('## Summary');
+
+    await runAction();
+
+    // The second file should still be processed despite the first one failing
+    expect(validateAnchors).toHaveBeenCalledTimes(1);
+    // Should NOT call setFailed — action should continue gracefully
+    expect(mockSetFailed).not.toHaveBeenCalled();
+  });
 });

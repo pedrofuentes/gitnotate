@@ -9,6 +9,8 @@ export interface GitHubApiClient {
   delete(path: string): Promise<Response>;
 }
 
+const REQUEST_TIMEOUT_MS = 10_000;
+
 async function request(
   token: string,
   method: string,
@@ -21,6 +23,7 @@ async function request(
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
     },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   };
 
   if (body !== undefined) {
