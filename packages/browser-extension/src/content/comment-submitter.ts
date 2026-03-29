@@ -1,3 +1,5 @@
+import { debug } from './logger';
+
 export interface SubmitCommentOptions {
   filePath: string;
   lineNumber: number;
@@ -132,7 +134,7 @@ export async function submitViaGitHubUI(options: SubmitCommentOptions): Promise<
   try {
     await navigator.clipboard.writeText(commentBody);
     // Return true since we got the comment ready — just needs paste
-    console.log('[Gitnotate] Comment copied to clipboard. Click "+" on the diff line and paste.');
+    debug('[Gitnotate] Comment copied to clipboard. Click "+" on the diff line and paste.');
     
     // Show a brief notification on the page
     const notice = document.createElement('div');

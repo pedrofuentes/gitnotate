@@ -9,46 +9,47 @@ import { initFileViewComments } from './file-view-handler';
 import { findClosestTextarea, injectGnMetadata } from './textarea-target';
 import './highlighter.css';
 import './ui/optin-banner.css';
+import { debug } from './logger';
 
 let currentPageInfo: GitHubPageInfo = detectGitHubPage();
 let featureAbort: AbortController | null = null;
 
-console.log('[Gitnotate] Content script loaded at:', window.location.href);
+debug('[Gitnotate] Content script loaded at:', window.location.href);
 
 async function init(): Promise<void> {
   currentPageInfo = detectGitHubPage();
-  console.log('[Gitnotate] init() called');
-  console.log('[Gitnotate] URL:', window.location.pathname);
-  console.log('[Gitnotate] Page detected:', JSON.stringify(currentPageInfo));
+  debug('[Gitnotate] init() called');
+  debug('[Gitnotate] URL:', window.location.pathname);
+  debug('[Gitnotate] Page detected:', JSON.stringify(currentPageInfo));
 
   if (currentPageInfo.type === 'other' || !currentPageInfo.owner || !currentPageInfo.repo) {
-    console.log('[Gitnotate] Skipping — page type is "other" or missing owner/repo');
+    debug('[Gitnotate] Skipping — page type is "other" or missing owner/repo');
     return;
   }
 
-  console.log('[Gitnotate] Checking if repo is enabled:', `${currentPageInfo.owner}/${currentPageInfo.repo}`);
+  debug('[Gitnotate] Checking if repo is enabled:', `${currentPageInfo.owner}/${currentPageInfo.repo}`);
   const enabled = await isRepoEnabled(currentPageInfo.owner, currentPageInfo.repo);
-  console.log('[Gitnotate] Repo enabled:', enabled);
+  debug('[Gitnotate] Repo enabled:', enabled);
 
   if (!enabled) {
-    console.log('[Gitnotate] Repo not enabled, page type:', currentPageInfo.type);
+    debug('[Gitnotate] Repo not enabled, page type:', currentPageInfo.type);
     if (currentPageInfo.type === 'pr-files-changed' || currentPageInfo.type === 'pr-conversation') {
-      console.log('[Gitnotate] Showing opt-in banner');
+      debug('[Gitnotate] Showing opt-in banner');
       const pageRef = currentPageInfo;
       showOptInBanner(
         pageRef.owner,
         pageRef.repo,
         async () => {
           await enableRepo(pageRef.owner, pageRef.repo);
-          console.log(`[Gitnotate] Enabled for ${pageRef.owner}/${pageRef.repo}`);
+          debug(`[Gitnotate] Enabled for ${pageRef.owner}/${pageRef.repo}`);
           activateFeatures(pageRef);
         },
         () => {
-          console.log('[Gitnotate] User dismissed opt-in');
+          debug('[Gitnotate] User dismissed opt-in');
         },
       );
     } else {
-      console.log('[Gitnotate] Not a PR page, skipping opt-in banner');
+      debug('[Gitnotate] Not a PR page, skipping opt-in banner');
     }
     return;
   }
@@ -70,7 +71,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   }
 
   if (pageInfo.type === 'pr-files-changed') {
-    console.log('[Gitnotate] PR diff page detected, initializing...');
+    debug('[Gitnotate] PR diff page detected, initializing...');
 
     // Track one pending highlight per textarea so multiple selections
     // can coexist across different inline comment forms.
@@ -93,7 +94,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
         const textarea = findClosestTextarea(selInfo.lineElement, selInfo.lineNumber);
         if (!textarea) return;
 
-        console.log('[Gitnotate] Selection + open textarea detected, injecting @gn metadata');
+        debug('[Gitnotate] Selection + open textarea detected, injecting @gn metadata');
         injectGnMetadata(textarea, selInfo);
 
         // Highlight the selected text using the saved range
@@ -107,9 +108,9 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
             span.setAttribute('data-gn-comment-id', `gn-pending`);
             savedRange.surroundContents(span);
             pendingHighlights.set(textarea, span);
-            console.log('[Gitnotate] Text highlighted');
+            debug('[Gitnotate] Text highlighted');
           } catch (err) {
-            console.log('[Gitnotate] Could not highlight:', err);
+            debug('[Gitnotate] Could not highlight:', err);
           }
         }
       }, 10);
@@ -120,7 +121,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
     const formObserver = new MutationObserver(() => {
       for (const [textarea] of pendingHighlights) {
         if (!textarea.isConnected) {
-          console.log('[Gitnotate] Comment form closed, removing pending highlight');
+          debug('[Gitnotate] Comment form closed, removing pending highlight');
           removePendingHighlightFor(textarea);
         }
       }
@@ -142,7 +143,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
     }
 
     observeDiffContent((diffElements) => {
-      console.log('[Gitnotate] Diff elements loaded:', diffElements.length);
+      debug('[Gitnotate] Diff elements loaded:', diffElements.length);
       scanAndHighlight();
     });
 
@@ -171,26 +172,26 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
 
 // --- Init and navigation ---
 
-console.log('[Gitnotate] Running initial init()');
+debug('[Gitnotate] Running initial init()');
 init().catch(console.error);
 
 document.addEventListener('turbo:load', () => {
-  console.log('[Gitnotate] turbo:load event fired');
+  debug('[Gitnotate] turbo:load event fired');
   init().catch(console.error);
 });
 document.addEventListener('turbo:render', () => {
-  console.log('[Gitnotate] turbo:render event fired');
+  debug('[Gitnotate] turbo:render event fired');
   init().catch(console.error);
 });
 window.addEventListener('popstate', () => {
-  console.log('[Gitnotate] popstate event fired');
+  debug('[Gitnotate] popstate event fired');
   init().catch(console.error);
 });
 
 let lastUrl = window.location.href;
 const urlObserver = new MutationObserver(() => {
   if (window.location.href !== lastUrl) {
-    console.log('[Gitnotate] URL changed:', lastUrl, '→', window.location.href);
+    debug('[Gitnotate] URL changed:', lastUrl, '→', window.location.href);
     lastUrl = window.location.href;
     init().catch(console.error);
   }
@@ -200,7 +201,7 @@ urlObserver.observe(document.body, { childList: true, subtree: true });
 document.addEventListener('click', () => {
   setTimeout(() => {
     if (window.location.href !== lastUrl) {
-      console.log('[Gitnotate] URL changed (after click):', lastUrl, '→', window.location.href);
+      debug('[Gitnotate] URL changed (after click):', lastUrl, '→', window.location.href);
       lastUrl = window.location.href;
       init().catch(console.error);
     }
@@ -213,7 +214,7 @@ function scanAndHighlight(): void {
   clearAllHighlights();
   clearCommentColorIndicators();
   const gnComments = scanForGnComments();
-  console.log(`[Gitnotate] Found ${gnComments.length} ^gn comment(s)`);
+  debug(`[Gitnotate] Found ${gnComments.length} ^gn comment(s)`);
 
   for (const gc of gnComments) {
     const { metadata } = gc.parsed;

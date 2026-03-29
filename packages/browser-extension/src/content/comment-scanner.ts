@@ -1,4 +1,5 @@
 import { parseGnComment, type GnCommentBody } from '@gitnotate/core';
+import { debug } from './logger';
 
 export interface GnReviewComment {
   commentElement: HTMLElement;
@@ -46,7 +47,7 @@ export function scanForGnComments(): GnReviewComment[] {
     if (!filePath || lineNumber <= 0) continue;
     seen.add(key);
 
-    console.log(`[Gitnotate] Found ^gn:${lineNumber}:${parsed.metadata.start}:${parsed.metadata.end} file=${filePath}`);
+    debug(`[Gitnotate] Found ^gn:${lineNumber}:${parsed.metadata.start}:${parsed.metadata.end} file=${filePath}`);
 
     results.push({
       commentElement: container,
