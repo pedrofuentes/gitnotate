@@ -34,19 +34,18 @@ export function findClosestTextarea(
   lineNumber?: number,
   side?: 'LEFT' | 'RIGHT',
 ): HTMLTextAreaElement | null {
-  // Collect all visible textareas, deduplicating across selectors
+  // Collect all visible textareas with a single combined query
+  const combined = TEXTAREA_SELECTORS.join(', ');
+  const allTextareas = document.querySelectorAll<HTMLTextAreaElement>(combined);
   const seen = new Set<HTMLTextAreaElement>();
   const candidates: HTMLTextAreaElement[] = [];
 
-  for (const sel of TEXTAREA_SELECTORS) {
-    const textareas = document.querySelectorAll<HTMLTextAreaElement>(sel);
-    for (const ta of textareas) {
-      if (seen.has(ta)) continue;
-      // Must be visible
-      if (ta.offsetParent === null && ta.offsetHeight === 0) continue;
-      seen.add(ta);
-      candidates.push(ta);
-    }
+  for (const ta of allTextareas) {
+    if (seen.has(ta)) continue;
+    // Must be visible
+    if (ta.offsetParent === null && ta.offsetHeight === 0) continue;
+    seen.add(ta);
+    candidates.push(ta);
   }
 
   if (candidates.length === 0) return null;
@@ -64,9 +63,15 @@ export function findClosestTextarea(
   if (lineNumber !== undefined) {
     const diffSide = side === 'LEFT' ? 'left' : side === 'RIGHT' ? 'right' : null;
 
+    // Cache line numbers to avoid redundant DOM walks across passes
+    const lineCache = new Map<HTMLTextAreaElement, number[]>();
+    for (const ta of pool) {
+      lineCache.set(ta, getTextareaLineNumbers(ta));
+    }
+
     // Pass 1: exact line match with side filtering
     for (const ta of pool) {
-      const taLines = getTextareaLineNumbers(ta);
+      const taLines = lineCache.get(ta)!;
       if (taLines.includes(lineNumber)) {
         // If side is specified, verify the textarea is on the correct side
         if (diffSide && !isTextareaOnSide(ta, diffSide)) continue;
@@ -75,7 +80,7 @@ export function findClosestTextarea(
     }
     // Pass 2: ±1 tolerance (handles off-by-one from GitHub DOM structure)
     for (const ta of pool) {
-      const taLines = getTextareaLineNumbers(ta);
+      const taLines = lineCache.get(ta)!;
       if (taLines.some((n) => Math.abs(n - lineNumber) <= 1)) {
         if (diffSide && !isTextareaOnSide(ta, diffSide)) continue;
         return ta;
