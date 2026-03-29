@@ -169,6 +169,35 @@ describe('validateAnchors', () => {
     expect(results[0].status).toBe('fuzzy');
   });
 
+  it('should throw on invalid JSON input', async () => {
+    await expect(validateAnchors('path.json', 'not valid json{{{', 'file content'))
+      .rejects.toThrow();
+  });
+
+  it('should throw when sidecar has missing annotations field', async () => {
+    const noAnnotations = JSON.stringify({
+      $schema: 'https://gitnotate.dev/schemas/sidecar-v1.json',
+      version: '1.0',
+      file: 'docs/spec.md',
+    });
+
+    await expect(validateAnchors('path.json', noAnnotations, 'file content'))
+      .rejects.toThrow();
+  });
+
+  it('should return empty results for empty annotations array', async () => {
+    const emptySidecar = JSON.stringify({
+      $schema: 'https://gitnotate.dev/schemas/sidecar-v1.json',
+      version: '1.0',
+      file: 'docs/spec.md',
+      annotations: [],
+    });
+
+    const results = await validateAnchors('path.json', emptySidecar, 'file content');
+
+    expect(results).toEqual([]);
+  });
+
   it('should report fuzzy when suffix matches but prefix does not', async () => {
     const fileContent = 'Our revenue growth exceeded expectations.';
     const sidecar = makeSidecar([

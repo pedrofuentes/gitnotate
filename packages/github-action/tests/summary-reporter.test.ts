@@ -11,15 +11,19 @@ describe('buildSummaryComment', () => {
     ];
 
     const comment = buildSummaryComment(results);
+    const lines = comment.split('\n');
 
-    expect(comment).toContain('## 📝 Gitnotate Anchor Report');
-    expect(comment).toContain('✅ **1 valid**');
-    expect(comment).toContain('⚠️ **1 fuzzy**');
-    expect(comment).toContain('❌ **1 broken**');
-    expect(comment).toContain('| Status | File | Annotation | Details |');
-    expect(comment).toContain('| ✅ | docs/spec.md | `a1` | Anchor intact |');
-    expect(comment).toContain('| ⚠️ | docs/spec.md | `a2` | Anchor shifted, fuzzy match |');
-    expect(comment).toContain('| ❌ | docs/plan.md | `a3` | Text not found |');
+    // Verify exact structure line-by-line
+    expect(lines[0]).toBe('## 📝 Gitnotate Anchor Report');
+    expect(lines[1]).toBe('');
+    expect(lines[2]).toBe('✅ **1 valid** | ⚠️ **1 fuzzy** | ❌ **1 broken**');
+    expect(lines[3]).toBe('');
+    expect(lines[4]).toBe('| Status | File | Annotation | Details |');
+    expect(lines[5]).toBe('|--------|------|------------|---------|');
+    expect(lines[6]).toBe('| ✅ | docs/spec.md | `a1` | Anchor intact |');
+    expect(lines[7]).toBe('| ⚠️ | docs/spec.md | `a2` | Anchor shifted, fuzzy match |');
+    expect(lines[8]).toBe('| ❌ | docs/plan.md | `a3` | Text not found |');
+    expect(lines).toHaveLength(9);
   });
 
   it('should handle all valid results', () => {
@@ -62,18 +66,24 @@ describe('buildSummaryComment', () => {
     ];
 
     const comment = buildSummaryComment(results);
+    const lines = comment.split('\n');
 
-    expect(comment).toContain('✅ **3 valid**');
-    expect(comment).toContain('⚠️ **1 fuzzy**');
-    expect(comment).toContain('❌ **1 broken**');
+    expect(lines[2]).toBe('✅ **3 valid** | ⚠️ **1 fuzzy** | ❌ **1 broken**');
+    // 6 header/separator lines + 5 data rows
+    expect(lines).toHaveLength(11);
+    // Verify each data row starts with the correct icon
+    expect(lines.slice(6).filter((l) => l.startsWith('| ✅'))).toHaveLength(3);
+    expect(lines.slice(6).filter((l) => l.startsWith('| ⚠️'))).toHaveLength(1);
+    expect(lines.slice(6).filter((l) => l.startsWith('| ❌'))).toHaveLength(1);
   });
 
   it('should handle empty results', () => {
     const comment = buildSummaryComment([]);
+    const lines = comment.split('\n');
 
-    expect(comment).toContain('## 📝 Gitnotate Anchor Report');
-    expect(comment).toContain('✅ **0 valid**');
-    expect(comment).toContain('⚠️ **0 fuzzy**');
-    expect(comment).toContain('❌ **0 broken**');
+    expect(lines[0]).toBe('## 📝 Gitnotate Anchor Report');
+    expect(lines[2]).toBe('✅ **0 valid** | ⚠️ **0 fuzzy** | ❌ **0 broken**');
+    // Header + blank + summary + blank + table header + separator = 6 lines, no data rows
+    expect(lines).toHaveLength(6);
   });
 });
