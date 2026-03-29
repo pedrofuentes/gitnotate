@@ -2,85 +2,102 @@ import { describe, it, expect } from 'vitest';
 import { parseGnComment } from '../../src/metadata/parser';
 
 describe('parseGnComment', () => {
-  it('should parse `@gn:start:end` format', () => {
-    const result = parseGnComment('My comment `@gn:12:47`');
+  it('should parse ^gn:line:start:end format', () => {
+    const result = parseGnComment('My comment\n^gn:5:R:12:47');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(5);
     expect(result!.metadata.start).toBe(12);
     expect(result!.metadata.end).toBe(47);
     expect(result!.userComment).toBe('My comment');
   });
 
-  it('should return null for comment without @gn tag', () => {
-    const result = parseGnComment('Just a regular comment');
-
-    expect(result).toBeNull();
+  it('should return null for comment without ^gn tag', () => {
+    expect(parseGnComment('Just a regular comment')).toBeNull();
   });
 
   it('should handle tag-only comment (no user text)', () => {
-    const result = parseGnComment('`@gn:0:10`');
+    const result = parseGnComment('^gn:1:R:0:10');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(1);
     expect(result!.metadata.start).toBe(0);
     expect(result!.metadata.end).toBe(10);
     expect(result!.userComment).toBe('');
   });
 
-  it('should handle multi-line user comment with tag at end', () => {
-    const result = parseGnComment('First line.\n\nSecond paragraph. `@gn:5:20`');
+  it('should handle multi-line user comment with tag on last line', () => {
+    const result = parseGnComment('First line.\n\nSecond paragraph.\n^gn:3:R:5:20');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(3);
     expect(result!.metadata.start).toBe(5);
     expect(result!.metadata.end).toBe(20);
     expect(result!.userComment).toBe('First line.\n\nSecond paragraph.');
   });
 
   it('should handle large offsets', () => {
-    const result = parseGnComment('Comment `@gn:1000:2000`');
+    const result = parseGnComment('Comment\n^gn:500:R:1000:2000');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(500);
     expect(result!.metadata.start).toBe(1000);
     expect(result!.metadata.end).toBe(2000);
   });
 
   it('should return null for malformed tag', () => {
-    expect(parseGnComment('`@gn:abc:def`')).toBeNull();
-    expect(parseGnComment('`@gn:12`')).toBeNull();
-    expect(parseGnComment('`@gn:`')).toBeNull();
+    expect(parseGnComment('^gn:abc:def:ghi')).toBeNull();
+    expect(parseGnComment('^gn:12')).toBeNull();
+    expect(parseGnComment('^gn:')).toBeNull();
+    // Old 2-field format no longer supported
+    expect(parseGnComment('^gn:12:47')).toBeNull();
   });
 
-  it('should handle tag without backticks (raw text)', () => {
-    // In textContent, backticks are stripped — should still NOT match
-    // since the format requires backticks
-    const result = parseGnComment('@gn:12:47');
-
-    expect(result).toBeNull();
-  });
-
-  // Legacy format support
-  it('should parse legacy <!-- @gn --> format', () => {
-    const result = parseGnComment('<!-- @gn {"s":12,"e":47} -->\nMy comment');
+  it('should parse tag in plain text (no backticks needed)', () => {
+    const result = parseGnComment('^gn:5:R:12:47');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(5);
     expect(result!.metadata.start).toBe(12);
     expect(result!.metadata.end).toBe(47);
-    expect(result!.userComment).toBe('My comment');
   });
 
-  it('should parse legacy format with full field names', () => {
-    const result = parseGnComment('<!-- @gn {"exact":"test","start":5,"end":9} -->\nComment');
+  it('should parse L-side tag with user comment', () => {
+    const result = parseGnComment('Left-side comment\n^gn:8:L:3:15');
 
     expect(result).not.toBeNull();
-    expect(result!.metadata.start).toBe(5);
-    expect(result!.metadata.end).toBe(9);
+    expect(result!.metadata.lineNumber).toBe(8);
+    expect(result!.metadata.side).toBe('L');
+    expect(result!.metadata.start).toBe(3);
+    expect(result!.metadata.end).toBe(15);
+    expect(result!.userComment).toBe('Left-side comment');
   });
 
-  it('should prefer `@gn:` format over legacy when both present', () => {
-    const result = parseGnComment('<!-- @gn {"s":1,"e":2} -->\nComment `@gn:10:20`');
+  it('should parse L-side tag-only comment (no user text)', () => {
+    const result = parseGnComment('^gn:42:L:0:20');
 
     expect(result).not.toBeNull();
-    // Primary format should win
-    expect(result!.metadata.start).toBe(10);
+    expect(result!.metadata.lineNumber).toBe(42);
+    expect(result!.metadata.side).toBe('L');
+    expect(result!.metadata.start).toBe(0);
     expect(result!.metadata.end).toBe(20);
+    expect(result!.userComment).toBe('');
+  });
+
+  it('should distinguish L-side from R-side in parsed metadata', () => {
+    const left = parseGnComment('^gn:10:L:5:15');
+    const right = parseGnComment('^gn:10:R:5:15');
+
+    expect(left).not.toBeNull();
+    expect(right).not.toBeNull();
+    expect(left!.metadata.side).toBe('L');
+    expect(right!.metadata.side).toBe('R');
+  });
+
+  it('should return null for inverted range (start >= end)', () => {
+    // start > end
+    expect(parseGnComment('^gn:5:R:20:10')).toBeNull();
+    // start == end (zero-width range is invalid)
+    expect(parseGnComment('^gn:5:R:10:10')).toBeNull();
   });
 });

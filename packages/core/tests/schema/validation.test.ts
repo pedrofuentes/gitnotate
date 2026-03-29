@@ -131,6 +131,7 @@ describe('validateSidecarFile', () => {
     const result = validateSidecarFile(validSidecar({ annotations: [ann] }));
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.includes('body') || e.includes('author') || e.includes('created'))).toBe(true);
   });
 
   it('should reject duplicate IDs across annotations and replies', () => {
@@ -153,11 +154,15 @@ describe('validateSidecarFile', () => {
   it('should reject non-object input', () => {
     const result = validateSidecarFile('not an object');
     expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.includes('object') || e.includes('type'))).toBe(true);
   });
 
   it('should reject null input', () => {
     const result = validateSidecarFile(null);
     expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.includes('object') || e.includes('null') || e.includes('type'))).toBe(true);
   });
 
   it('should validate resolved annotation with resolvedBy and resolvedAt', () => {
@@ -189,10 +194,13 @@ describe('validateAnnotation', () => {
     const result = validateAnnotation({ id: 'a1' });
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.includes('target') || e.includes('author') || e.includes('body') || e.includes('created'))).toBe(true);
   });
 
   it('should reject non-object input', () => {
     const result = validateAnnotation(42);
     expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some((e) => e.includes('object') || e.includes('type'))).toBe(true);
   });
 });

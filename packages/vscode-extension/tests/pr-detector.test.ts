@@ -143,4 +143,100 @@ describe('detectCurrentPR', () => {
 
     expect(result).toBeNull();
   });
+
+  it('should log error to console.error when git command fails (I-1)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = new Error('not a git repo');
+    mockExec.mockImplementationOnce(simulateExecError(error) as any);
+
+    await detectCurrentPR();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Gitnotate]'),
+      error
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('should log error to console.error when fetch throws (I-1)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = new Error('Network failure');
+    mockExec.mockImplementationOnce(simulateExec('feature/net-err\n') as any);
+    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+    mockFetch.mockRejectedValueOnce(error);
+
+    await detectCurrentPR();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Gitnotate]'),
+      error
+    );
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('detectCurrentPR — rate limit handling (I-14)', () => {
+  it('should return null and warn on 403 rate limit response', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockExec.mockImplementationOnce(simulateExec('feature/rate-limited\n') as any);
+    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      headers: new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 3600),
+      }),
+      json: async () => ({ message: 'API rate limit exceeded' }),
+    });
+
+    const result = await detectCurrentPR();
+
+    expect(result).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('rate limit'),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('should return null and warn on 429 Too Many Requests response', async () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockExec.mockImplementationOnce(simulateExec('feature/rate-limited-429\n') as any);
+    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      headers: new Headers({
+        'retry-after': '60',
+      }),
+      json: async () => ({ message: 'Too Many Requests' }),
+    });
+
+    const result = await detectCurrentPR();
+
+    expect(result).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('rate limit'),
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('should include a timeout signal on the fetch call', async () => {
+    mockExec.mockImplementationOnce(simulateExec('feature/timeout-test\n') as any);
+    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    });
+
+    await detectCurrentPR();
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.signal).toBeDefined();
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
 });

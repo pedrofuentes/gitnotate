@@ -27,7 +27,7 @@ function createDecoration(
   return {
     range: new Range(0, startChar, 0, endChar),
     hoverMessage: hover,
-    commentBody: `<!-- @gn {"exact":"text","start":${startChar},"end":${endChar}} -->\n${hover}`,
+    commentBody: `<!-- ^gn {"exact":"text","start":${startChar},"end":${endChar}} -->\n${hover}`,
   };
 }
 

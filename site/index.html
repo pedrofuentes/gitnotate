@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gitnotate — Sub-line Commenting for GitHub PR Reviews</title>
+  <meta name="description" content="Gitnotate is a browser extension that adds sub-line commenting to Markdown files in GitHub PR reviews.">
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #18181B;
+      --bg-surface: #27272A;
+      --bg-hover: #3F3F46;
+      --accent: #10B981;
+      --accent-hover: #34D399;
+      --text: #F4F4F5;
+      --text-muted: #A1A1AA;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: var(--accent-hover);
+    }
+
+    header {
+      padding: 2rem 1.5rem 1rem;
+      text-align: center;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+    }
+
+    main {
+      flex: 1;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      width: 100%;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 span {
+      color: var(--accent);
+    }
+
+    .hero .tagline {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      max-width: 480px;
+      margin: 0 auto 2rem;
+    }
+
+    .cta-group {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      color: var(--bg);
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text);
+      border: 1px solid var(--bg-hover);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .screenshot {
+      margin: 0 auto 3rem;
+      max-width: 100%;
+      text-align: center;
+    }
+
+    .screenshot img {
+      max-width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--bg-hover);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .screenshot figcaption {
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .features {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .feature {
+      background: var(--bg-surface);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      border: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    .feature:hover {
+      border-color: var(--bg-hover);
+    }
+
+    .feature h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .feature h3 .icon {
+      font-size: 1.125rem;
+    }
+
+    .feature p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      border-top: 1px solid var(--bg-surface);
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+
+    footer .links {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-bottom: 0.75rem;
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 {
+        font-size: 1.75rem;
+      }
+      .hero .tagline {
+        font-size: 1rem;
+      }
+      .cta-group {
+        flex-direction: column;
+        align-items: center;
+      }
+      .btn {
+        width: 100%;
+        max-width: 280px;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="./icon-128.png" alt="Gitnotate" class="logo-icon" width="32" height="32">
+      Gitnotate
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Sub-line commenting for <span>GitHub PR reviews</span></h1>
+      <p class="tagline">
+        Comment on specific words, sentences, or phrases within Markdown files — not just whole lines. Gitnotate brings precision to your code review workflow.
+      </p>
+      <div class="cta-group">
+        <a href="#" class="btn btn-primary" title="Coming soon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+          Install Extension
+        </a>
+        <a href="https://github.com/pedrofuentes/gitnotate" class="btn btn-secondary">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.8-.22 1.65-.33 2.5-.33.85 0 1.7.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg>
+          View Source
+        </a>
+      </div>
+    </section>
+
+    <figure class="screenshot">
+      <img src="./screenshot.png" alt="Gitnotate in action — sub-line highlights and color-matched comments on a GitHub PR diff">
+      <figcaption>Sub-line highlights with color-matched comment threads on a GitHub PR diff</figcaption>
+    </figure>
+
+    <section class="features">
+      <div class="feature">
+        <h3><span class="icon">🎯</span> Precise Selection</h3>
+        <p>Select specific words, phrases, or sentences within Markdown content — go beyond GitHub's line-level commenting.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="icon">🔒</span> Privacy First</h3>
+        <p>All data stays in your browser. No servers, no analytics, no tracking. Gitnotate makes zero network requests.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="icon">🪶</span> Tiny Footprint</h3>
+        <p>Just a small <code style="background:rgba(16,185,129,0.15);color:#34D399;padding:1px 5px;border-radius:3px;font-size:0.8em;">^gn:42:10:25</code> tag in your comment — hidden by the extension, unobtrusive without it. No extra files, no infrastructure.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="icon">💬</span> Works for Everyone</h3>
+        <p>Comments are standard GitHub PR comments. Reviewers without the extension see them normally — threading, @mentions, and reactions all work.</p>
+      </div>
+      <div class="feature">
+        <h3><span class="icon">⚡</span> Zero Config</h3>
+        <p>Install, enable a repo, and start reviewing. No tokens, no setup, no accounts. Works on any repository with pull requests.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <nav class="links">
+      <a href="./privacy-policy.html">Privacy Policy</a>
+      <a href="https://github.com/pedrofuentes/gitnotate">GitHub</a>
+      <a href="https://github.com/pedrofuentes/gitnotate/issues">Support</a>
+    </nav>
+    <p>Gitnotate is open source under the MIT License.</p>
+  </footer>
+</body>
+</html>

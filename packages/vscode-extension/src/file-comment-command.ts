@@ -1,14 +1,7 @@
 import * as vscode from 'vscode';
 import { createSelector, createSidecarFile, addAnnotation } from '@gitnotate/core';
 import { readLocalSidecar, writeLocalSidecar } from './sidecar-provider';
-
-function getRelativePath(filePath: string): string {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (workspaceFolder && filePath.startsWith(workspaceFolder)) {
-    return filePath.slice(workspaceFolder.length + 1).replace(/\\/g, '/');
-  }
-  return filePath.replace(/\\/g, '/');
-}
+import { getRelativePath } from './utils';
 
 export async function addFileCommentCommand(): Promise<void> {
   const editor = vscode.window.activeTextEditor;

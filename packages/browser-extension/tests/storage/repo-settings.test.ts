@@ -5,6 +5,10 @@ import {
   disableRepo,
   getRepoSettings,
   getAllEnabledRepos,
+  isRepoBlocked,
+  blockRepo,
+  unblockRepo,
+  getAllBlockedRepos,
 } from '../../src/storage/repo-settings.js';
 
 // Mock chrome.storage.local for tests
@@ -25,6 +29,13 @@ globalThis.chrome = {
       },
       set: (items: Record<string, unknown>) => {
         Object.assign(store, items);
+        return Promise.resolve();
+      },
+      remove: (keys: string | string[]) => {
+        const keysArr = Array.isArray(keys) ? keys : [keys];
+        for (const k of keysArr) {
+          delete store[k];
+        }
         return Promise.resolve();
       },
     },
@@ -104,5 +115,132 @@ describe('repo-settings', () => {
   it('should return null for repo with no settings', async () => {
     const settings = await getRepoSettings('owner', 'nonexistent');
     expect(settings).toBeNull();
+  });
+
+  it('should block a repo', async () => {
+    await blockRepo('owner', 'repo');
+    expect(await isRepoBlocked('owner', 'repo')).toBe(true);
+    expect(await isRepoEnabled('owner', 'repo')).toBe(false);
+  });
+
+  it('should unblock a repo (removes settings entirely)', async () => {
+    await blockRepo('owner', 'repo');
+    await unblockRepo('owner', 'repo');
+    expect(await isRepoBlocked('owner', 'repo')).toBe(false);
+    expect(await getRepoSettings('owner', 'repo')).toBeNull();
+  });
+
+  it('should return false for isRepoBlocked on unknown repo', async () => {
+    expect(await isRepoBlocked('owner', 'unknown')).toBe(false);
+  });
+
+  it('should list all blocked repos', async () => {
+    await blockRepo('owner1', 'repo1');
+    await blockRepo('owner2', 'repo2');
+    await enableRepo('owner3', 'repo3');
+
+    const blocked = await getAllBlockedRepos();
+    expect(blocked).toContain('owner1/repo1');
+    expect(blocked).toContain('owner2/repo2');
+    expect(blocked).not.toContain('owner3/repo3');
+    expect(blocked).toHaveLength(2);
+  });
+
+  it('should not include blocked repos in enabled list', async () => {
+    await enableRepo('owner', 'repo-a');
+    await blockRepo('owner', 'repo-b');
+
+    const enabled = await getAllEnabledRepos();
+    expect(enabled).toContain('owner/repo-a');
+    expect(enabled).not.toContain('owner/repo-b');
+  });
+
+  it('should allow blocking a previously enabled repo', async () => {
+    await enableRepo('owner', 'repo');
+    expect(await isRepoEnabled('owner', 'repo')).toBe(true);
+
+    await blockRepo('owner', 'repo');
+    expect(await isRepoEnabled('owner', 'repo')).toBe(false);
+    expect(await isRepoBlocked('owner', 'repo')).toBe(true);
+  });
+
+  it('should allow enabling a previously blocked repo after unblocking', async () => {
+    await blockRepo('owner', 'repo');
+    await unblockRepo('owner', 'repo');
+    await enableRepo('owner', 'repo');
+    expect(await isRepoEnabled('owner', 'repo')).toBe(true);
+    expect(await isRepoBlocked('owner', 'repo')).toBe(false);
+  });
+});
+
+describe('repo-settings — chrome.storage error handling (I-8)', () => {
+  it('should return null when chrome.storage.local.get throws', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage quota exceeded');
+    };
+
+    const result = await getRepoSettings('owner', 'repo');
+    expect(result).toBeNull();
+
+    (chrome.storage.local as any).get = origGet;
+  });
+
+  it('should return false for isRepoEnabled when storage throws', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage error');
+    };
+
+    const result = await isRepoEnabled('owner', 'repo');
+    expect(result).toBe(false);
+
+    (chrome.storage.local as any).get = origGet;
+  });
+
+  it('should not throw when enableRepo encounters storage error on set', async () => {
+    const origSet = chrome.storage.local.set;
+    (chrome.storage.local as any).set = () => {
+      throw new Error('Storage write error');
+    };
+
+    await expect(enableRepo('owner', 'repo')).resolves.not.toThrow();
+
+    (chrome.storage.local as any).set = origSet;
+  });
+
+  it('should not throw when disableRepo encounters storage error', async () => {
+    const origSet = chrome.storage.local.set;
+    (chrome.storage.local as any).set = () => {
+      throw new Error('Storage write error');
+    };
+
+    await expect(disableRepo('owner', 'repo')).resolves.not.toThrow();
+
+    (chrome.storage.local as any).set = origSet;
+  });
+
+  it('should return empty array when getAllEnabledRepos encounters storage error', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage error');
+    };
+
+    const result = await getAllEnabledRepos();
+    expect(result).toEqual([]);
+
+    (chrome.storage.local as any).get = origGet;
+  });
+
+  it('should return false for isRepoBlocked when storage throws', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage error');
+    };
+
+    const result = await isRepoBlocked('owner', 'repo');
+    expect(result).toBe(false);
+
+    (chrome.storage.local as any).get = origGet;
   });
 });

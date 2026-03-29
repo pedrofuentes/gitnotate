@@ -167,7 +167,7 @@ describe('addCommentCommand', () => {
     );
   });
 
-  it('should build @gn comment body from selection', async () => {
+  it('should build ^gn comment body from selection', async () => {
     const selection = new Range(5, 2, 5, 10);
     const mockEditor = {
       selection,
@@ -187,7 +187,7 @@ describe('addCommentCommand', () => {
       headSha: 'abc123',
     });
     window.showInputBox.mockResolvedValue('Great code!');
-    mockBuildGnComment.mockReturnValue('<!-- @gn {} -->\n> quote\n\nGreat code!');
+    mockBuildGnComment.mockReturnValue('<!-- ^gn {} -->\n> quote\n\nGreat code!');
 
     const mockApiInstance = {
       createReviewComment: vi.fn().mockResolvedValue(true),
