@@ -1,8 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Gitnotate",
-  "version": "0.0.1",
-  "description": "Sub-line commenting for Markdown files in GitHub PR reviews",
+  "version": "0.1.0",
+  "description": "Sub-line commenting for Markdown files in GitHub PR reviews. Highlight specific words and phrases, not just lines.",
+  "homepage_url": "https://github.com/pedrofuentes/gitnotate",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "permissions": ["activeTab", "storage"],
   "host_permissions": ["https://github.com/*"],
   "content_scripts": [
@@ -16,6 +23,11 @@
     "service_worker": "service-worker.js"
   },
   "action": {
-    "default_popup": "src/popup/popup.html"
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
   }
 }
