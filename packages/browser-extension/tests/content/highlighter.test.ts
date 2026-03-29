@@ -219,6 +219,63 @@ describe('highlightTextRange', () => {
     expect(result).not.toBeNull();
     expect(result!.span.textContent).toBe('React');
   });
+
+  it('should highlight L-side text in old GitHub UI', () => {
+    const file = buildDiffLine('file.ts', 5, 'const old = true;');
+    document.body.appendChild(file);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 5, side: 'L', start: 6, end: 9, commentId: 'left-1' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('old');
+  });
+
+  it('should highlight L-side text using data-diff-side selector', () => {
+    // Build a split-view row with left and right sides
+    const table = document.createElement('table');
+    table.setAttribute('data-diff-anchor', 'split.ts');
+    const tr = document.createElement('tr');
+
+    // Left side: line number + code
+    const leftNum = document.createElement('td');
+    leftNum.setAttribute('data-line-number', '10');
+    leftNum.setAttribute('data-diff-side', 'left');
+    tr.appendChild(leftNum);
+
+    const leftCode = document.createElement('td');
+    leftCode.setAttribute('data-diff-side', 'left');
+    const leftInner = document.createElement('div');
+    leftInner.className = 'diff-text-inner';
+    leftInner.textContent = 'removed line content';
+    leftCode.appendChild(leftInner);
+    tr.appendChild(leftCode);
+
+    // Right side: line number + code
+    const rightNum = document.createElement('td');
+    rightNum.setAttribute('data-line-number', '10');
+    rightNum.setAttribute('data-diff-side', 'right');
+    tr.appendChild(rightNum);
+
+    const rightCode = document.createElement('td');
+    rightCode.setAttribute('data-diff-side', 'right');
+    const rightInner = document.createElement('div');
+    rightInner.className = 'diff-text-inner';
+    rightInner.textContent = 'added line content';
+    rightCode.appendChild(rightInner);
+    tr.appendChild(rightCode);
+
+    table.appendChild(tr);
+    document.body.appendChild(table);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'split.ts', lineNumber: 10, side: 'L', start: 0, end: 7, commentId: 'left-split' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('removed');
+  });
 });
 
 describe('clearHighlight', () => {

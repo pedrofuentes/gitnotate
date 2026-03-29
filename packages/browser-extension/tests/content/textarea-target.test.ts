@@ -318,6 +318,32 @@ describe('findClosestTextarea', () => {
     const result = findClosestTextarea(nearLine5, 5);
     expect(result).toBe(textareas[1]);
   });
+
+  it('should filter by LEFT side when side is specified', () => {
+    const { codeCells } = buildDiffDom([
+      {
+        path: 'a.ts',
+        lines: [
+          { num: 5, code: 'line 5', hasTextarea: true },
+        ],
+      },
+    ]);
+
+    // Add left-side class to the textarea's parent to mark it as left-side
+    const textarea = document.querySelector('textarea')!;
+    const form = textarea.closest('.inline-comment-form')!;
+    (form as HTMLElement).classList.add('left-side');
+
+    const nearLine5 = codeCells.get('a.ts:5')!;
+
+    // LEFT side should match (textarea has left-side class)
+    const leftResult = findClosestTextarea(nearLine5, 5, 'LEFT');
+    expect(leftResult).toBe(textarea);
+
+    // RIGHT side should NOT match (textarea is on left side)
+    const rightResult = findClosestTextarea(nearLine5, 5, 'RIGHT');
+    expect(rightResult).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -367,6 +393,17 @@ describe('injectGnMetadata', () => {
     // Cursor should be at the end of the injected value
     expect(textarea.selectionStart).toBe(textarea.value.length);
     expect(textarea.selectionEnd).toBe(textarea.value.length);
+  });
+
+  it('should inject L-side metadata when side is LEFT', () => {
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+    const selInfo = makeSelectionInfo({ side: 'LEFT' as const, lineNumber: 12, start: 3, end: 18 });
+
+    injectGnMetadata(textarea, selInfo);
+
+    expect(textarea.value).toContain('^gn:12:L:3:18');
+    expect(textarea.value).not.toContain(':R:');
   });
 });
 

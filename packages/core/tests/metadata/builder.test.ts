@@ -68,4 +68,45 @@ describe('buildGnComment', () => {
 
     expect(result).toBe('Comment\n^gn:500:R:1000:2000');
   });
+
+  it('should build L-side comment with ^gn tag', () => {
+    const metadata: GnMetadata = {
+      exact: 'old implementation',
+      lineNumber: 12,
+      side: 'L',
+      start: 4,
+      end: 22,
+    };
+    const result = buildGnComment(metadata, 'This was removed — good riddance');
+
+    expect(result).toBe('This was removed — good riddance\n^gn:12:L:4:22');
+  });
+
+  it('should return just the L-side tag for empty user comment', () => {
+    const metadata: GnMetadata = { exact: 'deleted', lineNumber: 3, side: 'L', start: 0, end: 7 };
+
+    const result = buildGnComment(metadata, '');
+
+    expect(result).toBe('^gn:3:L:0:7');
+  });
+
+  it('should round-trip L-side metadata through builder and parser', () => {
+    const metadata: GnMetadata = {
+      exact: 'old code',
+      lineNumber: 25,
+      side: 'L',
+      start: 8,
+      end: 16,
+    };
+
+    const built = buildGnComment(metadata, 'Why was this removed?');
+    const parsed = parseGnComment(built);
+
+    expect(parsed).not.toBeNull();
+    expect(parsed!.metadata.lineNumber).toBe(25);
+    expect(parsed!.metadata.side).toBe('L');
+    expect(parsed!.metadata.start).toBe(8);
+    expect(parsed!.metadata.end).toBe(16);
+    expect(parsed!.userComment).toBe('Why was this removed?');
+  });
 });

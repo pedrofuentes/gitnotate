@@ -65,11 +65,11 @@ function buildDiffFileDOM(opts: {
 }
 
 /**
- * Build a ^gn comment body HTML using the `^gn:line:start:end` format.
+ * Build a ^gn comment body HTML using the `^gn:line:side:start:end` format.
  * Without backticks, GitHub renders it as plain text in a `<p>`.
  */
-function gnCommentHTML(lineNumber: number, start: number, end: number, userComment?: string): string {
-  const tag = `^gn:${lineNumber}:R:${start}:${end}`;
+function gnCommentHTML(lineNumber: number, start: number, end: number, userComment?: string, side: 'L' | 'R' = 'R'): string {
+  const tag = `^gn:${lineNumber}:${side}:${start}:${end}`;
   if (userComment) {
     return `<p>${userComment}</p><p>${tag}</p>`;
   }
@@ -302,5 +302,51 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].filePath).toBe('README.md');
+  });
+
+  it('should parse L-side ^gn comment and return side=L in metadata', () => {
+    const file = buildDiffFileDOM({
+      filePath: 'src/old-code.ts',
+      lines: [{ number: 15, text: 'const removed = true;' }],
+      comments: [
+        {
+          line: 15,
+          bodyHTML: gnCommentHTML(15, 6, 13, 'Why was this removed?', 'L'),
+        },
+      ],
+    });
+    document.body.appendChild(file);
+
+    const results = scanForGnComments();
+
+    expect(results).toHaveLength(1);
+    expect(results[0].parsed.metadata.side).toBe('L');
+    expect(results[0].parsed.metadata.lineNumber).toBe(15);
+    expect(results[0].parsed.metadata.start).toBe(6);
+    expect(results[0].parsed.metadata.end).toBe(13);
+  });
+
+  it('should deduplicate L-side and R-side comments on same line separately', () => {
+    const file = buildDiffFileDOM({
+      filePath: 'diff.ts',
+      lines: [{ number: 5, text: 'changed line' }],
+      comments: [
+        {
+          line: 5,
+          bodyHTML: gnCommentHTML(5, 0, 7, 'Old code', 'L'),
+        },
+        {
+          line: 5,
+          bodyHTML: gnCommentHTML(5, 0, 7, 'New code', 'R'),
+        },
+      ],
+    });
+    document.body.appendChild(file);
+
+    const results = scanForGnComments();
+
+    expect(results).toHaveLength(2);
+    expect(results[0].parsed.metadata.side).toBe('L');
+    expect(results[1].parsed.metadata.side).toBe('R');
   });
 });

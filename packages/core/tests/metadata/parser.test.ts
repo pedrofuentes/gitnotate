@@ -61,4 +61,36 @@ describe('parseGnComment', () => {
     expect(result!.metadata.start).toBe(12);
     expect(result!.metadata.end).toBe(47);
   });
+
+  it('should parse L-side tag with user comment', () => {
+    const result = parseGnComment('Left-side comment\n^gn:8:L:3:15');
+
+    expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(8);
+    expect(result!.metadata.side).toBe('L');
+    expect(result!.metadata.start).toBe(3);
+    expect(result!.metadata.end).toBe(15);
+    expect(result!.userComment).toBe('Left-side comment');
+  });
+
+  it('should parse L-side tag-only comment (no user text)', () => {
+    const result = parseGnComment('^gn:42:L:0:20');
+
+    expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(42);
+    expect(result!.metadata.side).toBe('L');
+    expect(result!.metadata.start).toBe(0);
+    expect(result!.metadata.end).toBe(20);
+    expect(result!.userComment).toBe('');
+  });
+
+  it('should distinguish L-side from R-side in parsed metadata', () => {
+    const left = parseGnComment('^gn:10:L:5:15');
+    const right = parseGnComment('^gn:10:R:5:15');
+
+    expect(left).not.toBeNull();
+    expect(right).not.toBeNull();
+    expect(left!.metadata.side).toBe('L');
+    expect(right!.metadata.side).toBe('R');
+  });
 });
