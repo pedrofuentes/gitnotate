@@ -4,7 +4,7 @@ import { validateSidecarFile } from '@gitnotate/core';
 import { validateAnchors, type AnchorValidationResult } from './anchor-validator.js';
 import { buildSummaryComment } from './summary-reporter.js';
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   try {
     const token = core.getInput('github-token', { required: true });
     const octokit = github.getOctokit(token);
@@ -120,4 +120,4 @@ async function run(): Promise<void> {
   }
 }
 
-run();
+export const runPromise = run();

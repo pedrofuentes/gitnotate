@@ -97,6 +97,21 @@ describe('readSidecarFile', () => {
       '/repos/owner/repo/contents/.comments/src/index.ts.json?ref=feature-branch'
     );
   });
+
+  it('should URL-encode ref with special characters', async () => {
+    const encoded = btoa(JSON.stringify(sampleSidecar, null, 2));
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ content: encoded, sha: 'abc123', encoding: 'base64' }),
+    });
+
+    await readSidecarFile('owner', 'repo', 'src/index.ts', 'feature/my branch');
+
+    expect(mockClient.get).toHaveBeenCalledWith(
+      '/repos/owner/repo/contents/.comments/src/index.ts.json?ref=feature%2Fmy%20branch'
+    );
+  });
 });
 
 describe('writeSidecarFile', () => {
@@ -303,6 +318,12 @@ describe('writeSidecarFile — Unicode safety (F3)', () => {
     const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', cjkSidecar);
 
     expect(result).toBe(true);
+    // Verify the content can be decoded back
+    const [, body] = mockClient.put.mock.calls[0];
+    const decoded = JSON.parse(new TextDecoder().decode(
+      Uint8Array.from(atob(body.content), (c) => c.charCodeAt(0))
+    ));
+    expect(decoded.annotations[0].body).toBe('这是中文注释 こんにちは');
   });
 });
 

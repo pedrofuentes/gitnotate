@@ -111,9 +111,8 @@ describe('github-action run()', () => {
       buildSummaryComment: (...args: unknown[]) => (buildSummaryComment as Function)(...args),
     }));
 
-    await import('../src/index.js');
-    // Wait for the async run() to complete
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const { runPromise } = await import('../src/index.js');
+    await runPromise;
   }
 
   it('should skip when not a pull request event', async () => {
