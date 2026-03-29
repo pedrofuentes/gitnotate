@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock chrome.storage.local
+// Mock chrome.storage.local and chrome.tabs
 let store: Record<string, unknown> = {};
 
 globalThis.chrome = {
@@ -28,6 +28,10 @@ globalThis.chrome = {
         return Promise.resolve();
       },
     },
+  },
+  tabs: {
+    query: vi.fn().mockResolvedValue([]),
+    reload: vi.fn().mockResolvedValue(undefined),
   },
 } as unknown as typeof chrome;
 
@@ -198,5 +202,98 @@ describe('popup – renderHighlightStyle', () => {
 
     const stored = await getHighlightStyle();
     expect(stored).toBe('background');
+  });
+});
+
+// Import popup functions after chrome mock is set up
+import { parseGitHubUrl, createRepoItem } from '../../src/popup/popup.js';
+
+describe('popup – parseGitHubUrl', () => {
+  it('should return null for non-GitHub URLs', () => {
+    expect(parseGitHubUrl('https://example.com/foo/bar')).toBeNull();
+    expect(parseGitHubUrl('https://gitlab.com/owner/repo')).toBeNull();
+  });
+
+  it('should return null for invalid URLs', () => {
+    expect(parseGitHubUrl('not-a-url')).toBeNull();
+  });
+
+  it('should return null for GitHub root with insufficient path segments', () => {
+    expect(parseGitHubUrl('https://github.com/')).toBeNull();
+    expect(parseGitHubUrl('https://github.com/owner')).toBeNull();
+  });
+
+  it('should parse a repo root URL', () => {
+    const result = parseGitHubUrl('https://github.com/owner/repo');
+    expect(result).toEqual({ owner: 'owner', repo: 'repo', isPrFiles: false });
+  });
+
+  it('should parse a PR files-changed URL', () => {
+    const result = parseGitHubUrl('https://github.com/owner/repo/pull/42/files');
+    expect(result).toEqual({ owner: 'owner', repo: 'repo', isPrFiles: true });
+  });
+
+  it('should parse a PR changes URL with anchor', () => {
+    const result = parseGitHubUrl('https://github.com/owner/repo/pull/6/changes#r3005658715');
+    expect(result).toEqual({ owner: 'owner', repo: 'repo', isPrFiles: true });
+  });
+
+  it('should parse a PR conversation URL as PR page', () => {
+    const result = parseGitHubUrl('https://github.com/owner/repo/pull/42');
+    expect(result).toEqual({ owner: 'owner', repo: 'repo', isPrFiles: true });
+  });
+
+  it('should parse an issues URL as non-PR', () => {
+    const result = parseGitHubUrl('https://github.com/owner/repo/issues/10');
+    expect(result).toEqual({ owner: 'owner', repo: 'repo', isPrFiles: false });
+  });
+
+  it('should parse a blob URL as non-PR', () => {
+    const result = parseGitHubUrl('https://github.com/owner/repo/blob/main/README.md');
+    expect(result).toEqual({ owner: 'owner', repo: 'repo', isPrFiles: false });
+  });
+});
+
+describe('popup – createRepoItem', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should create a repo item with owner/name split', () => {
+    const onAction = vi.fn().mockResolvedValue(undefined);
+    const item = createRepoItem('myorg/myrepo', 'Disable', '', onAction);
+
+    expect(item.className).toBe('repo-item');
+    expect(item.querySelector('.owner')?.textContent).toBe('myorg');
+    expect(item.querySelector('.slash')?.textContent).toBe('/');
+    expect(item.textContent).toContain('myrepo');
+  });
+
+  it('should call onAction when button is clicked', async () => {
+    const onAction = vi.fn().mockResolvedValue(undefined);
+    const item = createRepoItem('owner/repo', 'Disable', '', onAction);
+
+    const btn = item.querySelector('.repo-action') as HTMLButtonElement;
+    expect(btn.textContent).toBe('Disable');
+
+    btn.click();
+    expect(onAction).toHaveBeenCalledOnce();
+  });
+
+  it('should apply custom action class', () => {
+    const onAction = vi.fn().mockResolvedValue(undefined);
+    const item = createRepoItem('owner/repo', 'Unblock', 'unblock', onAction);
+
+    const btn = item.querySelector('.repo-action') as HTMLButtonElement;
+    expect(btn.classList.contains('unblock')).toBe(true);
+    expect(btn.textContent).toBe('Unblock');
+  });
+
+  it('should not render HTML in repo names (XSS safety)', () => {
+    const onAction = vi.fn().mockResolvedValue(undefined);
+    const item = createRepoItem('<img src=x onerror=alert(1)>/xss', 'Disable', '', onAction);
+
+    expect(item.querySelector('.owner')?.textContent).toBe('<img src=x onerror=alert(1)>');
+    expect(item.querySelector('img')).toBeNull();
   });
 });
