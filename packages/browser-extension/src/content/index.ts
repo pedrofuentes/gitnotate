@@ -185,7 +185,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
           scanAndHighlight();
         }
       }, 500);
-      featureLifecycle!.trackTimer(rescanTimer);
+      featureLifecycle?.trackTimer(rescanTimer);
     });
     rescanObserver.observe(document.body, { childList: true, subtree: true });
     featureLifecycle.trackObserver(rescanObserver);

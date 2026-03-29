@@ -71,7 +71,7 @@ export function findClosestTextarea(
 
     // Pass 1: exact line match with side filtering
     for (const ta of pool) {
-      const taLines = lineCache.get(ta)!;
+      const taLines = lineCache.get(ta) ?? [];
       if (taLines.includes(lineNumber)) {
         // If side is specified, verify the textarea is on the correct side
         if (diffSide && !isTextareaOnSide(ta, diffSide)) continue;
@@ -80,7 +80,7 @@ export function findClosestTextarea(
     }
     // Pass 2: ±1 tolerance (handles off-by-one from GitHub DOM structure)
     for (const ta of pool) {
-      const taLines = lineCache.get(ta)!;
+      const taLines = lineCache.get(ta) ?? [];
       if (taLines.some((n) => Math.abs(n - lineNumber) <= 1)) {
         if (diffSide && !isTextareaOnSide(ta, diffSide)) continue;
         return ta;
