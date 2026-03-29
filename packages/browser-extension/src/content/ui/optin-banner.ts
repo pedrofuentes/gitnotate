@@ -24,11 +24,22 @@ export function showOptInBanner(
 
   const title = document.createElement('div');
   title.className = 'gn-banner-title';
-  title.innerHTML = 'Gitnotate <span class="gn-badge">New</span>';
+  const titleText = document.createTextNode('Gitnotate ');
+  const badge = document.createElement('span');
+  badge.className = 'gn-badge';
+  badge.textContent = 'New';
+  title.appendChild(titleText);
+  title.appendChild(badge);
 
   const desc = document.createElement('div');
   desc.className = 'gn-banner-desc';
-  desc.innerHTML = `Enable sub-line commenting for <strong>${owner}/${repo}</strong>?`;
+  const descPrefix = document.createTextNode('Enable sub-line commenting for ');
+  const repoStrong = document.createElement('strong');
+  repoStrong.textContent = `${owner}/${repo}`;
+  const descSuffix = document.createTextNode('?');
+  desc.appendChild(descPrefix);
+  desc.appendChild(repoStrong);
+  desc.appendChild(descSuffix);
 
   body.appendChild(title);
   body.appendChild(desc);
@@ -65,7 +76,8 @@ export function showOptInBanner(
   actions.appendChild(dismissBtn);
   actions.appendChild(blockBtn);
 
-  banner.appendChild(iconWrapper.firstElementChild!);
+  const icon = iconWrapper.firstElementChild;
+  if (icon) banner.appendChild(icon);
   banner.appendChild(body);
   banner.appendChild(actions);
 
