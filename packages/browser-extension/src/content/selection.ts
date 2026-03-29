@@ -59,21 +59,28 @@ function determineSide(codeCell: HTMLElement): 'LEFT' | 'RIGHT' {
   if (codeCell.classList.contains('blob-code-deletion')) return 'LEFT';
   if (codeCell.classList.contains('blob-code-addition')) return 'RIGHT';
 
-  // New GitHub UI: check parent td for side class
+  // New GitHub UI: check parent td for side class or data-diff-side
   const parentTd = codeCell.closest('td');
   if (parentTd) {
-    if (parentTd.classList.contains('left-side-diff-cell')) return 'LEFT';
-    if (parentTd.classList.contains('right-side-diff-cell')) return 'RIGHT';
+    const diffSide = parentTd.getAttribute('data-diff-side');
+    if (diffSide === 'left') return 'LEFT';
+    if (diffSide === 'right') return 'RIGHT';
+    if (parentTd.classList.contains('left-side-diff-cell') || parentTd.classList.contains('left-side')) return 'LEFT';
+    if (parentTd.classList.contains('right-side-diff-cell') || parentTd.classList.contains('right-side')) return 'RIGHT';
   }
 
+  // Split view fallback: find the <td> containing the code cell,
+  // then check its position among row children
   const row = codeCell.closest('tr');
   if (!row) return 'RIGHT';
 
-  const cells = Array.from(row.children);
-  const idx = cells.indexOf(codeCell);
-
-  // In split view with 4 cells, first code cell (index 1) is LEFT
-  if (cells.length === 4 && idx <= 1) return 'LEFT';
+  const containingTd = codeCell.closest('td');
+  if (containingTd) {
+    const cells = Array.from(row.children);
+    const idx = cells.indexOf(containingTd);
+    // In split view with 4+ cells, first half is LEFT
+    if (cells.length >= 4 && idx < cells.length / 2) return 'LEFT';
+  }
 
   return 'RIGHT';
 }

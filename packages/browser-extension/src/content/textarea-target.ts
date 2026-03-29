@@ -101,6 +101,7 @@ export function findClosestTextarea(
  * Walks up from the textarea to find a parent element with side info.
  */
 function isTextareaOnSide(textarea: HTMLTextAreaElement, diffSide: string): boolean {
+  // Walk up from textarea to find side indicators
   let el: HTMLElement | null = textarea;
   while (el) {
     const side = el.getAttribute('data-diff-side');
@@ -111,9 +112,18 @@ function isTextareaOnSide(textarea: HTMLTextAreaElement, diffSide: string): bool
     if (el.classList.contains('right-side') || el.classList.contains('right-side-diff-cell')) {
       return diffSide === 'right';
     }
+    // Stop at the table/file level — don't walk beyond
+    if (el.tagName === 'TABLE' || el.classList.contains('file')) break;
     el = el.parentElement;
   }
-  return true;
+  // No side info — unified view or ambiguous. Allow match only if
+  // there's no split-view structure (i.e., the row has ≤ 3 cells)
+  const row = textarea.closest('tr');
+  if (row) {
+    const cellCount = row.closest('table')?.querySelector('tr')?.children.length ?? 0;
+    if (cellCount >= 4) return false; // Split view — can't determine side, reject
+  }
+  return true; // Unified view — no side distinction
 }
 
 /**
