@@ -27,12 +27,12 @@
 [data-gn-style="underline-dot"] .gn-highlight::before {
   content: '';
   position: absolute;
-  left: -1px;
-  bottom: -2px;
-  width: 6px;
-  height: 6px;
+  left: -3px;
+  bottom: -4px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background-color: inherit;
+  z-index: 1;
 }
 [data-gn-style="underline-dot"] .gn-highlight-color-0::before { background-color: #f9a825; }
 [data-gn-style="underline-dot"] .gn-highlight-color-1::before { background-color: #1e88e5; }
