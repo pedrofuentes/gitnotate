@@ -41,43 +41,6 @@
           <p class="gn-muted">No blocked repos.</p>
         </div>
       </div>
-
-      <!-- Advanced: API access (for sidecar mode) -->
-      <details id="gn-advanced" class="gn-section">
-        <summary class="gn-section-title gn-clickable">API Access (optional)</summary>
-        <p class="gn-muted">A GitHub token is only needed for file-view commenting (sidecar mode). PR commenting works without it.</p>
-
-        <!-- Signed-out state -->
-        <div id="gn-auth-signed-out" class="gn-auth-state" hidden>
-          <input
-            id="gn-pat-input"
-            type="password"
-            placeholder="ghp_... (Personal Access Token)"
-            class="gn-input"
-          />
-          <div class="gn-row">
-            <button id="gn-pat-save" class="gn-btn gn-btn-primary">Save</button>
-            <a
-              href="https://github.com/settings/tokens/new?scopes=repo&description=Gitnotate"
-              target="_blank"
-              class="gn-link"
-              >Create PAT ↗</a
-            >
-          </div>
-          <p id="gn-auth-error" class="gn-error" hidden></p>
-        </div>
-
-        <!-- Signed-in state -->
-        <div id="gn-auth-signed-in" class="gn-auth-state" hidden>
-          <p class="gn-label">
-            Signed in as <strong id="gn-username"></strong>
-          </p>
-          <p id="gn-scopes" class="gn-detail"></p>
-          <button id="gn-sign-out" class="gn-btn gn-btn-danger">
-            Sign out
-          </button>
-        </div>
-      </details>
     </div>
     <script type="module" src="popup.ts"></script>
   </body>

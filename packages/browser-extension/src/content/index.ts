@@ -9,7 +9,6 @@ import { createObserverLifecycle, type ObserverLifecycle } from './observer-life
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
 import { isRepoEnabled, enableRepo, isRepoBlocked, blockRepo } from '../storage/repo-settings';
 import { getHighlightStyle, applyHighlightStyle } from '../storage/highlight-style';
-import { initFileViewComments } from './file-view-handler';
 import { findClosestTextarea, injectGnMetadata } from './textarea-target';
 import './highlighter.css';
 import './ui/optin-banner.css';
@@ -82,10 +81,6 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   featureLifecycle = createObserverLifecycle();
 
   hideOptInBanner();
-
-  if (pageInfo.type === 'file-view' && pageInfo.filePath) {
-    initFileViewComments(pageInfo, { signal: featureLifecycle.signal });
-  }
 
   if (pageInfo.type === 'pr-files-changed') {
     initPrDiffFeatures(pageInfo, featureLifecycle);
