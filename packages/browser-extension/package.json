@@ -7,13 +7,17 @@
     "build": "vite build",
     "dev": "vite build --watch",
     "test": "vitest run",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "prepackage": "vite build",
+    "package": "node scripts/package.mjs"
   },
   "dependencies": {
     "@gitnotate/core": "workspace:*"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/jsdom": "^28.0.1",
+    "archiver": "^7.0.1",
     "jsdom": "^29.0.1",
     "vite": "^6.0.7"
   }
