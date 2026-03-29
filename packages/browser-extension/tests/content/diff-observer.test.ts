@@ -112,4 +112,31 @@ describe('observeDiffContent', () => {
     // Should not throw
     expect(() => observer.disconnect()).not.toThrow();
   });
+
+  it('should accept an AbortSignal and remove turbo:load listener on abort', async () => {
+    const callback = vi.fn();
+    const controller = new AbortController();
+    observer = observeDiffContent(callback, { signal: controller.signal });
+
+    // Simulate turbo:load — should fire callback for existing elements
+    const diffTable = document.createElement('table');
+    diffTable.classList.add('diff-table');
+    document.body.appendChild(diffTable);
+
+    document.dispatchEvent(new Event('turbo:load'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const callCountBeforeAbort = callback.mock.calls.length;
+    expect(callCountBeforeAbort).toBeGreaterThan(0);
+
+    // Abort and trigger turbo:load again
+    controller.abort();
+    callback.mockClear();
+
+    document.dispatchEvent(new Event('turbo:load'));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Should NOT fire callback after abort
+    expect(callback).not.toHaveBeenCalled();
+  });
 });
