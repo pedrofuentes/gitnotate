@@ -3,13 +3,7 @@ import type { SidecarFile, Annotation, Reply, Author } from './types';
 const SCHEMA_URL = 'https://gitnotate.dev/schemas/sidecar-v1.json';
 
 function generateId(): string {
-  // Simple random ID: 21-char base36 string
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let id = '';
-  for (let i = 0; i < 21; i++) {
-    id += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return id;
+  return crypto.randomUUID();
 }
 
 function nowISO(): string {
