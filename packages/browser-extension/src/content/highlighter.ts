@@ -140,7 +140,7 @@ export function highlightTextRange(info: HighlightInfo): HighlightResult | null 
   span.setAttribute('data-gn-end', String(info.end));
 
   // Assign a distinct color per highlight on the same line
-  const lineKey = `${info.filePath}:${info.lineNumber}`;
+  const lineKey = `${info.filePath}:${info.side}:${info.lineNumber}`;
   const colorIndex = (lineColorCounters.get(lineKey) ?? 0) % HIGHLIGHT_COLOR_COUNT;
   lineColorCounters.set(lineKey, colorIndex + 1);
   span.classList.add(`gn-highlight-color-${colorIndex}`);
