@@ -24,7 +24,8 @@ describe('optin-banner', () => {
 
     expect(banner).toBeInstanceOf(HTMLElement);
     expect(banner.textContent).toContain('myorg/myrepo');
-    expect(banner.textContent).toContain('Enable Gitnotate');
+    expect(banner.textContent).toContain('Gitnotate');
+    expect(banner.textContent).toContain('Enable');
     expect(document.body.contains(banner)).toBe(true);
   });
 
