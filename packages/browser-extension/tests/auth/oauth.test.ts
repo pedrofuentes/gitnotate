@@ -157,6 +157,23 @@ describe('oauth – setToken', () => {
     );
     expect(store['gn_auth_token']).toBeUndefined();
   });
+
+  it('should reject token without required repo scope (I-7)', async () => {
+    mockValidToken('octocat', 'read:user,gist');
+
+    await expect(setToken('ghp_norepo')).rejects.toThrow(
+      /required.*scope|repo.*scope|missing.*repo/i
+    );
+    expect(store['gn_auth_token']).toBeUndefined();
+  });
+
+  it('should accept token with repo scope among other scopes (I-7)', async () => {
+    mockValidToken('octocat', 'read:user,repo,gist');
+
+    await setToken('ghp_withrepo');
+
+    expect(store['gn_auth_token']).toBe('ghp_withrepo');
+  });
 });
 
 describe('oauth – clearToken', () => {

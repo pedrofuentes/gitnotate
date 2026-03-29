@@ -64,6 +64,12 @@ export async function setToken(token: string): Promise<void> {
     throw new Error('Invalid GitHub token');
   }
 
+  if (!validation.scopes.includes('repo')) {
+    throw new Error(
+      'Token is missing required scope: repo. Please generate a token with the "repo" scope.'
+    );
+  }
+
   await chrome.storage.local.set({
     [STORAGE_KEY_TOKEN]: token,
     [STORAGE_KEY_USERNAME]: validation.username,
