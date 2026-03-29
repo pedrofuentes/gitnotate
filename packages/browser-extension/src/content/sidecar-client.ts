@@ -1,6 +1,7 @@
 import { createGitHubApiClient } from '../auth/github-api-client';
 import { validateSidecarFile } from '@gitnotate/core';
 import type { SidecarFile } from '@gitnotate/core';
+import { debug } from './logger';
 
 function sidecarPath(owner: string, repo: string, filePath: string): string {
   return `/repos/${owner}/${repo}/contents/.comments/${filePath}.json`;
@@ -8,7 +9,11 @@ function sidecarPath(owner: string, repo: string, filePath: string): string {
 
 function toBase64(str: string): string {
   const bytes = new TextEncoder().encode(str);
-  return btoa(String.fromCharCode(...bytes));
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 function fromBase64(encoded: string): string {
@@ -42,7 +47,8 @@ export async function readSidecarFile(
     const validation = validateSidecarFile(parsed);
     if (!validation.valid) return null;
     return parsed as SidecarFile;
-  } catch {
+  } catch (err) {
+    debug('[Gitnotate] Failed to read sidecar:', err);
     return null;
   }
 }
@@ -63,8 +69,12 @@ export async function writeSidecarFile(
   let sha: string | undefined;
   const existing = await client.get(path);
   if (existing.ok) {
-    const data = await existing.json();
-    sha = data.sha;
+    try {
+      const data = await existing.json();
+      sha = data.sha;
+    } catch {
+      // Non-JSON response — treat as new file
+    }
   }
 
   const body: Record<string, unknown> = {
