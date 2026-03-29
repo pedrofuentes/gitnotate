@@ -13,8 +13,13 @@ vi.mock('../../src/auth/github-api-client', () => ({
   createGitHubApiClient: vi.fn(),
 }));
 
+vi.mock('../../src/content/logger', () => ({
+  debug: vi.fn(),
+}));
+
 import { createGitHubApiClient } from '../../src/auth/github-api-client';
 import { readSidecarFile, writeSidecarFile } from '../../src/content/sidecar-client';
+import { debug } from '../../src/content/logger';
 
 const mockedCreate = vi.mocked(createGitHubApiClient);
 
@@ -344,6 +349,87 @@ describe('sidecar path construction', () => {
 
     expect(mockClient.get).toHaveBeenCalledWith(
       '/repos/myorg/myrepo/contents/.comments/lib/utils/helpers.ts.json'
+    );
+  });
+});
+
+describe('toBase64 — large payload safety (I-1)', () => {
+  it('should handle sidecar bodies larger than 64KB without RangeError', async () => {
+    // Create a sidecar with a body large enough to trigger spread overflow in V8
+    const largeBody = 'x'.repeat(500_000);
+    const largeSidecar: SidecarFile = {
+      ...sampleSidecar,
+      annotations: [
+        {
+          ...sampleSidecar.annotations[0],
+          body: largeBody,
+        },
+      ],
+    };
+
+    mockClient.get.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Not Found' }),
+    });
+    mockClient.put.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ content: { sha: 'new123' } }),
+    });
+
+    // The current spread-based toBase64 will throw RangeError for >64KB
+    const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', largeSidecar);
+
+    expect(result).toBe(true);
+    // Verify the content round-trips correctly
+    const [, body] = mockClient.put.mock.calls[0];
+    const decoded = JSON.parse(
+      new TextDecoder().decode(
+        Uint8Array.from(atob(body.content), (c) => c.charCodeAt(0))
+      )
+    );
+    expect(decoded.annotations[0].body).toBe(largeBody);
+  });
+});
+
+describe('writeSidecarFile — non-JSON GET response (I-2)', () => {
+  it('should treat as new file when GET returns 200 with non-JSON body', async () => {
+    // GET returns 200 but .json() throws (e.g. HTML error page)
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => { throw new SyntaxError('Unexpected token < in JSON'); },
+    });
+    mockClient.put.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ content: { sha: 'new123' } }),
+    });
+
+    const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', sampleSidecar);
+
+    expect(result).toBe(true);
+    // sha should be undefined since the GET parse failed — treated as new file
+    const [, body] = mockClient.put.mock.calls[0];
+    expect(body.sha).toBeUndefined();
+  });
+});
+
+describe('readSidecarFile — error logging (I-3)', () => {
+  it('should call debug logger when encountering malformed data', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ content: '!!!invalid-base64!!!', sha: 'abc123' }),
+    });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toBeNull();
+    expect(debug).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to read sidecar'),
+      expect.any(Error),
     );
   });
 });
