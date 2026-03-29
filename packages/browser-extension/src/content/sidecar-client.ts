@@ -3,6 +3,20 @@ import { validateSidecarFile } from '@gitnotate/core';
 import type { SidecarFile } from '@gitnotate/core';
 import { debug } from './logger';
 
+const RETRY_DELAY_MS = 1000;
+
+async function fetchWithRetry(
+  fn: () => Promise<Response>
+): Promise<Response> {
+  try {
+    return await fn();
+  } catch (err) {
+    debug('[Gitnotate] Request failed, retrying in 1s:', err);
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    return fn();
+  }
+}
+
 function sidecarPath(owner: string, repo: string, filePath: string): string {
   return `/repos/${owner}/${repo}/contents/.comments/${filePath}.json`;
 }
@@ -36,7 +50,13 @@ export async function readSidecarFile(
     path += `?ref=${encodeURIComponent(ref)}`;
   }
 
-  const response = await client.get(path);
+  let response: Response;
+  try {
+    response = await fetchWithRetry(() => client.get(path));
+  } catch (err) {
+    debug('[Gitnotate] Failed to fetch sidecar after retry:', err);
+    return null;
+  }
   if (!response.ok) return null;
 
   try {
@@ -67,14 +87,18 @@ export async function writeSidecarFile(
 
   // Check if file already exists to get its sha for updates
   let sha: string | undefined;
-  const existing = await client.get(path);
-  if (existing.ok) {
-    try {
-      const data = await existing.json();
-      sha = data.sha;
-    } catch {
-      // Non-JSON response — treat as new file
+  try {
+    const existing = await fetchWithRetry(() => client.get(path));
+    if (existing.ok) {
+      try {
+        const data = await existing.json();
+        sha = data.sha;
+      } catch {
+        // Non-JSON response — treat as new file
+      }
     }
+  } catch {
+    // Network error on sha lookup — proceed without sha (treat as new file)
   }
 
   const body: Record<string, unknown> = {
@@ -86,6 +110,11 @@ export async function writeSidecarFile(
     body.sha = sha;
   }
 
-  const response = await client.put(path, body);
-  return response.ok;
+  try {
+    const response = await fetchWithRetry(() => client.put(path, body));
+    return response.ok;
+  } catch (err) {
+    debug('[Gitnotate] Failed to write sidecar after retry:', err);
+    return false;
+  }
 }

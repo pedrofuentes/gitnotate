@@ -64,7 +64,8 @@ export async function detectCurrentPR(): Promise<PullRequestInfo | null> {
       number: pr.number,
       headSha: pr.head.sha,
     };
-  } catch {
+  } catch (err) {
+    console.error('[Gitnotate] detectCurrentPR failed:', err);
     return null;
   }
 }
