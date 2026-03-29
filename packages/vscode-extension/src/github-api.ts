@@ -42,7 +42,8 @@ export class GitHubApiClient {
       );
 
       return response.ok;
-    } catch {
+    } catch (err) {
+      console.error('[Gitnotate] createReviewComment failed:', err);
       return false;
     }
   }
@@ -71,7 +72,8 @@ export class GitHubApiClient {
           line: c.line,
         })
       );
-    } catch {
+    } catch (err) {
+      console.error('[Gitnotate] listReviewComments failed:', err);
       return [];
     }
   }
