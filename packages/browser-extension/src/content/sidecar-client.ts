@@ -1,8 +1,20 @@
 import { createGitHubApiClient } from '../auth/github-api-client';
+import { validateSidecarFile } from '@gitnotate/core';
 import type { SidecarFile } from '@gitnotate/core';
 
 function sidecarPath(owner: string, repo: string, filePath: string): string {
   return `/repos/${owner}/${repo}/contents/.comments/${filePath}.json`;
+}
+
+function toBase64(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function fromBase64(encoded: string): string {
+  const binary = atob(encoded);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 export async function readSidecarFile(
@@ -16,14 +28,23 @@ export async function readSidecarFile(
 
   let path = sidecarPath(owner, repo, filePath);
   if (ref) {
-    path += `?ref=${ref}`;
+    path += `?ref=${encodeURIComponent(ref)}`;
   }
 
   const response = await client.get(path);
   if (!response.ok) return null;
 
-  const data = await response.json();
-  return JSON.parse(atob(data.content)) as SidecarFile;
+  try {
+    const data = await response.json();
+    if (!data.content) return null;
+    const decoded = fromBase64(data.content);
+    const parsed = JSON.parse(decoded);
+    const validation = validateSidecarFile(parsed);
+    if (!validation.valid) return null;
+    return parsed as SidecarFile;
+  } catch {
+    return null;
+  }
 }
 
 export async function writeSidecarFile(
@@ -48,7 +69,7 @@ export async function writeSidecarFile(
 
   const body: Record<string, unknown> = {
     message: message ?? `Update comments for ${filePath}`,
-    content: btoa(JSON.stringify(sidecar, null, 2)),
+    content: toBase64(JSON.stringify(sidecar, null, 2)),
   };
 
   if (sha) {
