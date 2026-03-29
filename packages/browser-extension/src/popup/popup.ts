@@ -138,6 +138,8 @@ async function renderEnabledRepos(): Promise<void> {
           const [owner, repoName] = repo.split('/');
           await disableRepo(owner, repoName);
           await renderEnabledRepos();
+          await renderStatus();
+          await reloadActiveTab();
         }),
       );
     }
@@ -166,6 +168,8 @@ async function renderBlockedRepos(): Promise<void> {
           const [owner, repoName] = repo.split('/');
           await unblockRepo(owner, repoName);
           await renderBlockedRepos();
+          await renderStatus();
+          await reloadActiveTab();
         }),
       );
     }
