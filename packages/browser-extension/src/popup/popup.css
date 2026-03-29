@@ -85,7 +85,12 @@ body {
   background: var(--accent-dim);
 }
 
-.status-badge.status-inactive {
+.status-badge.status-enabled {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.status-badge.status-available {
   color: var(--text-secondary);
   background: var(--bg-surface);
 }
@@ -112,7 +117,12 @@ body {
   background: var(--accent);
 }
 
-.status-dot.inactive {
+.status-dot.enabled {
+  background: var(--accent);
+  animation: none;
+}
+
+.status-dot.available {
   background: var(--text-secondary);
   animation: none;
 }

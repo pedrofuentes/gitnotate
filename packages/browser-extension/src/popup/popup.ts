@@ -16,14 +16,15 @@ const REPO_ICON_SVG = '<svg class="repo-icon" viewBox="0 0 16 16" fill="currentC
 
 // --- Status badge ---
 
-function parseGitHubUrl(url: string): { owner: string; repo: string; isPR: boolean } | null {
+function parseGitHubUrl(url: string): { owner: string; repo: string; isPrFiles: boolean } | null {
   try {
     const parsed = new URL(url);
     if (parsed.hostname !== 'github.com') return null;
     const parts = parsed.pathname.split('/').filter(Boolean);
     if (parts.length < 2) return null;
-    const isPR = parts.length >= 4 && parts[2] === 'pull';
-    return { owner: parts[0], repo: parts[1], isPR };
+    const isPrFiles = parts.length >= 4 && parts[2] === 'pull'
+      && (parts.length === 4 || parts[4] === 'files' || parts[4] === 'changes');
+    return { owner: parts[0], repo: parts[1], isPrFiles };
   } catch {
     return null;
   }
@@ -59,14 +60,18 @@ async function renderStatus(): Promise<void> {
     }
 
     const enabled = await isRepoEnabled(info.owner, info.repo);
-    if (enabled) {
+    if (enabled && info.isPrFiles) {
       textEl.textContent = 'Active';
       badge.className = 'status-badge status-active';
       if (dotEl) dotEl.className = 'status-dot active';
+    } else if (enabled) {
+      textEl.textContent = 'Enabled';
+      badge.className = 'status-badge status-enabled';
+      if (dotEl) dotEl.className = 'status-dot enabled';
     } else {
-      textEl.textContent = 'Inactive';
-      badge.className = 'status-badge status-inactive';
-      if (dotEl) dotEl.className = 'status-dot inactive';
+      textEl.textContent = 'Available';
+      badge.className = 'status-badge status-available';
+      if (dotEl) dotEl.className = 'status-dot available';
     }
   } catch {
     textEl.textContent = 'Ready';
