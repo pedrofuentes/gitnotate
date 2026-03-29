@@ -94,11 +94,20 @@ export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
   const span = document.createElement('span');
   span.className = 'gn-highlight';
   span.setAttribute('data-gn-comment-id', info.commentId);
+  span.setAttribute('data-gn-line', String(info.lineNumber));
+  span.setAttribute('data-gn-start', String(info.start));
+  span.setAttribute('data-gn-end', String(info.end));
 
   try {
     range.surroundContents(span);
   } catch {
     return null;
+  }
+
+  // Store metadata on the parent code cell <td> for future use
+  const td = codeCell.closest('td');
+  if (td) {
+    td.setAttribute('data-gn-metadata', `${info.lineNumber}:${info.start}:${info.end}`);
   }
 
   return span;
