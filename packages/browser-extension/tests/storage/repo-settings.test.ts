@@ -172,3 +172,75 @@ describe('repo-settings', () => {
     expect(await isRepoBlocked('owner', 'repo')).toBe(false);
   });
 });
+
+describe('repo-settings — chrome.storage error handling (I-8)', () => {
+  it('should return null when chrome.storage.local.get throws', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage quota exceeded');
+    };
+
+    const result = await getRepoSettings('owner', 'repo');
+    expect(result).toBeNull();
+
+    (chrome.storage.local as any).get = origGet;
+  });
+
+  it('should return false for isRepoEnabled when storage throws', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage error');
+    };
+
+    const result = await isRepoEnabled('owner', 'repo');
+    expect(result).toBe(false);
+
+    (chrome.storage.local as any).get = origGet;
+  });
+
+  it('should not throw when enableRepo encounters storage error on set', async () => {
+    const origSet = chrome.storage.local.set;
+    (chrome.storage.local as any).set = () => {
+      throw new Error('Storage write error');
+    };
+
+    await expect(enableRepo('owner', 'repo')).resolves.not.toThrow();
+
+    (chrome.storage.local as any).set = origSet;
+  });
+
+  it('should not throw when disableRepo encounters storage error', async () => {
+    const origSet = chrome.storage.local.set;
+    (chrome.storage.local as any).set = () => {
+      throw new Error('Storage write error');
+    };
+
+    await expect(disableRepo('owner', 'repo')).resolves.not.toThrow();
+
+    (chrome.storage.local as any).set = origSet;
+  });
+
+  it('should return empty array when getAllEnabledRepos encounters storage error', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage error');
+    };
+
+    const result = await getAllEnabledRepos();
+    expect(result).toEqual([]);
+
+    (chrome.storage.local as any).get = origGet;
+  });
+
+  it('should return false for isRepoBlocked when storage throws', async () => {
+    const origGet = chrome.storage.local.get;
+    (chrome.storage.local as any).get = () => {
+      throw new Error('Storage error');
+    };
+
+    const result = await isRepoBlocked('owner', 'repo');
+    expect(result).toBe(false);
+
+    (chrome.storage.local as any).get = origGet;
+  });
+});
