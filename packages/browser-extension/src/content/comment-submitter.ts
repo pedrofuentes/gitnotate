@@ -1,4 +1,5 @@
 import { debug } from './logger';
+import { TEXTAREA_SELECTORS } from './textarea-target';
 
 export interface SubmitCommentOptions {
   filePath: string;
@@ -33,20 +34,7 @@ function setTextareaValue(textarea: HTMLTextAreaElement, value: string): void {
  * Try to find any open comment textarea on the page near the target line.
  */
 function findAnyOpenTextarea(): HTMLTextAreaElement | null {
-  // New GitHub UI selectors
-  const selectors = [
-    'textarea[name="comment[body]"]',
-    'textarea.js-comment-field',
-    'textarea.comment-form-textarea',
-    'textarea[aria-label*="comment"]',
-    'textarea[aria-label*="Comment"]',
-    'textarea[placeholder*="comment"]',
-    'textarea[placeholder*="Leave a comment"]',
-    '.inline-comment-form textarea',
-    'file-attachment textarea',
-  ];
-
-  for (const sel of selectors) {
+  for (const sel of TEXTAREA_SELECTORS) {
     const ta = document.querySelector<HTMLTextAreaElement>(sel);
     if (ta && ta.offsetParent !== null) return ta; // visible textarea
   }
