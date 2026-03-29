@@ -6,6 +6,17 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      // Target: 80% per SENTINEL.md. Current baseline established 2026-03-29.
+      thresholds: {
+        lines: 90,
+        functions: 100,
+        branches: 90,
+        statements: 90,
+      },
+    },
   },
   resolve: {
     alias: {
