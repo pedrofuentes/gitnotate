@@ -1,7 +1,7 @@
-export type HighlightStyle = 'underline-dot' | 'underline' | 'background' | 'dashed';
+export type HighlightStyle = 'dashed' | 'underline' | 'background';
 
 const STORAGE_KEY = 'gitnotate-highlight-style';
-const DEFAULT_STYLE: HighlightStyle = 'underline-dot';
+const DEFAULT_STYLE: HighlightStyle = 'dashed';
 
 export async function getHighlightStyle(): Promise<HighlightStyle> {
   try {
