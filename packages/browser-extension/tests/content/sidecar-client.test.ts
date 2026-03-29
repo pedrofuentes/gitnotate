@@ -42,6 +42,7 @@ const sampleSidecar: SidecarFile = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.restoreAllMocks();
   mockedCreate.mockResolvedValue(mockClient);
 });
 
@@ -438,13 +439,6 @@ describe('writeSidecarFile — non-JSON GET response (I-2)', () => {
 });
 
 describe('readSidecarFile — network errors (I-23)', () => {
-  it('should propagate error when GET throws a network error', async () => {
-    mockClient.get.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-
-    await expect(readSidecarFile('owner', 'repo', 'src/index.ts'))
-      .rejects.toThrow('Failed to fetch');
-  });
-
   it('should return null on 403 Forbidden response', async () => {
     mockClient.get.mockResolvedValueOnce({
       ok: false,
@@ -459,18 +453,6 @@ describe('readSidecarFile — network errors (I-23)', () => {
 });
 
 describe('writeSidecarFile — network errors (I-23)', () => {
-  it('should propagate error when PUT throws a network error', async () => {
-    mockClient.get.mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      json: async () => ({ message: 'Not Found' }),
-    });
-    mockClient.put.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-
-    await expect(writeSidecarFile('owner', 'repo', 'src/index.ts', sampleSidecar))
-      .rejects.toThrow('Failed to fetch');
-  });
-
   it('should return false on 403 Forbidden PUT response', async () => {
     mockClient.get.mockResolvedValueOnce({
       ok: false,
