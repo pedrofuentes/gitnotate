@@ -1,7 +1,12 @@
 export type HighlightStyle = 'dashed' | 'underline' | 'background';
 
+const VALID_STYLES: readonly string[] = ['dashed', 'underline', 'background'];
 const STORAGE_KEY = 'gitnotate-highlight-style';
 const DEFAULT_STYLE: HighlightStyle = 'dashed';
+
+export function isValidStyle(value: unknown): value is HighlightStyle {
+  return typeof value === 'string' && VALID_STYLES.includes(value);
+}
 
 export async function getHighlightStyle(): Promise<HighlightStyle> {
   try {
@@ -14,6 +19,9 @@ export async function getHighlightStyle(): Promise<HighlightStyle> {
 }
 
 export async function setHighlightStyle(style: HighlightStyle): Promise<void> {
+  if (!isValidStyle(style)) {
+    throw new Error(`Invalid highlight style: ${String(style)}`);
+  }
   await chrome.storage.local.set({ [STORAGE_KEY]: style });
 }
 
