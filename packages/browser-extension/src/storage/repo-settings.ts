@@ -12,10 +12,15 @@ export async function getRepoSettings(
   owner: string,
   repo: string
 ): Promise<RepoSettings | null> {
-  const key = storageKey(owner, repo);
-  const result = await chrome.storage.local.get([key]);
-  const settings = result[key] as RepoSettings | undefined;
-  return settings ?? null;
+  try {
+    const key = storageKey(owner, repo);
+    const result = await chrome.storage.local.get([key]);
+    const settings = result[key] as RepoSettings | undefined;
+    return settings ?? null;
+  } catch (err) {
+    console.error('[Gitnotate] Failed to read repo settings:', err);
+    return null;
+  }
 }
 
 export async function isRepoEnabled(
@@ -30,48 +35,61 @@ export async function enableRepo(
   owner: string,
   repo: string
 ): Promise<void> {
-  const key = storageKey(owner, repo);
-  const existing = await getRepoSettings(owner, repo);
+  try {
+    const key = storageKey(owner, repo);
+    const existing = await getRepoSettings(owner, repo);
 
-  // Idempotent: preserve original timestamp if already enabled
-  const enabledAt =
-    existing?.enabled && existing.enabledAt
-      ? existing.enabledAt
-      : new Date().toISOString();
+    // Idempotent: preserve original timestamp if already enabled
+    const enabledAt =
+      existing?.enabled && existing.enabledAt
+        ? existing.enabledAt
+        : new Date().toISOString();
 
-  const settings: RepoSettings = { enabled: true, enabledAt };
-  await chrome.storage.local.set({ [key]: settings });
+    const settings: RepoSettings = { enabled: true, enabledAt };
+    await chrome.storage.local.set({ [key]: settings });
+  } catch (err) {
+    console.error('[Gitnotate] Failed to enable repo:', err);
+  }
 }
 
 export async function disableRepo(
   owner: string,
   repo: string
 ): Promise<void> {
-  const key = storageKey(owner, repo);
-  const existing = await getRepoSettings(owner, repo);
+  try {
+    const key = storageKey(owner, repo);
+    const existing = await getRepoSettings(owner, repo);
 
-  const settings: RepoSettings = {
-    enabled: false,
-    enabledAt: existing?.enabledAt,
-  };
-  await chrome.storage.local.set({ [key]: settings });
+    const settings: RepoSettings = {
+      enabled: false,
+      enabledAt: existing?.enabledAt,
+    };
+    await chrome.storage.local.set({ [key]: settings });
+  } catch (err) {
+    console.error('[Gitnotate] Failed to disable repo:', err);
+  }
 }
 
 export async function getAllEnabledRepos(): Promise<string[]> {
-  const allItems = await chrome.storage.local.get(null);
-  const prefix = 'repo:';
-  const enabled: string[] = [];
+  try {
+    const allItems = await chrome.storage.local.get(null);
+    const prefix = 'repo:';
+    const enabled: string[] = [];
 
-  for (const [key, value] of Object.entries(allItems)) {
-    if (key.startsWith(prefix)) {
-      const settings = value as RepoSettings;
-      if (settings.enabled) {
-        enabled.push(key.slice(prefix.length));
+    for (const [key, value] of Object.entries(allItems)) {
+      if (key.startsWith(prefix)) {
+        const settings = value as RepoSettings;
+        if (settings.enabled) {
+          enabled.push(key.slice(prefix.length));
+        }
       }
     }
-  }
 
-  return enabled;
+    return enabled;
+  } catch (err) {
+    console.error('[Gitnotate] Failed to list enabled repos:', err);
+    return [];
+  }
 }
 
 export async function isRepoBlocked(
@@ -86,32 +104,45 @@ export async function blockRepo(
   owner: string,
   repo: string,
 ): Promise<void> {
-  const key = storageKey(owner, repo);
-  const settings: RepoSettings = { enabled: false, blocked: true };
-  await chrome.storage.local.set({ [key]: settings });
+  try {
+    const key = storageKey(owner, repo);
+    const settings: RepoSettings = { enabled: false, blocked: true };
+    await chrome.storage.local.set({ [key]: settings });
+  } catch (err) {
+    console.error('[Gitnotate] Failed to block repo:', err);
+  }
 }
 
 export async function unblockRepo(
   owner: string,
   repo: string,
 ): Promise<void> {
-  const key = storageKey(owner, repo);
-  await chrome.storage.local.remove(key);
+  try {
+    const key = storageKey(owner, repo);
+    await chrome.storage.local.remove(key);
+  } catch (err) {
+    console.error('[Gitnotate] Failed to unblock repo:', err);
+  }
 }
 
 export async function getAllBlockedRepos(): Promise<string[]> {
-  const allItems = await chrome.storage.local.get(null);
-  const prefix = 'repo:';
-  const blocked: string[] = [];
+  try {
+    const allItems = await chrome.storage.local.get(null);
+    const prefix = 'repo:';
+    const blocked: string[] = [];
 
-  for (const [key, value] of Object.entries(allItems)) {
-    if (key.startsWith(prefix)) {
-      const settings = value as RepoSettings;
-      if (settings.blocked) {
-        blocked.push(key.slice(prefix.length));
+    for (const [key, value] of Object.entries(allItems)) {
+      if (key.startsWith(prefix)) {
+        const settings = value as RepoSettings;
+        if (settings.blocked) {
+          blocked.push(key.slice(prefix.length));
+        }
       }
     }
-  }
 
-  return blocked;
+    return blocked;
+  } catch (err) {
+    console.error('[Gitnotate] Failed to list blocked repos:', err);
+    return [];
+  }
 }

@@ -102,6 +102,20 @@ describe('GitHubApiClient', () => {
 
       expect(result).toBe(false);
     });
+
+    it('should log error to console.error on network failure (I-1)', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const error = new Error('Network error');
+      mockFetch.mockRejectedValueOnce(error);
+
+      await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Gitnotate]'),
+        error
+      );
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('listReviewComments', () => {
@@ -166,6 +180,20 @@ describe('GitHubApiClient', () => {
       const comments = await client.listReviewComments(pr);
 
       expect(comments).toEqual([]);
+    });
+
+    it('should log error to console.error on network failure (I-1)', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const error = new Error('Network error');
+      mockFetch.mockRejectedValueOnce(error);
+
+      await client.listReviewComments(pr);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Gitnotate]'),
+        error
+      );
+      consoleSpy.mockRestore();
     });
 
     it('should include correct headers for GET requests', async () => {

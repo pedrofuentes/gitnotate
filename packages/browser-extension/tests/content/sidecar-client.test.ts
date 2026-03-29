@@ -454,3 +454,104 @@ describe('readSidecarFile — error logging (I-3)', () => {
     );
   });
 });
+
+describe('readSidecarFile — retry on network error (I-2)', () => {
+  it('should retry once when client.get throws a network error', async () => {
+    // First call throws, second call succeeds
+    const encoded = btoa(JSON.stringify(sampleSidecar, null, 2));
+    mockClient.get
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ content: encoded, sha: 'abc123', encoding: 'base64' }),
+      });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toEqual(sampleSidecar);
+    expect(mockClient.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('should return null when both attempts fail', async () => {
+    mockClient.get
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockRejectedValueOnce(new Error('Failed to fetch again'));
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toBeNull();
+  });
+
+  it('should not retry on HTTP error responses (non-thrown)', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ message: 'Internal Server Error' }),
+    });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toBeNull();
+    expect(mockClient.get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('writeSidecarFile — retry on network error (I-2)', () => {
+  it('should retry once when client.get throws during sha lookup', async () => {
+    // First GET throws (sha lookup), retry succeeds with 404
+    mockClient.get
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ message: 'Not Found' }),
+      });
+    mockClient.put.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ content: { sha: 'new123' } }),
+    });
+
+    const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', sampleSidecar);
+
+    expect(result).toBe(true);
+    expect(mockClient.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('should retry once when client.put throws a network error', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Not Found' }),
+    });
+    // First PUT throws, retry succeeds
+    mockClient.put
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ content: { sha: 'new123' } }),
+      });
+
+    const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', sampleSidecar);
+
+    expect(result).toBe(true);
+    expect(mockClient.put).toHaveBeenCalledTimes(2);
+  });
+
+  it('should return false when both PUT attempts fail', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Not Found' }),
+    });
+    mockClient.put
+      .mockRejectedValueOnce(new Error('Failed to fetch'))
+      .mockRejectedValueOnce(new Error('Failed to fetch again'));
+
+    const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', sampleSidecar);
+
+    expect(result).toBe(false);
+  });
+});
