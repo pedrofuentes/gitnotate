@@ -4,7 +4,7 @@ import { getSelectionInfo } from './selection';
 import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights, HIGHLIGHT_COLORS } from './highlighter';
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
-import { isRepoEnabled, enableRepo } from '../storage/repo-settings';
+import { isRepoEnabled, enableRepo, isRepoBlocked, blockRepo } from '../storage/repo-settings';
 import { initFileViewComments } from './file-view-handler';
 import { findClosestTextarea, injectGnMetadata } from './textarea-target';
 import './highlighter.css';
@@ -32,6 +32,12 @@ async function init(): Promise<void> {
   debug('[Gitnotate] Repo enabled:', enabled);
 
   if (!enabled) {
+    const blocked = await isRepoBlocked(currentPageInfo.owner, currentPageInfo.repo);
+    if (blocked) {
+      debug('[Gitnotate] Repo blocked, skipping');
+      return;
+    }
+
     debug('[Gitnotate] Repo not enabled, page type:', currentPageInfo.type);
     if (currentPageInfo.type === 'pr-files-changed' || currentPageInfo.type === 'pr-conversation') {
       debug('[Gitnotate] Showing opt-in banner');
@@ -46,6 +52,10 @@ async function init(): Promise<void> {
         },
         () => {
           debug('[Gitnotate] User dismissed opt-in');
+        },
+        async () => {
+          await blockRepo(pageRef.owner, pageRef.repo);
+          debug(`[Gitnotate] Blocked for ${pageRef.owner}/${pageRef.repo}`);
         },
       );
     } else {

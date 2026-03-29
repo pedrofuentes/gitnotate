@@ -4,7 +4,8 @@ export function showOptInBanner(
   owner: string,
   repo: string,
   onEnable: () => void,
-  onDismiss: () => void
+  onDismiss: () => void,
+  onBlock: () => void,
 ): HTMLElement {
   // Remove any existing banner first
   hideOptInBanner();
@@ -35,8 +36,17 @@ export function showOptInBanner(
     removeBanner();
   });
 
+  const blockBtn = document.createElement('button');
+  blockBtn.className = 'gn-banner-block';
+  blockBtn.textContent = 'Never';
+  blockBtn.addEventListener('click', () => {
+    onBlock();
+    removeBanner();
+  });
+
   actions.appendChild(enableBtn);
   actions.appendChild(dismissBtn);
+  actions.appendChild(blockBtn);
   banner.appendChild(text);
   banner.appendChild(actions);
 

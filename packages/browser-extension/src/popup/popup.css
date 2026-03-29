@@ -53,13 +53,30 @@ h1 {
 
 .gn-repo-list {
   margin: 4px 0;
-  padding-left: 18px;
+  padding-left: 0;
+  list-style: none;
   font-size: 13px;
 }
 
-.gn-repo-list li {
-  margin: 2px 0;
+.gn-repo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
   color: #24292e;
+}
+
+.gn-btn-small {
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #586069;
+  background-color: #fff;
+  border-color: #d1d5da;
+}
+
+.gn-btn-small:hover {
+  color: #cb2431;
+  border-color: #cb2431;
 }
 
 /* Auth / Advanced section */
