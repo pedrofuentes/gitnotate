@@ -142,6 +142,25 @@
       fill: currentColor;
     }
 
+    .screenshot {
+      margin: 0 auto 3rem;
+      max-width: 100%;
+      text-align: center;
+    }
+
+    .screenshot img {
+      max-width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--bg-hover);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .screenshot figcaption {
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
     .features {
       display: grid;
       gap: 1rem;
@@ -236,6 +255,11 @@
         </a>
       </div>
     </section>
+
+    <figure class="screenshot">
+      <img src="./screenshot.png" alt="Gitnotate in action — sub-line highlights and color-matched comments on a GitHub PR diff">
+      <figcaption>Sub-line highlights with color-matched comment threads on a GitHub PR diff</figcaption>
+    </figure>
 
     <section class="features">
       <div class="feature">
