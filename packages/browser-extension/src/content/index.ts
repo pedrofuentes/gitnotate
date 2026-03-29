@@ -212,7 +212,7 @@ document.addEventListener('click', () => {
 function scanAndHighlight(): void {
   clearAllHighlights();
   const gnComments = scanForGnComments();
-  console.log(`[Gitnotate] Found ${gnComments.length} @gn comment(s)`);
+  console.log(`[Gitnotate] Found ${gnComments.length} ^gn comment(s)`);
 
   for (const gc of gnComments) {
     const { metadata } = gc.parsed;
@@ -235,7 +235,7 @@ function hideGnMetadataInComment(commentEl: HTMLElement): void {
   // If it only contains the @gn metadata (no user text), hide it entirely.
   // Otherwise, hide just the @gn text node within it.
   const text = commentEl.textContent ?? '';
-  const cleaned = text.replace(/@gn:\d+:\d+:\d+/, '').trim();
+  const cleaned = text.replace(/\^gn:\d+:\d+:\d+/, '').trim();
 
   if (!cleaned) {
     // Tag-only paragraph — hide the whole element
@@ -245,7 +245,7 @@ function hideGnMetadataInComment(commentEl: HTMLElement): void {
     const walker = document.createTreeWalker(commentEl, NodeFilter.SHOW_TEXT);
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent && /@gn:\d+:\d+:\d+/.test(node.textContent)) {
+      if (node.textContent && /\^gn:\d+:\d+:\d+/.test(node.textContent)) {
         const span = document.createElement('span');
         span.style.display = 'none';
         span.textContent = node.textContent;

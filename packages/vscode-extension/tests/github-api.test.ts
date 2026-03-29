@@ -38,7 +38,7 @@ describe('GitHubApiClient', () => {
         'src/index.ts',
         10,
         'RIGHT',
-        '<!-- @gn {"exact":"hello","start":0,"end":5} -->\n> 📌 **"hello"** (chars 0–5)\n\nLooks good!'
+        '<!-- ^gn {"exact":"hello","start":0,"end":5} -->\n> 📌 **"hello"** (chars 0–5)\n\nLooks good!'
       );
 
       expect(result).toBe(true);

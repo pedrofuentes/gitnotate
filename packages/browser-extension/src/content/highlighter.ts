@@ -104,10 +104,16 @@ export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
     return null;
   }
 
-  // Store metadata on the parent code cell <td> for future use
+  // Store metadata on the parent code cell <td> for future use (supports multiple)
   const td = codeCell.closest('td');
   if (td) {
-    td.setAttribute('data-gn-metadata', `${info.lineNumber}:${info.start}:${info.end}`);
+    const entry = `${info.lineNumber}:${info.start}:${info.end}`;
+    const existing = td.getAttribute('data-gn-metadata');
+    const entries: string[] = existing ? JSON.parse(existing) : [];
+    if (!entries.includes(entry)) {
+      entries.push(entry);
+    }
+    td.setAttribute('data-gn-metadata', JSON.stringify(entries));
   }
 
   return span;

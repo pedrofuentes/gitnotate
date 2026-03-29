@@ -2,7 +2,7 @@ export interface SubmitCommentOptions {
   filePath: string;
   lineNumber: number;
   side: 'LEFT' | 'RIGHT';
-  /** The full body including @gn metadata */
+  /** The full body including ^gn metadata */
   commentBody: string;
 }
 

@@ -7,8 +7,8 @@ export interface GnReviewComment {
   lineNumber: number;
 }
 
-// 3-field format: @gn:line:start:end
-const GN_TAG_RE = /@gn:\d+:\d+:\d+/g;
+// 3-field format: ^gn:line:start:end
+const GN_TAG_RE = /\^gn:\d+:\d+:\d+/g;
 
 /**
  * Scan the page for @gn tags using a single regex pass,
@@ -46,7 +46,7 @@ export function scanForGnComments(): GnReviewComment[] {
     if (!filePath || lineNumber <= 0) continue;
     seen.add(key);
 
-    console.log(`[Gitnotate] Found @gn:${lineNumber}:${parsed.metadata.start}:${parsed.metadata.end} file=${filePath}`);
+    console.log(`[Gitnotate] Found ^gn:${lineNumber}:${parsed.metadata.start}:${parsed.metadata.end} file=${filePath}`);
 
     results.push({
       commentElement: container,

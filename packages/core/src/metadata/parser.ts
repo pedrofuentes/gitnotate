@@ -1,7 +1,7 @@
 import type { GnCommentBody } from './types';
 
-// Matches @gn:line:start:end (3-field format, no backticks)
-const GN_TAG_RE = /@gn:(\d+):(\d+):(\d+)/;
+// Matches ^gn:line:start:end (3-field format, no backticks)
+const GN_TAG_RE = /\^gn:(\d+):(\d+):(\d+)/;
 
 export function parseGnComment(commentBody: string): GnCommentBody | null {
   const tagMatch = commentBody.match(GN_TAG_RE);

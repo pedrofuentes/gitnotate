@@ -6,7 +6,7 @@ import { scanForGnComments, type GnReviewComment } from '../../src/content/comme
  *
  * A `.file[data-path]` wraps a `.diff-table` with numbered lines.
  * Review comments sit inside the same `.file` container, after the
- * diff row they refer to.  The `@gn:start:end` tag lives inside a
+ * diff row they refer to.  The `^gn:start:end` tag lives inside a
  * `<code>` element (as GitHub renders backtick code spans).
  */
 function buildDiffFileDOM(opts: {
@@ -65,11 +65,11 @@ function buildDiffFileDOM(opts: {
 }
 
 /**
- * Build a @gn comment body HTML using the `@gn:line:start:end` format.
+ * Build a ^gn comment body HTML using the `^gn:line:start:end` format.
  * Without backticks, GitHub renders it as plain text in a `<p>`.
  */
 function gnCommentHTML(lineNumber: number, start: number, end: number, userComment?: string): string {
-  const tag = `@gn:${lineNumber}:${start}:${end}`;
+  const tag = `^gn:${lineNumber}:${start}:${end}`;
   if (userComment) {
     return `<p>${userComment}</p><p>${tag}</p>`;
   }
@@ -83,7 +83,7 @@ describe('scanForGnComments', () => {
     document.body.innerHTML = '';
   });
 
-  it('should find @gn comments in review comment elements', () => {
+  it('should find ^gn comments in review comment elements', () => {
     const file = buildDiffFileDOM({
       filePath: 'docs/proposal.md',
       lines: [
@@ -106,7 +106,7 @@ describe('scanForGnComments', () => {
     expect(results[0].parsed.metadata.lineNumber).toBe(3);
   });
 
-  it('should return empty array when no @gn comments exist', () => {
+  it('should return empty array when no ^gn comments exist', () => {
     const file = buildDiffFileDOM({
       filePath: 'docs/readme.md',
       lines: [{ number: 1, text: 'Hello world' }],
@@ -204,7 +204,7 @@ describe('scanForGnComments', () => {
     expect(results[0].lineNumber).toBe(2);
   });
 
-  it('should handle multiple @gn comments on the same page', () => {
+  it('should handle multiple ^gn comments on the same page', () => {
     const file1 = buildDiffFileDOM({
       filePath: 'a.ts',
       lines: [{ number: 1, text: 'alpha beta gamma' }],
@@ -258,18 +258,18 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].commentElement).toBeInstanceOf(HTMLElement);
-    // commentElement is the nearest container (p, div, td, li) of the @gn tag
+    // commentElement is the nearest container (p, div, td, li) of the ^gn tag
     expect(results[0].commentElement.tagName).toBe('P');
   });
 
-  it('should handle @gn tag inside a paragraph with code element', () => {
+  it('should handle ^gn tag inside a paragraph with code element', () => {
     const file = buildDiffFileDOM({
       filePath: 'file.ts',
       lines: [{ number: 1, text: 'hello world' }],
       comments: [
         {
           line: 1,
-          bodyHTML: '<p>@gn:1:0:5</p><p>Review this greeting</p>',
+          bodyHTML: '<p>^gn:1:0:5</p><p>Review this greeting</p>',
         },
       ],
     });

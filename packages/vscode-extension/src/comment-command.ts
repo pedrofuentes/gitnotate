@@ -50,7 +50,7 @@ export async function addCommentCommand(
     return; // User cancelled
   }
 
-  // Build @gn comment
+  // Build ^gn comment
   const selectedText = editor.document.getText(editor.selection);
   const metadata: GnMetadata = {
     exact: selectedText,
