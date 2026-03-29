@@ -17,7 +17,8 @@ export async function run(): Promise<void> {
 
     const owner = context.repo.owner;
     const repo = context.repo.repo;
-    const pull_number = context.payload.pull_request.number;
+    const pr = context.payload.pull_request;
+    const pull_number = pr.number;
 
     // 1. Find all changed files in this PR
     const { data: files } = await octokit.rest.pulls.listFiles({
@@ -44,7 +45,7 @@ export async function run(): Promise<void> {
         owner,
         repo,
         path: sidecarFile.filename,
-        ref: context.payload.pull_request.head.sha,
+        ref: pr.head.sha,
       });
 
       if (!('content' in sidecarData)) {
@@ -76,7 +77,7 @@ export async function run(): Promise<void> {
           owner,
           repo,
           path: targetFilePath,
-          ref: context.payload.pull_request.head.sha,
+          ref: pr.head.sha,
         });
 
         if (!('content' in targetData)) {
