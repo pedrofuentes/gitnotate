@@ -65,10 +65,10 @@ Enable Gitnotate only on the repositories where you want it. The extension shows
 The `^gn` metadata format is compact and human-readable:
 
 ```
-^gn[file.md:42:10-25:"selected phrase"]
+^gn:42:10:25
 ```
 
-This means: file `file.md`, line 42, characters 10–25, with the quoted text as a verification anchor.
+This means: line 42, character offsets 10 to 25 — the exact sub-line range you selected.
 
 ---
 
