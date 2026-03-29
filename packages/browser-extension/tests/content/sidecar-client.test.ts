@@ -188,6 +188,149 @@ describe('writeSidecarFile', () => {
   });
 });
 
+describe('readSidecarFile — error resilience (F4)', () => {
+  it('should return null when response JSON has no content field', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ sha: 'abc123' }), // missing content field
+    });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when content is not valid base64', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ content: '!!!invalid-base64!!!', sha: 'abc123' }),
+    });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when decoded content is not valid JSON', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ content: btoa('not-json{{{'), sha: 'abc123' }),
+    });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when decoded JSON fails sidecar schema validation', async () => {
+    const invalidSidecar = { version: '999', file: '', annotations: 'not-array' };
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ content: btoa(JSON.stringify(invalidSidecar)), sha: 'abc123' }),
+    });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).toBeNull();
+  });
+});
+
+describe('writeSidecarFile — Unicode safety (F3)', () => {
+  it('should handle sidecar with Unicode annotation body (emoji)', async () => {
+    const unicodeSidecar: SidecarFile = {
+      ...sampleSidecar,
+      annotations: [
+        {
+          ...sampleSidecar.annotations[0],
+          body: 'Great work! 🎉🚀 très bien',
+        },
+      ],
+    };
+
+    mockClient.get.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Not Found' }),
+    });
+    mockClient.put.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ content: { sha: 'new123' } }),
+    });
+
+    const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', unicodeSidecar);
+
+    expect(result).toBe(true);
+    // Verify the content can be decoded back
+    const [, body] = mockClient.put.mock.calls[0];
+    const decoded = JSON.parse(new TextDecoder().decode(
+      Uint8Array.from(atob(body.content), (c) => c.charCodeAt(0))
+    ));
+    expect(decoded.annotations[0].body).toBe('Great work! 🎉🚀 très bien');
+  });
+
+  it('should handle sidecar with CJK characters', async () => {
+    const cjkSidecar: SidecarFile = {
+      ...sampleSidecar,
+      annotations: [
+        {
+          ...sampleSidecar.annotations[0],
+          body: '这是中文注释 こんにちは',
+        },
+      ],
+    };
+
+    mockClient.get.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Not Found' }),
+    });
+    mockClient.put.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ content: { sha: 'new123' } }),
+    });
+
+    const result = await writeSidecarFile('owner', 'repo', 'src/index.ts', cjkSidecar);
+
+    expect(result).toBe(true);
+  });
+});
+
+describe('readSidecarFile — Unicode round-trip (F3)', () => {
+  it('should correctly decode Unicode content from base64', async () => {
+    const unicodeSidecar: SidecarFile = {
+      ...sampleSidecar,
+      annotations: [
+        {
+          ...sampleSidecar.annotations[0],
+          body: 'Comment with émojis 🎉 and ñ',
+        },
+      ],
+    };
+
+    // Encode with TextEncoder (the fixed way)
+    const jsonStr = JSON.stringify(unicodeSidecar, null, 2);
+    const bytes = new TextEncoder().encode(jsonStr);
+    const encoded = btoa(String.fromCharCode(...bytes));
+
+    mockClient.get.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ content: encoded, sha: 'abc123' }),
+    });
+
+    const result = await readSidecarFile('owner', 'repo', 'src/index.ts');
+
+    expect(result).not.toBeNull();
+    expect(result!.annotations[0].body).toBe('Comment with émojis 🎉 and ñ');
+  });
+});
+
 describe('sidecar path construction', () => {
   it('should construct correct API path for .comments/{filePath}.json', async () => {
     const encoded = btoa(JSON.stringify(sampleSidecar, null, 2));
