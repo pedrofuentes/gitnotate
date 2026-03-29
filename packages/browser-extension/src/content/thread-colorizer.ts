@@ -4,6 +4,7 @@
  */
 
 import { HIGHLIGHT_COLORS } from './highlighter';
+import { GITHUB_SELECTORS, queryBySelector } from './github-selectors';
 
 /**
  * Apply a colored left border to the comment thread container to
@@ -17,9 +18,9 @@ export function colorizeCommentThread(commentEl: HTMLElement, colorIndex: number
 
   // Walk up from the ^gn container to find the thread root
   const threadContainer =
-    commentEl.closest('[data-marker-id]') ??
-    commentEl.closest('[data-testid="review-thread"]')?.parentElement ??
-    commentEl.closest('.inline-comment-form');
+    commentEl.closest(GITHUB_SELECTORS.threadContainer[0]) ??
+    commentEl.closest(GITHUB_SELECTORS.threadContainer[1])?.parentElement ??
+    commentEl.closest(GITHUB_SELECTORS.threadContainer[2]);
   if (!threadContainer) return;
 
   // Apply a colored left border to the thread container
@@ -27,18 +28,14 @@ export function colorizeCommentThread(commentEl: HTMLElement, colorIndex: number
   (threadContainer as HTMLElement).setAttribute('data-gn-color-indicator', 'true');
 
   // For submitted comments: color the author name
-  const authorLink = threadContainer.querySelector<HTMLElement>(
-    '[data-testid="avatar-link"], .ActivityHeader-module__AuthorName__VJr9h',
-  );
+  const authorLink = queryBySelector(threadContainer, GITHUB_SELECTORS.authorLink);
   if (authorLink) {
     authorLink.style.color = color;
     authorLink.setAttribute('data-gn-color-indicator', 'true');
   }
 
   // For pending comment boxes: color the "Add a comment on line" heading
-  const heading = threadContainer.querySelector<HTMLElement>(
-    '.InlineReviewThread-module__inlineReviewThreadHeading__o7jqD, h4.prc-Heading-Heading-MtWFE',
-  );
+  const heading = queryBySelector(threadContainer, GITHUB_SELECTORS.threadHeading);
   if (heading) {
     heading.style.color = color;
     heading.setAttribute('data-gn-color-indicator', 'true');

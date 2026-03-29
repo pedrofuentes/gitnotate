@@ -6,6 +6,7 @@ import {
   resetColorCounters,
   type HighlightInfo,
 } from '../../src/content/highlighter';
+import { getMetadataEntries, clearMetadataStore } from '../../src/content/metadata-store';
 
 /**
  * Build a minimal diff line DOM: a `.file[data-path]` with a single
@@ -575,71 +576,56 @@ describe('SEC-01: CSS selector injection via filePath', () => {
   });
 });
 
-describe('SEC-02: unprotected JSON.parse of data-gn-metadata', () => {
+describe('PERF-06: WeakMap-based metadata storage (replaces data-gn-metadata)', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     resetColorCounters();
+    clearMetadataStore();
   });
 
-  it('should not throw when data-gn-metadata contains invalid JSON', () => {
-    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
-    document.body.appendChild(file);
-
-    // First highlight to create the td with metadata
-    highlightTextRange(
-      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'sec2a' }),
-    );
-
-    // Corrupt the metadata attribute
-    const td = document.querySelector('td.blob-code');
-    td?.setAttribute('data-gn-metadata', '{not valid json!!!');
-
-    // Second highlight on same line should not throw
-    expect(() =>
-      highlightTextRange(
-        makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'sec2b' }),
-      ),
-    ).not.toThrow();
-  });
-
-  it('should still create highlight when metadata is corrupted', () => {
+  it('should store metadata entries via WeakMap, not DOM attributes', () => {
     const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
     document.body.appendChild(file);
 
     highlightTextRange(
-      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'sec2c' }),
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'perf6a' }),
     );
 
-    // Corrupt metadata
-    const td = document.querySelector('td.blob-code');
-    td?.setAttribute('data-gn-metadata', 'corrupt');
+    const td = document.querySelector('td.blob-code') as HTMLElement;
+    // No DOM attribute should be set
+    expect(td.getAttribute('data-gn-metadata')).toBeNull();
+    // But WeakMap should have the entry
+    expect(getMetadataEntries(td)).toEqual(['1:0:5']);
+  });
+
+  it('should accumulate multiple entries on the same td', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'perf6b' }),
+    );
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'perf6c' }),
+    );
+
+    const td = document.querySelector('td.blob-code') as HTMLElement;
+    expect(getMetadataEntries(td)).toEqual(['1:0:5', '1:6:10']);
+  });
+
+  it('should still create highlight without issues on same line', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'perf6d' }),
+    );
 
     const result = highlightTextRange(
-      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'sec2d' }),
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'perf6e' }),
     );
 
     expect(result).not.toBeNull();
     expect(result!.span.textContent).toBe('beta');
-  });
-
-  it('should reset metadata to valid state after encountering corruption', () => {
-    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
-    document.body.appendChild(file);
-
-    highlightTextRange(
-      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'sec2e' }),
-    );
-
-    // Corrupt metadata
-    const td = document.querySelector('td.blob-code');
-    td?.setAttribute('data-gn-metadata', 'not-json');
-
-    highlightTextRange(
-      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'sec2f' }),
-    );
-
-    // Metadata should be valid JSON again
-    const metadata = td?.getAttribute('data-gn-metadata');
-    expect(() => JSON.parse(metadata!)).not.toThrow();
   });
 });

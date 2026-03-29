@@ -1,3 +1,5 @@
+import { addMetadataEntry } from './metadata-store';
+
 export interface HighlightInfo {
   filePath: string;
   lineNumber: number;
@@ -173,21 +175,11 @@ export function highlightTextRange(info: HighlightInfo): HighlightResult | null 
     }
   }
 
-  // Store metadata on the parent code cell <td> for future use (supports multiple)
+  // Store metadata on the parent code cell <td> via WeakMap (no serialization overhead)
   const td = codeCell.closest('td');
   if (td) {
     const entry = `${info.lineNumber}:${info.start}:${info.end}`;
-    const existing = td.getAttribute('data-gn-metadata');
-    let entries: string[];
-    try {
-      entries = existing ? JSON.parse(existing) : [];
-    } catch {
-      entries = [];
-    }
-    if (!entries.includes(entry)) {
-      entries.push(entry);
-    }
-    td.setAttribute('data-gn-metadata', JSON.stringify(entries));
+    addMetadataEntry(td, entry);
   }
 
   return { span, colorIndex };
