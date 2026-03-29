@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - 15 manual test cases documented in `docs/TESTING-STRATEGY.md`
 
 ### Changed
+- Annotation IDs now use `crypto.randomUUID()` (UUID v4 format) instead of `Math.random()`-based 21-char base62 strings — existing annotations are unaffected (IDs are validated as non-empty strings)
 - Metadata prefix changed from `@gn` to `^gn` (avoids GitHub @mention conflicts)
 - Metadata format changed from 2-field `^gn:START:END` to 3-field `^gn:LINE:START:END`
 - Backticks removed from metadata tags (plain text instead of code spans)
