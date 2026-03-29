@@ -1,5 +1,6 @@
 export interface RepoSettings {
   enabled: boolean;
+  blocked?: boolean;
   enabledAt?: string; // ISO 8601 timestamp
 }
 
@@ -71,4 +72,46 @@ export async function getAllEnabledRepos(): Promise<string[]> {
   }
 
   return enabled;
+}
+
+export async function isRepoBlocked(
+  owner: string,
+  repo: string,
+): Promise<boolean> {
+  const settings = await getRepoSettings(owner, repo);
+  return settings?.blocked === true;
+}
+
+export async function blockRepo(
+  owner: string,
+  repo: string,
+): Promise<void> {
+  const key = storageKey(owner, repo);
+  const settings: RepoSettings = { enabled: false, blocked: true };
+  await chrome.storage.local.set({ [key]: settings });
+}
+
+export async function unblockRepo(
+  owner: string,
+  repo: string,
+): Promise<void> {
+  const key = storageKey(owner, repo);
+  await chrome.storage.local.remove(key);
+}
+
+export async function getAllBlockedRepos(): Promise<string[]> {
+  const allItems = await chrome.storage.local.get(null);
+  const prefix = 'repo:';
+  const blocked: string[] = [];
+
+  for (const [key, value] of Object.entries(allItems)) {
+    if (key.startsWith(prefix)) {
+      const settings = value as RepoSettings;
+      if (settings.blocked) {
+        blocked.push(key.slice(prefix.length));
+      }
+    }
+  }
+
+  return blocked;
 }

@@ -50,10 +50,12 @@ export async function addCommentCommand(
     return; // User cancelled
   }
 
-  // Build @gn comment
+  // Build ^gn comment
   const selectedText = editor.document.getText(editor.selection);
   const metadata: GnMetadata = {
     exact: selectedText,
+    lineNumber: editor.selection.start.line + 1,
+    side: 'R',
     start: editor.selection.start.character,
     end: editor.selection.end.character,
   };

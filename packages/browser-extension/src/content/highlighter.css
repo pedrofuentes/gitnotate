@@ -1,14 +1,59 @@
 .gn-highlight {
-  background-color: rgba(255, 213, 79, 0.4);
-  border-bottom: 2px solid #f9a825;
   cursor: pointer;
   position: relative;
 }
 
-.gn-highlight:hover {
-  background-color: rgba(255, 213, 79, 0.7);
+.gn-highlight-pending {
+  border-bottom: 2px dashed #f9a825;
+  background-color: rgba(255, 213, 79, 0.15);
 }
 
+/* ============================================================
+   Style: Dashed underline + subtle tint (default)
+   Safe palette: no green/red to clash with GitHub diff colors
+   ============================================================ */
+.gn-highlight-color-0,
+[data-gn-style="dashed"] .gn-highlight-color-0 { border-bottom: 2px dashed #f9a825; background-color: rgba(255, 213, 79, 0.15); }
+.gn-highlight-color-1,
+[data-gn-style="dashed"] .gn-highlight-color-1 { border-bottom: 2px dashed #1e88e5; background-color: rgba(144, 202, 249, 0.15); }
+.gn-highlight-color-2,
+[data-gn-style="dashed"] .gn-highlight-color-2 { border-bottom: 2px dashed #8e24aa; background-color: rgba(206, 147, 216, 0.15); }
+.gn-highlight-color-3,
+[data-gn-style="dashed"] .gn-highlight-color-3 { border-bottom: 2px dashed #ef6c00; background-color: rgba(255, 183, 77, 0.15); }
+.gn-highlight-color-4,
+[data-gn-style="dashed"] .gn-highlight-color-4 { border-bottom: 2px dashed #00897b; background-color: rgba(128, 203, 196, 0.15); }
+.gn-highlight-color-5,
+[data-gn-style="dashed"] .gn-highlight-color-5 { border-bottom: 2px dashed #c2185b; background-color: rgba(240, 98, 146, 0.15); }
+
+/* ============================================================
+   Style: Underline only
+   ============================================================ */
+[data-gn-style="underline"] .gn-highlight-color-0 { border-bottom: 3px solid #f9a825; background: none; }
+[data-gn-style="underline"] .gn-highlight-color-1 { border-bottom: 3px solid #1e88e5; background: none; }
+[data-gn-style="underline"] .gn-highlight-color-2 { border-bottom: 3px solid #8e24aa; background: none; }
+[data-gn-style="underline"] .gn-highlight-color-3 { border-bottom: 3px solid #ef6c00; background: none; }
+[data-gn-style="underline"] .gn-highlight-color-4 { border-bottom: 3px solid #00897b; background: none; }
+[data-gn-style="underline"] .gn-highlight-color-5 { border-bottom: 3px solid #c2185b; background: none; }
+
+/* ============================================================
+   Style: Background fill (safe palette)
+   ============================================================ */
+[data-gn-style="background"] .gn-highlight-color-0 { background-color: rgba(255, 213, 79, 0.4); border-bottom: 2px solid #f9a825; }
+[data-gn-style="background"] .gn-highlight-color-0:hover { background-color: rgba(255, 213, 79, 0.7); }
+[data-gn-style="background"] .gn-highlight-color-1 { background-color: rgba(144, 202, 249, 0.4); border-bottom: 2px solid #1e88e5; }
+[data-gn-style="background"] .gn-highlight-color-1:hover { background-color: rgba(144, 202, 249, 0.7); }
+[data-gn-style="background"] .gn-highlight-color-2 { background-color: rgba(206, 147, 216, 0.4); border-bottom: 2px solid #8e24aa; }
+[data-gn-style="background"] .gn-highlight-color-2:hover { background-color: rgba(206, 147, 216, 0.7); }
+[data-gn-style="background"] .gn-highlight-color-3 { background-color: rgba(255, 183, 77, 0.4); border-bottom: 2px solid #ef6c00; }
+[data-gn-style="background"] .gn-highlight-color-3:hover { background-color: rgba(255, 183, 77, 0.7); }
+[data-gn-style="background"] .gn-highlight-color-4 { background-color: rgba(128, 203, 196, 0.4); border-bottom: 2px solid #00897b; }
+[data-gn-style="background"] .gn-highlight-color-4:hover { background-color: rgba(128, 203, 196, 0.7); }
+[data-gn-style="background"] .gn-highlight-color-5 { background-color: rgba(240, 98, 146, 0.4); border-bottom: 2px solid #c2185b; }
+[data-gn-style="background"] .gn-highlight-color-5:hover { background-color: rgba(240, 98, 146, 0.7); }
+
+/* ============================================================
+   Tooltip (shared across all styles)
+   ============================================================ */
 .gn-highlight-tooltip {
   display: none;
   position: absolute;

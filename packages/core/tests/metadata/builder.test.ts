@@ -4,36 +4,40 @@ import { parseGnComment } from '../../src/metadata/parser';
 import type { GnMetadata } from '../../src/metadata/types';
 
 describe('buildGnComment', () => {
-  it('should build comment with @gn tag at end', () => {
+  it('should build comment with ^gn tag including line number', () => {
     const metadata: GnMetadata = {
       exact: 'revenue growth exceeded expectations',
+      lineNumber: 5,
+      side: 'R',
       start: 12,
       end: 47,
     };
     const result = buildGnComment(metadata, 'Can we add the exact percentage?');
 
-    expect(result).toBe('Can we add the exact percentage? `@gn:12:47`');
+    expect(result).toBe('Can we add the exact percentage?\n^gn:5:R:12:47');
   });
 
   it('should return just the tag for empty user comment', () => {
-    const metadata: GnMetadata = { exact: 'text', start: 0, end: 4 };
+    const metadata: GnMetadata = { exact: 'text', lineNumber: 1, side: 'R', start: 0, end: 4 };
 
     const result = buildGnComment(metadata, '');
 
-    expect(result).toBe('`@gn:0:4`');
+    expect(result).toBe('^gn:1:R:0:4');
   });
 
   it('should handle multi-line user comments', () => {
-    const metadata: GnMetadata = { exact: 'foo', start: 0, end: 3 };
+    const metadata: GnMetadata = { exact: 'foo', lineNumber: 10, side: 'R', start: 0, end: 3 };
 
     const result = buildGnComment(metadata, 'First line.\n\nSecond paragraph.');
 
-    expect(result).toBe('First line.\n\nSecond paragraph. `@gn:0:3`');
+    expect(result).toBe('First line.\n\nSecond paragraph.\n^gn:10:R:0:3');
   });
 
   it('should produce output that parser can round-trip', () => {
     const metadata: GnMetadata = {
       exact: 'revenue growth',
+      lineNumber: 5,
+      side: 'R',
       start: 12,
       end: 47,
     };
@@ -42,25 +46,26 @@ describe('buildGnComment', () => {
     const parsed = parseGnComment(built);
 
     expect(parsed).not.toBeNull();
+    expect(parsed!.metadata.lineNumber).toBe(5);
     expect(parsed!.metadata.start).toBe(12);
     expect(parsed!.metadata.end).toBe(47);
     expect(parsed!.userComment).toBe('Add the exact percentage');
   });
 
   it('should handle special characters in user comment', () => {
-    const metadata: GnMetadata = { exact: 'test', start: 5, end: 9 };
+    const metadata: GnMetadata = { exact: 'test', lineNumber: 3, side: 'R', start: 5, end: 9 };
 
     const result = buildGnComment(metadata, 'Check "this" & <that>');
 
     expect(result).toContain('Check "this" & <that>');
-    expect(result).toContain('`@gn:5:9`');
+    expect(result).toContain('^gn:3:R:5:9');
   });
 
   it('should handle large offsets', () => {
-    const metadata: GnMetadata = { exact: 'text', start: 1000, end: 2000 };
+    const metadata: GnMetadata = { exact: 'text', lineNumber: 500, side: 'R', start: 1000, end: 2000 };
 
     const result = buildGnComment(metadata, 'Comment');
 
-    expect(result).toBe('Comment `@gn:1000:2000`');
+    expect(result).toBe('Comment\n^gn:500:R:1000:2000');
   });
 });

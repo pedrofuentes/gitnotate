@@ -27,20 +27,15 @@ describe('comment-decoration', () => {
   });
 
   describe('parseGnDecorations', () => {
-    it('should parse @gn comment and return decoration with correct range', () => {
-      const comment = [
-        '<!-- @gn {"exact":"revenue growth","start":12,"end":26} -->',
-        '> 📌 **"revenue growth"** (chars 12–26)',
-        '',
-        'Can we add a source?',
-      ].join('\n');
+    it('should parse ^gn comment and return decoration with correct range', () => {
+      const comment = 'Can we add a source?\n^gn:0:R:12:26';
 
       const decorations = parseGnDecorations([comment]);
 
       expect(decorations).toHaveLength(1);
       const dec = decorations[0];
 
-      // Range should be on line 0 (default lineOffset) with start/end from metadata
+      // Range should use lineNumber from metadata (0) with start/end offsets
       expect(dec.range).toBeInstanceOf(Range);
       expect(dec.range.start.line).toBe(0);
       expect(dec.range.start.character).toBe(12);
@@ -48,7 +43,7 @@ describe('comment-decoration', () => {
       expect(dec.range.end.character).toBe(26);
     });
 
-    it('should return empty array for comments without @gn metadata', () => {
+    it('should return empty array for comments without ^gn metadata', () => {
       const comment = 'This is a regular PR comment with no metadata.';
 
       const decorations = parseGnDecorations([comment]);
@@ -56,20 +51,10 @@ describe('comment-decoration', () => {
       expect(decorations).toHaveLength(0);
     });
 
-    it('should handle multiple @gn comments', () => {
+    it('should handle multiple ^gn comments', () => {
       const comments = [
-        [
-          '<!-- @gn {"exact":"hello","start":0,"end":5} -->',
-          '> 📌 **"hello"** (chars 0–5)',
-          '',
-          'First comment',
-        ].join('\n'),
-        [
-          '<!-- @gn {"exact":"world","start":10,"end":15} -->',
-          '> 📌 **"world"** (chars 10–15)',
-          '',
-          'Second comment',
-        ].join('\n'),
+        'First comment\n^gn:0:R:0:5',
+        'Second comment\n^gn:0:R:10:15',
       ];
 
       const decorations = parseGnDecorations(comments);
@@ -82,12 +67,7 @@ describe('comment-decoration', () => {
     });
 
     it('should extract hover message from user comment', () => {
-      const comment = [
-        '<!-- @gn {"exact":"text","start":0,"end":4} -->',
-        '> 📌 **"text"** (chars 0–4)',
-        '',
-        'This needs revision.',
-      ].join('\n');
+      const comment = 'This needs revision.\n^gn:0:R:0:4';
 
       const decorations = parseGnDecorations([comment]);
 
@@ -97,12 +77,7 @@ describe('comment-decoration', () => {
     });
 
     it('should handle comments with special characters', () => {
-      const comment = [
-        '<!-- @gn {"exact":"say \\"hello\\" <world>","start":0,"end":20} -->',
-        '> 📌 **"say \\"hello\\" &lt;world&gt;"** (chars 0–20)',
-        '',
-        'Interesting "quote" & <tag>',
-      ].join('\n');
+      const comment = 'Interesting "quote" & <tag>\n^gn:0:R:0:20';
 
       const decorations = parseGnDecorations([comment]);
 
@@ -113,12 +88,7 @@ describe('comment-decoration', () => {
     });
 
     it('should use lineOffset when provided', () => {
-      const comment = [
-        '<!-- @gn {"exact":"text","start":5,"end":9} -->',
-        '> 📌 **"text"** (chars 5–9)',
-        '',
-        'Comment on a specific line.',
-      ].join('\n');
+      const comment = 'Comment on a specific line.\n^gn:0:R:5:9';
 
       const decorations = parseGnDecorations([comment], 42);
 
@@ -130,26 +100,18 @@ describe('comment-decoration', () => {
     });
 
     it('should set hover message to highlighted text when user comment is empty', () => {
-      const comment = [
-        '<!-- @gn {"exact":"highlighted","start":0,"end":11} -->',
-        '> 📌 **"highlighted"** (chars 0–11)',
-      ].join('\n');
+      const comment = '^gn:0:R:0:11';
 
       const decorations = parseGnDecorations([comment]);
 
       expect(decorations).toHaveLength(1);
-      expect(decorations[0].hoverMessage).toBe('📌 "highlighted"');
+      expect(decorations[0].hoverMessage).toBe('📌 ""');
     });
 
-    it('should filter out non-@gn comments from mixed input', () => {
+    it('should filter out non-^gn comments from mixed input', () => {
       const comments = [
         'Regular comment without metadata',
-        [
-          '<!-- @gn {"exact":"word","start":3,"end":7} -->',
-          '> 📌 **"word"** (chars 3–7)',
-          '',
-          'A note',
-        ].join('\n'),
+        'A note\n^gn:0:R:3:7',
         'Another regular comment',
       ];
 

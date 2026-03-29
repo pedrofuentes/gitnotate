@@ -1,36 +1,99 @@
 export interface HighlightInfo {
   filePath: string;
   lineNumber: number;
+  side: 'L' | 'R';
   start: number;
   end: number;
   commentId: string;
+}
+
+export interface HighlightResult {
+  span: HTMLElement;
+  colorIndex: number;
+}
+
+export const HIGHLIGHT_COLOR_COUNT = 6;
+
+export const HIGHLIGHT_COLORS = [
+  '#f9a825', // yellow
+  '#1e88e5', // blue
+  '#8e24aa', // purple
+  '#ef6c00', // orange
+  '#00897b', // teal
+  '#c2185b', // pink
+];
+
+// Track how many highlights exist per line to assign distinct colors
+const lineColorCounters = new Map<string, number>();
+
+export function resetColorCounters(): void {
+  lineColorCounters.clear();
 }
 
 /**
  * Find the code cell for a given file path + line number.
  * Supports both old (.blob-code-inner) and new (.diff-text-inner) GitHub UI.
  */
-function findCodeCell(_filePath: string, lineNumber: number): HTMLElement | null {
-  // New GitHub UI: td[data-line-number] contains .diff-text-inner
-  const newCell = document.querySelector<HTMLElement>(
+function findCodeCell(filePath: string, lineNumber: number, side: 'L' | 'R'): HTMLElement | null {
+  const sideClass = side === 'L' ? 'left-side' : 'right-side';
+  const diffSide = side === 'L' ? 'left' : 'right';
+
+  // Scope search to the correct file container when filePath is available
+  const scopeEl = filePath
+    ? document.querySelector<HTMLElement>(
+        `.file[data-path="${filePath}"], [data-diff-anchor="${filePath}"]`,
+      )
+    : null;
+  const scope: ParentNode = scopeEl ?? document;
+
+  // New GitHub UI: use data-diff-side to find the correct side's cell
+  const sidedCell = scope.querySelector<HTMLElement>(
+    `td[data-diff-side="${diffSide}"][data-line-number="${lineNumber}"] .diff-text-inner`,
+  );
+  if (sidedCell) return sidedCell;
+
+  // New GitHub UI: side class on the cell
+  const sideClassCell = scope.querySelector<HTMLElement>(
+    `td.${sideClass}-diff-cell[data-line-number="${lineNumber}"] .diff-text-inner`,
+  );
+  if (sideClassCell) return sideClassCell;
+
+  // Generic fallback (unified view — no side distinction)
+  const genericCell = scope.querySelector<HTMLElement>(
     `td[data-line-number="${lineNumber}"] .diff-text-inner`,
   );
-  if (newCell) return newCell;
+  if (genericCell) return genericCell;
 
-  // Also try right-side cells specifically
-  const rightCell = document.querySelector<HTMLElement>(
-    `td.right-side-diff-cell[data-line-number="${lineNumber}"] .diff-text-inner`,
-  );
-  if (rightCell) return rightCell;
-
-  // Old GitHub UI fallback
-  const lineNumCell = document.querySelector<HTMLElement>(
+  // Old GitHub UI fallback: blob-num + blob-code-inner in the same row
+  const lineNumCell = scope.querySelector<HTMLElement>(
     `td.blob-num[data-line-number="${lineNumber}"]`,
   );
   if (lineNumCell) {
     const row = lineNumCell.closest('tr');
     if (row) {
-      return row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
+      const cell = row.querySelector<HTMLElement>('.blob-code-inner') ?? row.querySelector<HTMLElement>('.blob-code');
+      if (cell) return cell;
+    }
+  }
+
+  // New GitHub UI fallback: sibling <td>s with side filtering
+  const lineNumCells = scope.querySelectorAll<HTMLElement>(
+    `[data-line-number="${lineNumber}"]`,
+  );
+  for (const cell of lineNumCells) {
+    // Prefer the cell matching the requested side
+    const cellSide = cell.getAttribute('data-diff-side');
+    if (cellSide && cellSide !== diffSide) continue;
+
+    const row = cell.closest('tr');
+    if (!row) continue;
+
+    // Look for code cell on the correct side
+    const codeCells = row.querySelectorAll<HTMLElement>('.diff-text-inner, .blob-code-inner');
+    for (const cc of codeCells) {
+      const ccTd = cc.closest('td');
+      const ccSide = ccTd?.getAttribute('data-diff-side');
+      if (!ccSide || ccSide === diffSide) return cc;
     }
   }
 
@@ -43,8 +106,8 @@ function findCodeCell(_filePath: string, lineNumber: number): HTMLElement | null
  *
  * Returns the created span, or `null` if the line/range could not be resolved.
  */
-export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
-  const codeCell = findCodeCell(info.filePath, info.lineNumber);
+export function highlightTextRange(info: HighlightInfo): HighlightResult | null {
+  const codeCell = findCodeCell(info.filePath, info.lineNumber, info.side);
   if (!codeCell) return null;
 
   const fullText = codeCell.textContent ?? '';
@@ -72,10 +135,43 @@ export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
   const span = document.createElement('span');
   span.className = 'gn-highlight';
   span.setAttribute('data-gn-comment-id', info.commentId);
+  span.setAttribute('data-gn-line', String(info.lineNumber));
+  span.setAttribute('data-gn-start', String(info.start));
+  span.setAttribute('data-gn-end', String(info.end));
 
-  range.surroundContents(span);
+  // Assign a distinct color per highlight on the same line
+  const lineKey = `${info.filePath}:${info.side}:${info.lineNumber}`;
+  const colorIndex = (lineColorCounters.get(lineKey) ?? 0) % HIGHLIGHT_COLOR_COUNT;
+  lineColorCounters.set(lineKey, colorIndex + 1);
+  span.classList.add(`gn-highlight-color-${colorIndex}`);
 
-  return span;
+  try {
+    range.surroundContents(span);
+  } catch {
+    // surroundContents fails when the range crosses element boundaries
+    // (e.g., syntax highlighting spans). Fall back to extractContents.
+    try {
+      const fragment = range.extractContents();
+      span.appendChild(fragment);
+      range.insertNode(span);
+    } catch {
+      return null;
+    }
+  }
+
+  // Store metadata on the parent code cell <td> for future use (supports multiple)
+  const td = codeCell.closest('td');
+  if (td) {
+    const entry = `${info.lineNumber}:${info.start}:${info.end}`;
+    const existing = td.getAttribute('data-gn-metadata');
+    const entries: string[] = existing ? JSON.parse(existing) : [];
+    if (!entries.includes(entry)) {
+      entries.push(entry);
+    }
+    td.setAttribute('data-gn-metadata', JSON.stringify(entries));
+  }
+
+  return { span, colorIndex };
 }
 
 interface TextBoundary {
@@ -130,6 +226,7 @@ export function clearAllHighlights(): void {
   for (const span of highlights) {
     unwrapSpan(span);
   }
+  resetColorCounters();
 }
 
 /**

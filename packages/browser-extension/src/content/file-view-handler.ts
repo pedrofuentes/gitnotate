@@ -5,12 +5,12 @@ import {
   createSelector,
   addAnnotation,
   createSidecarFile,
-  type SidecarFile,
 } from '@gitnotate/core';
 import { readSidecarFile, writeSidecarFile } from './sidecar-client';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
 import { showFloatButton, hideFloatButton } from './ui/float-button';
 import { showCommentForm, hideCommentForm } from './ui/comment-form';
+import { debug } from './logger';
 
 /**
  * Extract the full text content of the rendered file from the DOM.
@@ -109,7 +109,7 @@ export async function initFileViewComments(
   const { owner, repo, branch, filePath } = pageInfo;
   if (!filePath) return;
 
-  console.log('[Gitnotate] File-view mode for', filePath);
+  debug('[Gitnotate] File-view mode for', filePath);
 
   // ── Load & highlight existing annotations ──────────────────────────
   let sidecar = await readSidecarFile(owner, repo, filePath, branch);
@@ -134,6 +134,7 @@ export async function initFileViewComments(
       highlightTextRange({
         filePath,
         lineNumber,
+        side: 'R',
         start: lineStart,
         end: lineEnd,
         commentId: annotation.id,

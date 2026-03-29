@@ -110,7 +110,7 @@ describe('submitViaGitHubUI', () => {
       filePath: 'docs/proposal.md',
       lineNumber: 3,
       side: 'RIGHT',
-      commentBody: '<!-- @gn {"exact":"revenue","start":8,"end":15} -->\nTest comment',
+      commentBody: '<!-- ^gn {"exact":"revenue","start":8,"end":15} -->\nTest comment',
     });
 
     expect(result).toBe(true);
@@ -145,7 +145,7 @@ describe('submitViaGitHubUI', () => {
       simulateGitHubFormInjection(fileEl, 3);
     });
 
-    const commentBody = '<!-- @gn {"exact":"revenue","start":8,"end":15} -->\nTest comment';
+    const commentBody = '<!-- ^gn {"exact":"revenue","start":8,"end":15} -->\nTest comment';
 
     await submitViaGitHubUI({
       filePath: 'docs/proposal.md',
