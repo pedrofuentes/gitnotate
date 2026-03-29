@@ -143,4 +143,34 @@ describe('detectCurrentPR', () => {
 
     expect(result).toBeNull();
   });
+
+  it('should log error to console.error when git command fails (I-1)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = new Error('not a git repo');
+    mockExec.mockImplementationOnce(simulateExecError(error) as any);
+
+    await detectCurrentPR();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Gitnotate]'),
+      error
+    );
+    consoleSpy.mockRestore();
+  });
+
+  it('should log error to console.error when fetch throws (I-1)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = new Error('Network failure');
+    mockExec.mockImplementationOnce(simulateExec('feature/net-err\n') as any);
+    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+    mockFetch.mockRejectedValueOnce(error);
+
+    await detectCurrentPR();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Gitnotate]'),
+      error
+    );
+    consoleSpy.mockRestore();
+  });
 });
