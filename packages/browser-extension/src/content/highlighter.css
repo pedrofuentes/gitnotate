@@ -3,6 +3,14 @@
   position: relative;
 }
 
+.gn-highlight-pending {
+  background-color: rgba(255, 213, 79, 0.4);
+  border-bottom: 2px solid #f9a825;
+}
+.gn-highlight-pending:hover {
+  background-color: rgba(255, 213, 79, 0.7);
+}
+
 /* Color palette for multiple highlights on the same line */
 .gn-highlight-color-0 {
   background-color: rgba(255, 213, 79, 0.4);

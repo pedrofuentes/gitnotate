@@ -22,7 +22,7 @@ function isDebugEnabled(): boolean {
 
 export function debug(...args: unknown[]): void {
   if (isDebugEnabled()) {
-    console.log('[Gitnotate]', ...args);
+    console.log(...args);
   }
 }
 

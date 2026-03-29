@@ -104,7 +104,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
         const textarea = findClosestTextarea(selInfo.lineElement, selInfo.lineNumber);
         if (!textarea) return;
 
-        debug('[Gitnotate] Selection + open textarea detected, injecting @gn metadata');
+        debug('[Gitnotate] Selection + open textarea detected, injecting ^gn metadata');
         injectGnMetadata(textarea, selInfo);
 
         // Highlight the selected text using the saved range
