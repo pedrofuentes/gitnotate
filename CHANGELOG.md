@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-03-29
+
 ### Added
 - Sub-line text selection and `^gn` metadata injection on PR diff pages
 - Proximity-based textarea targeting — metadata injected into the correct comment box by line number
@@ -17,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Distinct highlight colors for multiple comments on the same line (6-color palette)
 - Color association between highlights and comment threads (border + author name)
 - `data-gn-*` attributes on highlight spans and `<td>` for future use
+- Extension icons (16, 32, 48, 128px) — charcoal pin with emerald accent
+- GitHub Actions CI/CD — lint, test, build, release, and Pages deploy workflows
+- Privacy policy and landing page (GitHub Pages)
+- Store listing content for Chrome Web Store and Edge Add-ons
+- Build & packaging script (`pnpm package`) — creates versioned zip for store submission
+- Release process documentation (`docs/RELEASE.md`)
 - 15 manual test cases documented in `docs/TESTING-STRATEGY.md`
 
 ### Changed
