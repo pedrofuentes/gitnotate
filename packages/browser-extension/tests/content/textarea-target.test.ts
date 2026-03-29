@@ -531,3 +531,132 @@ describe('getTextareaLineNumbers', () => {
     expect(lineNums).toContain(5);
   });
 });
+
+// ---------------------------------------------------------------------------
+// DOM query optimization (PERF-03, PERF-04)
+// ---------------------------------------------------------------------------
+
+describe('DOM query optimization', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  describe('PERF-03: combined selector query', () => {
+    it('should query all textarea selectors in a single querySelectorAll call', () => {
+      buildDiffDom([
+        {
+          path: 'a.ts',
+          lines: [
+            { num: 1, code: 'const a = 1;', hasTextarea: true },
+            { num: 2, code: 'const b = 2;', hasTextarea: true },
+          ],
+        },
+      ]);
+
+      const spy = vi.spyOn(document, 'querySelectorAll');
+
+      findClosestTextarea();
+
+      // All textarea selectors should be combined into one querySelectorAll call
+      const textareaCalls = spy.mock.calls.filter(
+        ([sel]) => typeof sel === 'string' && (sel as string).includes('textarea'),
+      );
+      expect(textareaCalls).toHaveLength(1);
+
+      spy.mockRestore();
+    });
+
+    it('should still find textareas matched by different selectors', () => {
+      const { root } = buildDiffDom([
+        {
+          path: 'a.ts',
+          lines: [{ num: 1, code: 'line 1', hasTextarea: true }],
+        },
+      ]);
+
+      // Add a standalone textarea matched only by .js-comment-field selector
+      const extraTa = document.createElement('textarea');
+      extraTa.classList.add('js-comment-field');
+      Object.defineProperty(extraTa, 'offsetParent', { value: root, configurable: true });
+      Object.defineProperty(extraTa, 'offsetHeight', { value: 100, configurable: true });
+      root.querySelector('.file')!.appendChild(extraTa);
+
+      const spy = vi.spyOn(document, 'querySelectorAll');
+
+      findClosestTextarea();
+
+      // Should still use a single combined querySelectorAll call
+      const textareaCalls = spy.mock.calls.filter(
+        ([sel]) => typeof sel === 'string' && (sel as string).includes('textarea'),
+      );
+      expect(textareaCalls).toHaveLength(1);
+
+      spy.mockRestore();
+    });
+  });
+
+  describe('PERF-04: line number caching in 2-pass search', () => {
+    it('should not recompute textarea line numbers during ±1 tolerance pass', () => {
+      // 3 textareas at lines 5, 8, 11. Searching for line 10.
+      // Pass 1 (exact): no match. Pass 2 (±1): textarea at line 11 matches.
+      // Without caching: getTextareaLineNumbers called 6 times (3 per pass)
+      // With caching: computed only 3 times total
+      const { codeCells } = buildDiffDom([
+        {
+          path: 'a.ts',
+          lines: [
+            { num: 5, code: 'line 5', hasTextarea: true },
+            { num: 8, code: 'line 8', hasTextarea: true },
+            { num: 10, code: 'line 10' },
+            { num: 11, code: 'line 11', hasTextarea: true },
+          ],
+        },
+      ]);
+
+      // Count [data-line-number] queries as proxy for getTextareaLineNumbers calls
+      const originalQsa = Element.prototype.querySelectorAll;
+      let lineNumberQueryCount = 0;
+      const spy = vi.spyOn(Element.prototype, 'querySelectorAll').mockImplementation(
+        function (this: Element, ...args: [string]) {
+          if (args[0] === '[data-line-number]') {
+            lineNumberQueryCount++;
+          }
+          return originalQsa.apply(this, args) as NodeListOf<Element>;
+        } as typeof Element.prototype.querySelectorAll,
+      );
+
+      const nearLine10 = codeCells.get('a.ts:10')!;
+      const result = findClosestTextarea(nearLine10, 10);
+
+      // Should find textarea at line 11 via ±1 tolerance
+      expect(result).not.toBeNull();
+
+      // With caching: 3 textareas = at most 3 line-number queries
+      // Without caching: 6 queries (3 in exact pass + 3 in ±1 pass)
+      expect(lineNumberQueryCount).toBeLessThanOrEqual(3);
+
+      spy.mockRestore();
+    });
+
+    it('should produce identical results whether line numbers are cached or not', () => {
+      const { textareas, codeCells } = buildDiffDom([
+        {
+          path: 'a.ts',
+          lines: [
+            { num: 4, code: 'line 4', hasTextarea: true },
+            { num: 5, code: 'line 5', hasTextarea: true },
+            { num: 6, code: 'line 6' },
+          ],
+        },
+      ]);
+
+      // Exact match: line 5 → textarea at line 5
+      const nearLine5 = codeCells.get('a.ts:5')!;
+      expect(findClosestTextarea(nearLine5, 5)).toBe(textareas[1]);
+
+      // ±1 tolerance: line 6 → textarea at line 5 (|5-6| = 1)
+      const nearLine6 = codeCells.get('a.ts:6')!;
+      expect(findClosestTextarea(nearLine6, 6)).toBe(textareas[1]);
+    });
+  });
+});
