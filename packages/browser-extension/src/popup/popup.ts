@@ -4,7 +4,6 @@ import {
   disableRepo,
   unblockRepo,
   isRepoEnabled,
-  isRepoBlocked,
 } from '../storage/repo-settings.js';
 import {
   getHighlightStyle,
@@ -44,29 +43,21 @@ async function renderStatus(): Promise<void> {
 
     const info = parseGitHubUrl(tab.url);
     if (!info) {
-      textEl.textContent = 'Not GitHub';
-      badge.className = 'status-badge status-neutral';
-      if (dotEl) dotEl.className = 'status-dot neutral';
-      return;
-    }
-
-    const blocked = await isRepoBlocked(info.owner, info.repo);
-    if (blocked) {
-      textEl.textContent = 'Blocked';
-      badge.className = 'status-badge status-blocked';
-      if (dotEl) dotEl.className = 'status-dot blocked';
+      textEl.textContent = 'Inactive';
+      badge.className = 'status-badge status-inactive';
+      if (dotEl) dotEl.className = 'status-dot inactive';
       return;
     }
 
     const enabled = await isRepoEnabled(info.owner, info.repo);
     if (enabled) {
-      textEl.textContent = 'Enabled';
-      badge.className = 'status-badge status-enabled';
-      if (dotEl) dotEl.className = 'status-dot enabled';
+      textEl.textContent = 'Active';
+      badge.className = 'status-badge status-active';
+      if (dotEl) dotEl.className = 'status-dot active';
     } else {
-      textEl.textContent = 'Disabled';
-      badge.className = 'status-badge status-disabled';
-      if (dotEl) dotEl.className = 'status-dot disabled';
+      textEl.textContent = 'Inactive';
+      badge.className = 'status-badge status-inactive';
+      if (dotEl) dotEl.className = 'status-dot inactive';
     }
   } catch {
     textEl.textContent = 'Ready';

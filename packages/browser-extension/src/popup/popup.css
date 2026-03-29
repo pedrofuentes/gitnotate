@@ -80,22 +80,12 @@ body {
   border-radius: 20px;
 }
 
-.status-badge.status-enabled {
+.status-badge.status-active {
   color: var(--accent);
   background: var(--accent-dim);
 }
 
-.status-badge.status-disabled {
-  color: var(--text-tertiary);
-  background: var(--bg-surface);
-}
-
-.status-badge.status-blocked {
-  color: var(--danger);
-  background: var(--danger-dim);
-}
-
-.status-badge.status-neutral {
+.status-badge.status-inactive {
   color: var(--text-tertiary);
   background: var(--bg-surface);
 }
@@ -108,21 +98,11 @@ body {
   animation: pulse 2.5s ease-in-out infinite;
 }
 
-.status-dot.enabled {
+.status-dot.active {
   background: var(--accent);
 }
 
-.status-dot.disabled {
-  background: var(--text-tertiary);
-  animation: none;
-}
-
-.status-dot.blocked {
-  background: var(--danger);
-  animation: none;
-}
-
-.status-dot.neutral {
+.status-dot.inactive {
   background: var(--text-tertiary);
   animation: none;
 }
