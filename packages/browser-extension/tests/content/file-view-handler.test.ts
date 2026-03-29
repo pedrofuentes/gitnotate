@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import type { GitHubPageInfo } from '../../src/content/detector';
 import type { SidecarFile, Annotation } from '@gitnotate/core';
 
+vi.mock('../../src/content/logger', () => ({
+  debug: vi.fn(),
+}));
+
 // ── Mocks ────────────────────────────────────────────────────────────
 
 vi.mock('../../src/content/sidecar-client', () => ({
@@ -335,6 +339,94 @@ describe('initFileViewComments', () => {
       'src/utils.ts',
       updatedSidecar,
       expect.any(String),
+    );
+  });
+
+  it('should not update sidecar state when writeSidecarFile returns false', async () => {
+    const existingSidecar = makeSidecarFile([]);
+    buildFileViewDOM(['say hello world today']);
+
+    (readSidecarFile as Mock).mockResolvedValue(existingSidecar);
+    (createSelector as Mock).mockReturnValue({
+      exact: 'hello world',
+      prefix: 'say ',
+      suffix: ' today',
+    });
+    const updatedSidecar = makeSidecarFile([makeAnnotation()]);
+    (addAnnotation as Mock).mockReturnValue(updatedSidecar);
+    // First write fails
+    (writeSidecarFile as Mock).mockResolvedValue(false);
+    (createSidecarFile as Mock).mockReturnValue(existingSidecar);
+
+    // Capture the onSubmit from showCommentForm
+    let capturedOnSubmit: ((comment: string) => Promise<void>) | undefined;
+    (showCommentForm as Mock).mockImplementation((opts: { onSubmit: (comment: string) => Promise<void> }) => {
+      capturedOnSubmit = opts.onSubmit;
+      return document.createElement('div');
+    });
+
+    // Capture onComment from showFloatButton
+    let capturedOnComment: ((info: unknown) => void) | undefined;
+    (showFloatButton as Mock).mockImplementation((_info: unknown, onComment: (info: unknown) => void) => {
+      capturedOnComment = onComment;
+      return document.createElement('button');
+    });
+
+    await initFileViewComments(makePageInfo());
+
+    // Trigger selection + mouseup
+    const codeInner = document.querySelector('.blob-code-inner')!;
+    const range = document.createRange();
+    range.setStart(codeInner.firstChild!, 4);
+    range.setEnd(codeInner.firstChild!, 15);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+
+    document.querySelector('.blob-wrapper')!.dispatchEvent(
+      new MouseEvent('mouseup', { bubbles: true }),
+    );
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Click float button
+    capturedOnComment!({
+      exact: 'hello world',
+      start: 4,
+      end: 15,
+      lineNumber: 1,
+      filePath: 'src/utils.ts',
+      side: 'RIGHT' as const,
+      lineElement: codeInner,
+    });
+
+    // Submit comment — should throw because write fails
+    expect(capturedOnSubmit).toBeDefined();
+    await expect(capturedOnSubmit!('Great code!')).rejects.toThrow('Failed to save annotation');
+
+    // The key assertion: addAnnotation should have been called with the
+    // ORIGINAL sidecar (existingSidecar), proving state was NOT mutated
+    // on the first failed write. On a second attempt, it should still
+    // receive the original sidecar, not the failed update.
+    (addAnnotation as Mock).mockClear();
+    (writeSidecarFile as Mock).mockResolvedValue(false);
+
+    // Trigger second attempt
+    capturedOnComment!({
+      exact: 'hello world',
+      start: 4,
+      end: 15,
+      lineNumber: 1,
+      filePath: 'src/utils.ts',
+      side: 'RIGHT' as const,
+      lineElement: codeInner,
+    });
+
+    await expect(capturedOnSubmit!('Second try')).rejects.toThrow('Failed to save annotation');
+
+    // addAnnotation should be called with the original sidecar, not the
+    // updated one from the failed first attempt
+    expect(addAnnotation).toHaveBeenCalledWith(
+      existingSidecar,
+      expect.any(Object),
     );
   });
 });
