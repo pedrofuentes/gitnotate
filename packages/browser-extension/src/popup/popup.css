@@ -80,12 +80,51 @@ body {
   border-radius: 20px;
 }
 
+.status-badge.status-enabled {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.status-badge.status-disabled {
+  color: var(--text-tertiary);
+  background: var(--bg-surface);
+}
+
+.status-badge.status-blocked {
+  color: var(--danger);
+  background: var(--danger-dim);
+}
+
+.status-badge.status-neutral {
+  color: var(--text-tertiary);
+  background: var(--bg-surface);
+}
+
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--accent);
   animation: pulse 2.5s ease-in-out infinite;
+}
+
+.status-dot.enabled {
+  background: var(--accent);
+}
+
+.status-dot.disabled {
+  background: var(--text-tertiary);
+  animation: none;
+}
+
+.status-dot.blocked {
+  background: var(--danger);
+  animation: none;
+}
+
+.status-dot.neutral {
+  background: var(--text-tertiary);
+  animation: none;
 }
 
 @keyframes pulse {
