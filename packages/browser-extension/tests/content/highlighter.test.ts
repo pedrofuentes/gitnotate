@@ -97,54 +97,54 @@ describe('highlightTextRange', () => {
     );
     document.body.appendChild(file);
 
-    const span = highlightTextRange(makeInfo());
+    const result = highlightTextRange(makeInfo());
 
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe('revenue growth exceeded expectations');
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('revenue growth exceeded expectations');
   });
 
   it('should create a span with gn-highlight class', () => {
     const file = buildDiffLine('docs/proposal.md', 3, 'In Q3, our revenue growth exceeded expectations by a significant margin.');
     document.body.appendChild(file);
 
-    const span = highlightTextRange(makeInfo());
+    const result = highlightTextRange(makeInfo());
 
-    expect(span).not.toBeNull();
-    expect(span!.classList.contains('gn-highlight')).toBe(true);
+    expect(result).not.toBeNull();
+    expect(result!.span.classList.contains('gn-highlight')).toBe(true);
   });
 
   it('should set data-gn-comment-id attribute', () => {
     const file = buildDiffLine('docs/proposal.md', 3, 'In Q3, our revenue growth exceeded expectations by a significant margin.');
     document.body.appendChild(file);
 
-    const span = highlightTextRange(makeInfo({ commentId: 'review-42' }));
+    const result = highlightTextRange(makeInfo({ commentId: 'review-42' }));
 
-    expect(span).not.toBeNull();
-    expect(span!.getAttribute('data-gn-comment-id')).toBe('review-42');
+    expect(result).not.toBeNull();
+    expect(result!.span.getAttribute('data-gn-comment-id')).toBe('review-42');
   });
 
   it('should handle text offsets correctly', () => {
     const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
     document.body.appendChild(file);
 
-    const span = highlightTextRange(
+    const result = highlightTextRange(
       makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'c2' }),
     );
 
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe('beta');
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('beta');
   });
 
   it('should handle offset at start of line (start=0)', () => {
     const file = buildDiffLine('file.ts', 1, 'hello world');
     document.body.appendChild(file);
 
-    const span = highlightTextRange(
+    const result = highlightTextRange(
       makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'c3' }),
     );
 
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe('hello');
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('hello');
   });
 
   it('should handle offset at end of line', () => {
@@ -152,7 +152,7 @@ describe('highlightTextRange', () => {
     const file = buildDiffLine('file.ts', 1, text);
     document.body.appendChild(file);
 
-    const span = highlightTextRange(
+    const result = highlightTextRange(
       makeInfo({
         filePath: 'file.ts',
         lineNumber: 1,
@@ -162,61 +162,61 @@ describe('highlightTextRange', () => {
       }),
     );
 
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe('world');
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('world');
   });
 
   it('should handle offset beyond line length gracefully (no crash)', () => {
     const file = buildDiffLine('file.ts', 1, 'short');
     document.body.appendChild(file);
 
-    const span = highlightTextRange(
+    const result = highlightTextRange(
       makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 100, end: 200, commentId: 'c5' }),
     );
 
-    expect(span).toBeNull();
+    expect(result).toBeNull();
   });
 
   it('should return null when file element is not found', () => {
     // No DOM elements added
-    const span = highlightTextRange(makeInfo({ filePath: 'missing.ts' }));
+    const result = highlightTextRange(makeInfo({ filePath: 'missing.ts' }));
 
-    expect(span).toBeNull();
+    expect(result).toBeNull();
   });
 
   it('should return null when line number is not found', () => {
     const file = buildDiffLine('file.ts', 1, 'hello');
     document.body.appendChild(file);
 
-    const span = highlightTextRange(
+    const result = highlightTextRange(
       makeInfo({ filePath: 'file.ts', lineNumber: 999, commentId: 'c6' }),
     );
 
-    expect(span).toBeNull();
+    expect(result).toBeNull();
   });
 
   it('should highlight in new GitHub UI where line number and code are sibling cells', () => {
     const table = buildNewUiDiffLine('diff-abc123', 35, 'The system uses PostgreSQL as the primary database.');
     document.body.appendChild(table);
 
-    const span = highlightTextRange(
+    const result = highlightTextRange(
       makeInfo({ filePath: 'diff-abc123', lineNumber: 35, start: 16, end: 26, commentId: 'new-ui-1' }),
     );
 
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe('PostgreSQL');
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('PostgreSQL');
   });
 
   it('should find code cell in new UI even without blob-num class', () => {
     const table = buildNewUiDiffLine('diff-xyz', 10, 'import React from "react";');
     document.body.appendChild(table);
 
-    const span = highlightTextRange(
+    const result = highlightTextRange(
       makeInfo({ filePath: 'diff-xyz', lineNumber: 10, start: 7, end: 12, commentId: 'new-ui-2' }),
     );
 
-    expect(span).not.toBeNull();
-    expect(span!.textContent).toBe('React');
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('React');
   });
 });
 

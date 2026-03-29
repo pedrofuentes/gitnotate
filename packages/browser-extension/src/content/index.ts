@@ -2,7 +2,7 @@ import { detectGitHubPage, type GitHubPageInfo } from './detector';
 import { observeDiffContent } from './diff-observer';
 import { getSelectionInfo } from './selection';
 import { scanForGnComments } from './comment-scanner';
-import { highlightTextRange, clearAllHighlights } from './highlighter';
+import { highlightTextRange, clearAllHighlights, HIGHLIGHT_COLORS } from './highlighter';
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
 import { isRepoEnabled, enableRepo } from '../storage/repo-settings';
 import { initFileViewComments } from './file-view-handler';
@@ -211,6 +211,7 @@ document.addEventListener('click', () => {
 
 function scanAndHighlight(): void {
   clearAllHighlights();
+  clearCommentColorIndicators();
   const gnComments = scanForGnComments();
   console.log(`[Gitnotate] Found ${gnComments.length} ^gn comment(s)`);
 
@@ -218,7 +219,7 @@ function scanAndHighlight(): void {
     const { metadata } = gc.parsed;
     const commentId = gc.commentElement.id || `gn-${gc.filePath}-${gc.lineNumber}`;
 
-    highlightTextRange({
+    const result = highlightTextRange({
       filePath: gc.filePath,
       lineNumber: gc.lineNumber,
       start: metadata.start,
@@ -227,21 +228,20 @@ function scanAndHighlight(): void {
     });
 
     hideGnMetadataInComment(gc.commentElement);
+
+    if (result) {
+      colorizeCommentThread(gc.commentElement, result.colorIndex);
+    }
   }
 }
 
 function hideGnMetadataInComment(commentEl: HTMLElement): void {
-  // commentEl is the <p> (or container) holding the @gn tag.
-  // If it only contains the @gn metadata (no user text), hide it entirely.
-  // Otherwise, hide just the @gn text node within it.
   const text = commentEl.textContent ?? '';
   const cleaned = text.replace(/\^gn:\d+:\d+:\d+/, '').trim();
 
   if (!cleaned) {
-    // Tag-only paragraph — hide the whole element
     commentEl.style.display = 'none';
   } else {
-    // User text + tag — hide the text node containing @gn
     const walker = document.createTreeWalker(commentEl, NodeFilter.SHOW_TEXT);
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
@@ -253,5 +253,57 @@ function hideGnMetadataInComment(commentEl: HTMLElement): void {
         break;
       }
     }
+  }
+}
+
+/**
+ * Apply a colored left border to the comment thread container to
+ * visually associate it with its highlight color.
+ *
+ * For submitted comments: colors the author name link.
+ * For pending comment boxes: colors the "Add a comment on line" heading.
+ */
+function colorizeCommentThread(commentEl: HTMLElement, colorIndex: number): void {
+  const color = HIGHLIGHT_COLORS[colorIndex % HIGHLIGHT_COLORS.length];
+
+  // Walk up from the ^gn container to find the thread root
+  const threadContainer =
+    commentEl.closest('[data-marker-id]') ??
+    commentEl.closest('[data-testid="review-thread"]')?.parentElement ??
+    commentEl.closest('.inline-comment-form');
+  if (!threadContainer) return;
+
+  // Apply a colored left border to the thread container
+  (threadContainer as HTMLElement).style.borderLeft = `3px solid ${color}`;
+  (threadContainer as HTMLElement).setAttribute('data-gn-color-indicator', 'true');
+
+  // For submitted comments: color the author name
+  const authorLink = threadContainer.querySelector<HTMLElement>(
+    '[data-testid="avatar-link"], .ActivityHeader-module__AuthorName__VJr9h',
+  );
+  if (authorLink) {
+    authorLink.style.color = color;
+    authorLink.setAttribute('data-gn-color-indicator', 'true');
+  }
+
+  // For pending comment boxes: color the "Add a comment on line" heading
+  const heading = threadContainer.querySelector<HTMLElement>(
+    '.InlineReviewThread-module__inlineReviewThreadHeading__o7jqD, h4.prc-Heading-Heading-MtWFE',
+  );
+  if (heading) {
+    heading.style.color = color;
+    heading.setAttribute('data-gn-color-indicator', 'true');
+  }
+}
+
+/**
+ * Remove all color indicators applied by colorizeCommentThread.
+ */
+function clearCommentColorIndicators(): void {
+  const indicators = document.querySelectorAll<HTMLElement>('[data-gn-color-indicator]');
+  for (const el of indicators) {
+    el.style.borderLeft = '';
+    el.style.color = '';
+    el.removeAttribute('data-gn-color-indicator');
   }
 }

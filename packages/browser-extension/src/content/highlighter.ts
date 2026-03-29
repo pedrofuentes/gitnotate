@@ -6,7 +6,21 @@ export interface HighlightInfo {
   commentId: string;
 }
 
-const HIGHLIGHT_COLOR_COUNT = 6;
+export interface HighlightResult {
+  span: HTMLElement;
+  colorIndex: number;
+}
+
+export const HIGHLIGHT_COLOR_COUNT = 6;
+
+export const HIGHLIGHT_COLORS = [
+  '#f9a825', // yellow
+  '#43a047', // green
+  '#1e88e5', // blue
+  '#e53935', // red
+  '#8e24aa', // purple
+  '#ef6c00', // orange
+];
 
 // Track how many highlights exist per line to assign distinct colors
 const lineColorCounters = new Map<string, number>();
@@ -74,7 +88,7 @@ function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null 
  *
  * Returns the created span, or `null` if the line/range could not be resolved.
  */
-export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
+export function highlightTextRange(info: HighlightInfo): HighlightResult | null {
   const codeCell = findCodeCell(info.filePath, info.lineNumber);
   if (!codeCell) return null;
 
@@ -131,7 +145,7 @@ export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
     td.setAttribute('data-gn-metadata', JSON.stringify(entries));
   }
 
-  return span;
+  return { span, colorIndex };
 }
 
 interface TextBoundary {
