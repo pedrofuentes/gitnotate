@@ -236,6 +236,12 @@ function scanAndHighlight(): void {
 }
 
 function hideGnMetadataInComment(commentEl: HTMLElement): void {
+  // Don't hide metadata inside textareas — those are pending comments
+  // that need the ^gn tag visible in the editable text.
+  if (commentEl.closest('textarea') || commentEl.querySelector('textarea')) {
+    return;
+  }
+
   const text = commentEl.textContent ?? '';
   const cleaned = text.replace(/\^gn:\d+:\d+:\d+/, '').trim();
 
@@ -246,6 +252,8 @@ function hideGnMetadataInComment(commentEl: HTMLElement): void {
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
       if (node.textContent && /\^gn:\d+:\d+:\d+/.test(node.textContent)) {
+        // Don't touch text nodes inside textareas or form inputs
+        if (node.parentElement?.closest('textarea, input')) continue;
         const span = document.createElement('span');
         span.style.display = 'none';
         span.textContent = node.textContent;
