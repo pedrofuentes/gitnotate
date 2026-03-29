@@ -228,6 +228,42 @@ describe('initFileViewComments', () => {
     expect(showFloatButton).not.toHaveBeenCalled();
   });
 
+  it('should stop listening for mouseup after signal is aborted', async () => {
+    buildFileViewDOM(['say hello world today']);
+    (readSidecarFile as Mock).mockResolvedValue(null);
+
+    const controller = new AbortController();
+    await initFileViewComments(makePageInfo(), { signal: controller.signal });
+
+    const selectAndMouseup = async () => {
+      const codeInner = document.querySelector('.blob-code-inner')!;
+      const range = document.createRange();
+      range.setStart(codeInner.firstChild!, 4);
+      range.setEnd(codeInner.firstChild!, 15);
+      window.getSelection()!.removeAllRanges();
+      window.getSelection()!.addRange(range);
+      document.querySelector('.blob-wrapper')!.dispatchEvent(
+        new MouseEvent('mouseup', { bubbles: true }),
+      );
+      await new Promise((r) => setTimeout(r, 50));
+    };
+
+    // Before abort: our listener is active and contributes one call
+    (showFloatButton as Mock).mockClear();
+    await selectAndMouseup();
+    const callsBeforeAbort = (showFloatButton as Mock).mock.calls.length;
+
+    // Abort — removes our mouseup listener
+    controller.abort();
+
+    // After abort: our listener no longer fires, one fewer call
+    (showFloatButton as Mock).mockClear();
+    await selectAndMouseup();
+    const callsAfterAbort = (showFloatButton as Mock).mock.calls.length;
+
+    expect(callsAfterAbort).toBe(callsBeforeAbort - 1);
+  });
+
   it('should wire float button click to show comment form', async () => {
     buildFileViewDOM(['say hello world today']);
     (readSidecarFile as Mock).mockResolvedValue(null);
