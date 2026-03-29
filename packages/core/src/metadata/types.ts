@@ -1,5 +1,6 @@
 export interface GnMetadata {
   exact: string;
+  lineNumber: number;
   start: number;
   end: number;
 }

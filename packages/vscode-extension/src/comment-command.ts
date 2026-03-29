@@ -54,6 +54,7 @@ export async function addCommentCommand(
   const selectedText = editor.document.getText(editor.selection);
   const metadata: GnMetadata = {
     exact: selectedText,
+    lineNumber: editor.selection.start.line + 1,
     start: editor.selection.start.character,
     end: editor.selection.end.character,
   };

@@ -65,16 +65,14 @@ function buildDiffFileDOM(opts: {
 }
 
 /**
- * Build a @gn comment body HTML using the `@gn:start:end` format.
+ * Build a @gn comment body HTML using the `@gn:line:start:end` format.
  *
  * The tag is rendered inside a `<code>` element (as GitHub renders
- * backtick code spans).  Backtick text nodes surround the `<code>`
- * so that the container's textContent includes the backticks the
- * parser requires.
+ * backtick code spans).
  */
-function gnCommentHTML(start: number, end: number, userComment?: string): string {
-  const tag = `\`<code>@gn:${start}:${end}</code>\``;
-  return userComment ? `${tag} ${userComment}` : tag;
+function gnCommentHTML(lineNumber: number, start: number, end: number, userComment?: string): string {
+  const tag = `<code>@gn:${lineNumber}:${start}:${end}</code>`;
+  return userComment ? `<p>${tag} ${userComment}</p>` : `<p>${tag}</p>`;
 }
 
 const PLAIN_COMMENT_HTML = '<p>Looks good to me!</p>';
@@ -93,7 +91,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 3,
-          bodyHTML: gnCommentHTML(11, 47, 'Can we add the exact percentage here?'),
+          bodyHTML: gnCommentHTML(3, 11, 47, 'Can we add the exact percentage here?'),
         },
       ],
     });
@@ -128,7 +126,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 10,
-          bodyHTML: gnCommentHTML(15, 29, 'Should we validate inputs first?'),
+          bodyHTML: gnCommentHTML(10, 15, 29, 'Should we validate inputs first?'),
         },
       ],
     });
@@ -139,6 +137,7 @@ describe('scanForGnComments', () => {
     expect(results).toHaveLength(1);
     expect(results[0].parsed.metadata).toEqual({
       exact: '',
+      lineNumber: 10,
       start: 15,
       end: 29,
     });
@@ -152,7 +151,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 5,
-          bodyHTML: gnCommentHTML(16, 22, 'Rename this function'),
+          bodyHTML: gnCommentHTML(5, 16, 22, 'Rename this function'),
         },
       ],
     });
@@ -171,7 +170,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 42,
-          bodyHTML: gnCommentHTML(5, 9, 'Clarify this'),
+          bodyHTML: gnCommentHTML(42, 5, 9, 'Clarify this'),
         },
       ],
     });
@@ -194,7 +193,7 @@ describe('scanForGnComments', () => {
         { line: 1, bodyHTML: PLAIN_COMMENT_HTML },
         {
           line: 2,
-          bodyHTML: gnCommentHTML(5, 8, 'Fix this'),
+          bodyHTML: gnCommentHTML(2, 5, 8, 'Fix this'),
         },
       ],
     });
@@ -213,7 +212,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: gnCommentHTML(0, 5, 'Comment A'),
+          bodyHTML: gnCommentHTML(1, 0, 5, 'Comment A'),
         },
       ],
     });
@@ -224,7 +223,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 7,
-          bodyHTML: gnCommentHTML(6, 13, 'Comment B'),
+          bodyHTML: gnCommentHTML(7, 6, 13, 'Comment B'),
         },
       ],
     });
@@ -250,7 +249,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: gnCommentHTML(0, 5, 'Greeting'),
+          bodyHTML: gnCommentHTML(1, 0, 5, 'Greeting'),
         },
       ],
     });
@@ -260,7 +259,8 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].commentElement).toBeInstanceOf(HTMLElement);
-    expect(results[0].commentElement.classList.contains('comment-body')).toBe(true);
+    // commentElement is the nearest container (p, div, td, li) of the @gn tag
+    expect(results[0].commentElement.tagName).toBe('P');
   });
 
   it('should handle @gn tag inside a paragraph with code element', () => {
@@ -270,7 +270,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: '<p>`<code>@gn:0:5</code>` Review this greeting</p>',
+          bodyHTML: '<p><code>@gn:1:0:5</code> Review this greeting</p>',
         },
       ],
     });
@@ -290,7 +290,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: gnCommentHTML(0, 5, 'Use greeting'),
+          bodyHTML: gnCommentHTML(1, 0, 5, 'Use greeting'),
         },
       ],
       useDataDiffAnchor: true,

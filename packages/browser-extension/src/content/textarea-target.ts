@@ -211,6 +211,7 @@ export function injectGnMetadata(
 ): void {
   const metadata = {
     exact: selInfo.exact,
+    lineNumber: selInfo.lineNumber,
     start: selInfo.start,
     end: selInfo.end,
   };

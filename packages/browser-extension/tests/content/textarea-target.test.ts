@@ -329,15 +329,14 @@ describe('injectGnMetadata', () => {
     document.body.innerHTML = '';
   });
 
-  it('should set textarea value with @gn metadata prefix', () => {
+  it('should set textarea value with @gn metadata including line number', () => {
     const textarea = document.createElement('textarea');
     document.body.appendChild(textarea);
-    const selInfo = makeSelectionInfo({ exact: 'hello', start: 0, end: 5 });
+    const selInfo = makeSelectionInfo({ exact: 'hello', start: 0, end: 5, lineNumber: 7 });
 
     injectGnMetadata(textarea, selInfo);
 
-    expect(textarea.value).toContain('@gn');
-    expect(textarea.value).toContain('0:5');
+    expect(textarea.value).toContain('@gn:7:0:5');
   });
 
   it('should dispatch input and change events', () => {

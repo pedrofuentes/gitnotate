@@ -7,7 +7,8 @@ export interface GnReviewComment {
   lineNumber: number;
 }
 
-const GN_TAG_RE = /@gn:\d+:\d+/g;
+// 3-field format: @gn:line:start:end
+const GN_TAG_RE = /@gn:\d+:\d+:\d+/g;
 
 /**
  * Scan the page for @gn tags using a single regex pass,
@@ -17,7 +18,6 @@ export function scanForGnComments(): GnReviewComment[] {
   const results: GnReviewComment[] = [];
   const seen = new Set<string>();
 
-  // Single regex scan across all text nodes via TreeWalker
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   let node: Text | null;
 
@@ -27,36 +27,26 @@ export function scanForGnComments(): GnReviewComment[] {
 
     if (!GN_TAG_RE.test(text)) continue;
 
-    // Found a text node containing @gn:start:end
-    // Get the parent element for context
     const el = node.parentElement;
     if (!el) continue;
 
-    // Get the full comment text (parent paragraph or container)
     const container = el.closest('p, div, td, li') ?? el;
     const fullText = container.textContent ?? '';
 
     const parsed = parseGnComment(fullText);
-    if (!parsed) {
-      continue;
-    }
+    if (!parsed) continue;
 
+    // Use lineNumber from metadata (reliable) + filePath from DOM
+    const lineNumber = parsed.metadata.lineNumber;
     const filePath = resolveFilePath(container);
-    const lineNumber = resolveLineNumber(container);
 
-    // Deduplicate by start:end.
-    // When file/line can't be resolved (comment appears in a non-diff
-    // context like a review summary panel), skip it — a later occurrence
-    // in the actual diff thread will have valid context.
-    const key = `${parsed.metadata.start}:${parsed.metadata.end}`;
+    const key = `${lineNumber}:${parsed.metadata.start}:${parsed.metadata.end}`;
     if (seen.has(key)) continue;
 
-    if (!filePath || lineNumber <= 0) {
-      continue;
-    }
+    if (!filePath || lineNumber <= 0) continue;
     seen.add(key);
 
-    console.log(`[Gitnotate] Found @gn:${parsed.metadata.start}:${parsed.metadata.end} file=${filePath} line=${lineNumber}`);
+    console.log(`[Gitnotate] Found @gn:${lineNumber}:${parsed.metadata.start}:${parsed.metadata.end} file=${filePath}`);
 
     results.push({
       commentElement: container,
@@ -79,22 +69,4 @@ function resolveFilePath(el: HTMLElement): string {
     current = current.parentElement;
   }
   return '';
-}
-
-function resolveLineNumber(el: HTMLElement): number {
-  let current: HTMLElement | null = el;
-  while (current) {
-    const ln = current.getAttribute('data-line-number');
-    if (ln) return Number(ln);
-
-    // Check diff-line-key format: "b:5-l:null-r:5"
-    const dlk = current.getAttribute('data-diff-line-key');
-    if (dlk) {
-      const match = dlk.match(/r:(\d+)/);
-      if (match) return Number(match[1]);
-    }
-
-    current = current.parentElement;
-  }
-  return 0;
 }

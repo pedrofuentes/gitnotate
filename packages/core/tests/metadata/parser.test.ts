@@ -2,87 +2,63 @@ import { describe, it, expect } from 'vitest';
 import { parseGnComment } from '../../src/metadata/parser';
 
 describe('parseGnComment', () => {
-  it('should parse `@gn:start:end` format', () => {
-    const result = parseGnComment('My comment `@gn:12:47`');
+  it('should parse @gn:line:start:end format with backticks', () => {
+    const result = parseGnComment('My comment `@gn:5:12:47`');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(5);
     expect(result!.metadata.start).toBe(12);
     expect(result!.metadata.end).toBe(47);
     expect(result!.userComment).toBe('My comment');
   });
 
   it('should return null for comment without @gn tag', () => {
-    const result = parseGnComment('Just a regular comment');
-
-    expect(result).toBeNull();
+    expect(parseGnComment('Just a regular comment')).toBeNull();
   });
 
   it('should handle tag-only comment (no user text)', () => {
-    const result = parseGnComment('`@gn:0:10`');
+    const result = parseGnComment('`@gn:1:0:10`');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(1);
     expect(result!.metadata.start).toBe(0);
     expect(result!.metadata.end).toBe(10);
     expect(result!.userComment).toBe('');
   });
 
   it('should handle multi-line user comment with tag at end', () => {
-    const result = parseGnComment('First line.\n\nSecond paragraph. `@gn:5:20`');
+    const result = parseGnComment('First line.\n\nSecond paragraph. `@gn:3:5:20`');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(3);
     expect(result!.metadata.start).toBe(5);
     expect(result!.metadata.end).toBe(20);
     expect(result!.userComment).toBe('First line.\n\nSecond paragraph.');
   });
 
   it('should handle large offsets', () => {
-    const result = parseGnComment('Comment `@gn:1000:2000`');
+    const result = parseGnComment('Comment `@gn:500:1000:2000`');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(500);
     expect(result!.metadata.start).toBe(1000);
     expect(result!.metadata.end).toBe(2000);
   });
 
   it('should return null for malformed tag', () => {
-    expect(parseGnComment('`@gn:abc:def`')).toBeNull();
+    expect(parseGnComment('`@gn:abc:def:ghi`')).toBeNull();
     expect(parseGnComment('`@gn:12`')).toBeNull();
     expect(parseGnComment('`@gn:`')).toBeNull();
+    // Old 2-field format no longer supported
+    expect(parseGnComment('`@gn:12:47`')).toBeNull();
   });
 
-  it('should handle tag without backticks (rendered in <code> element)', () => {
-    // GitHub renders `@gn:12:47` as <code>@gn:12:47</code>,
-    // stripping backticks from textContent. Must still parse.
-    const result = parseGnComment('@gn:12:47');
+  it('should parse without backticks (rendered in <code> element)', () => {
+    const result = parseGnComment('@gn:5:12:47');
 
     expect(result).not.toBeNull();
+    expect(result!.metadata.lineNumber).toBe(5);
     expect(result!.metadata.start).toBe(12);
     expect(result!.metadata.end).toBe(47);
-  });
-
-  // Legacy format support
-  it('should parse legacy <!-- @gn --> format', () => {
-    const result = parseGnComment('<!-- @gn {"s":12,"e":47} -->\nMy comment');
-
-    expect(result).not.toBeNull();
-    expect(result!.metadata.start).toBe(12);
-    expect(result!.metadata.end).toBe(47);
-    expect(result!.userComment).toBe('My comment');
-  });
-
-  it('should parse legacy format with full field names', () => {
-    const result = parseGnComment('<!-- @gn {"exact":"test","start":5,"end":9} -->\nComment');
-
-    expect(result).not.toBeNull();
-    expect(result!.metadata.start).toBe(5);
-    expect(result!.metadata.end).toBe(9);
-  });
-
-  it('should prefer `@gn:` format over legacy when both present', () => {
-    const result = parseGnComment('<!-- @gn {"s":1,"e":2} -->\nComment `@gn:10:20`');
-
-    expect(result).not.toBeNull();
-    // Primary format should win
-    expect(result!.metadata.start).toBe(10);
-    expect(result!.metadata.end).toBe(20);
   });
 });
