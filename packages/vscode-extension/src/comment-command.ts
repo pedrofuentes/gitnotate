@@ -2,15 +2,8 @@ import * as vscode from 'vscode';
 import { buildGnComment } from '@gitnotate/core';
 import { GitHubApiClient } from './github-api';
 import { detectCurrentPR } from './pr-detector';
+import { getRelativePath } from './utils';
 import type { GnMetadata } from '@gitnotate/core';
-
-function getRelativePath(filePath: string): string {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (workspaceFolder && filePath.startsWith(workspaceFolder)) {
-    return filePath.slice(workspaceFolder.length + 1).replace(/\\/g, '/');
-  }
-  return filePath.replace(/\\/g, '/');
-}
 
 export async function addCommentCommand(
   _context: vscode.ExtensionContext
