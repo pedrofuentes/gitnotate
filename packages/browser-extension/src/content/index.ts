@@ -80,117 +80,137 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   // avoiding double-registration on turbo:load navigation.
   featureLifecycle?.abort();
   featureLifecycle = createObserverLifecycle();
-  const { signal } = featureLifecycle;
 
   hideOptInBanner();
 
   if (pageInfo.type === 'file-view' && pageInfo.filePath) {
-    initFileViewComments(pageInfo, { signal });
+    initFileViewComments(pageInfo, { signal: featureLifecycle.signal });
   }
 
   if (pageInfo.type === 'pr-files-changed') {
-    debug('[Gitnotate] PR diff page detected, initializing...');
-
-    // Track one pending highlight per textarea so multiple selections
-    // can coexist across different inline comment forms.
-    // Cleared on each activation to avoid holding detached DOM references.
-    const pendingHighlights = new Map<HTMLTextAreaElement, HTMLElement>();
-
-    // When user selects text while a comment textarea is open,
-    // inject @gn metadata into the textarea
-    document.addEventListener('mouseup', () => {
-      setTimeout(() => {
-        const selInfo = getSelectionInfo();
-        if (!selInfo) return;
-
-        // Save the range before focus changes clear it
-        const sel = window.getSelection();
-        let savedRange: Range | null = null;
-        if (sel && sel.rangeCount > 0) {
-          savedRange = sel.getRangeAt(0).cloneRange();
-        }
-
-        const textarea = findClosestTextarea(selInfo.lineElement, selInfo.lineNumber, selInfo.side);
-        if (!textarea) return;
-
-        debug('[Gitnotate] Selection + open textarea detected, injecting ^gn metadata');
-        injectGnMetadata(textarea, selInfo);
-
-        // Highlight the selected text using the saved range
-        if (savedRange) {
-          try {
-            // Remove previous pending highlight for THIS textarea only
-            removePendingHighlightFor(textarea);
-
-            const span = document.createElement('span');
-            span.className = 'gn-highlight gn-highlight-pending';
-            span.setAttribute('data-gn-comment-id', `gn-pending`);
-            savedRange.surroundContents(span);
-            pendingHighlights.set(textarea, span);
-            debug('[Gitnotate] Text highlighted');
-          } catch (err) {
-            debug('[Gitnotate] Could not highlight:', err);
-          }
-        }
-      }, 10);
-    }, { signal });
-
-    // Watch for comment forms being removed (cancel/submit)
-    // Remove pending highlights for textareas that are no longer in the DOM
-    const formObserver = new MutationObserver(() => {
-      for (const [textarea] of pendingHighlights) {
-        if (!textarea.isConnected) {
-          debug('[Gitnotate] Comment form closed, removing pending highlight');
-          removePendingHighlightFor(textarea);
-        }
-      }
-    });
-    formObserver.observe(document.body, { childList: true, subtree: true });
-    featureLifecycle.trackObserver(formObserver);
-
-    function removePendingHighlightFor(textarea: HTMLTextAreaElement): void {
-      const highlight = pendingHighlights.get(textarea);
-      if (!highlight) return;
-      const parent = highlight.parentNode;
-      if (parent) {
-        while (highlight.firstChild) {
-          parent.insertBefore(highlight.firstChild, highlight);
-        }
-        parent.removeChild(highlight);
-        parent.normalize();
-      }
-      pendingHighlights.delete(textarea);
-    }
-
-    const diffObserver = observeDiffContent((diffElements) => {
-      debug('[Gitnotate] Diff elements loaded:', diffElements.length);
-      scanAndHighlight();
-    }, { signal });
-    featureLifecycle.trackObserver(diffObserver);
-
-    // Re-scan when comment forms appear or disappear (not on every DOM change)
-    let lastCommentCount = 0;
-    let lastTextareaCount = 0;
-    let rescanTimer: ReturnType<typeof setTimeout>;
-    const rescanObserver = new MutationObserver(() => {
-      clearTimeout(rescanTimer);
-      rescanTimer = setTimeout(() => {
-        // Move counting queries inside debounced callback to avoid
-        // expensive querySelectorAll on every single mutation
-        const commentBodies = document.querySelectorAll('.comment-body, .markdown-body, [data-testid="markdown-body"]').length;
-        const textareas = document.querySelectorAll('textarea').length;
-
-        if (commentBodies !== lastCommentCount || textareas !== lastTextareaCount) {
-          lastCommentCount = commentBodies;
-          lastTextareaCount = textareas;
-          scanAndHighlight();
-        }
-      }, 500);
-      featureLifecycle?.trackTimer(rescanTimer);
-    });
-    rescanObserver.observe(document.body, { childList: true, subtree: true });
-    featureLifecycle.trackObserver(rescanObserver);
+    initPrDiffFeatures(pageInfo, featureLifecycle);
   }
+}
+
+function initPrDiffFeatures(_pageInfo: GitHubPageInfo, lifecycle: ObserverLifecycle): void {
+  debug('[Gitnotate] PR diff page detected, initializing...');
+  const { signal } = lifecycle;
+
+  const pendingHighlights = setupPendingHighlights(lifecycle);
+
+  // When user selects text while a comment textarea is open,
+  // inject @gn metadata into the textarea
+  document.addEventListener('mouseup', () => {
+    setTimeout(() => {
+      const selInfo = getSelectionInfo();
+      if (!selInfo) return;
+
+      // Save the range before focus changes clear it
+      const sel = window.getSelection();
+      let savedRange: Range | null = null;
+      if (sel && sel.rangeCount > 0) {
+        savedRange = sel.getRangeAt(0).cloneRange();
+      }
+
+      const textarea = findClosestTextarea(selInfo.lineElement, selInfo.lineNumber, selInfo.side);
+      if (!textarea) return;
+
+      debug('[Gitnotate] Selection + open textarea detected, injecting ^gn metadata');
+      injectGnMetadata(textarea, selInfo);
+
+      // Highlight the selected text using the saved range
+      if (savedRange) {
+        try {
+          // Remove previous pending highlight for THIS textarea only
+          pendingHighlights.remove(textarea);
+
+          const span = document.createElement('span');
+          span.className = 'gn-highlight gn-highlight-pending';
+          span.setAttribute('data-gn-comment-id', `gn-pending`);
+          savedRange.surroundContents(span);
+          pendingHighlights.track(textarea, span);
+          debug('[Gitnotate] Text highlighted');
+        } catch (err) {
+          debug('[Gitnotate] Could not highlight:', err);
+        }
+      }
+    }, 10);
+  }, { signal });
+
+  const diffObserver = observeDiffContent((_diffElements) => {
+    debug('[Gitnotate] Diff elements loaded:', _diffElements.length);
+    scanAndHighlight();
+  }, { signal });
+  lifecycle.trackObserver(diffObserver);
+
+  // Re-scan when comment forms appear or disappear (not on every DOM change)
+  let lastCommentCount = 0;
+  let lastTextareaCount = 0;
+  let rescanTimer: ReturnType<typeof setTimeout>;
+  const rescanObserver = new MutationObserver(() => {
+    clearTimeout(rescanTimer);
+    rescanTimer = setTimeout(() => {
+      // Move counting queries inside debounced callback to avoid
+      // expensive querySelectorAll on every single mutation
+      const commentBodies = document.querySelectorAll('.comment-body, .markdown-body, [data-testid="markdown-body"]').length;
+      const textareas = document.querySelectorAll('textarea').length;
+
+      if (commentBodies !== lastCommentCount || textareas !== lastTextareaCount) {
+        lastCommentCount = commentBodies;
+        lastTextareaCount = textareas;
+        scanAndHighlight();
+      }
+    }, 500);
+    featureLifecycle?.trackTimer(rescanTimer);
+  });
+  rescanObserver.observe(document.body, { childList: true, subtree: true });
+  lifecycle.trackObserver(rescanObserver);
+}
+
+interface PendingHighlightTracker {
+  track(textarea: HTMLTextAreaElement, highlight: HTMLElement): void;
+  remove(textarea: HTMLTextAreaElement): void;
+}
+
+function setupPendingHighlights(lifecycle: ObserverLifecycle): PendingHighlightTracker {
+  // Track one pending highlight per textarea so multiple selections
+  // can coexist across different inline comment forms.
+  // Cleared on each activation to avoid holding detached DOM references.
+  const pendingHighlights = new Map<HTMLTextAreaElement, HTMLElement>();
+
+  function removePendingHighlightFor(textarea: HTMLTextAreaElement): void {
+    const highlight = pendingHighlights.get(textarea);
+    if (!highlight) return;
+    const parent = highlight.parentNode;
+    if (parent) {
+      while (highlight.firstChild) {
+        parent.insertBefore(highlight.firstChild, highlight);
+      }
+      parent.removeChild(highlight);
+      parent.normalize();
+    }
+    pendingHighlights.delete(textarea);
+  }
+
+  // Watch for comment forms being removed (cancel/submit)
+  // Remove pending highlights for textareas that are no longer in the DOM
+  const formObserver = new MutationObserver(() => {
+    for (const [textarea] of pendingHighlights) {
+      if (!textarea.isConnected) {
+        debug('[Gitnotate] Comment form closed, removing pending highlight');
+        removePendingHighlightFor(textarea);
+      }
+    }
+  });
+  formObserver.observe(document.body, { childList: true, subtree: true });
+  lifecycle.trackObserver(formObserver);
+
+  return {
+    track(textarea: HTMLTextAreaElement, highlight: HTMLElement): void {
+      pendingHighlights.set(textarea, highlight);
+    },
+    remove: removePendingHighlightFor,
+  };
 }
 
 
