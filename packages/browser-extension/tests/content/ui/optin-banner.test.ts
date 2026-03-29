@@ -123,4 +123,34 @@ describe('optin-banner', () => {
     hideOptInBanner();
     expect(document.body.contains(banner)).toBe(false);
   });
+
+  it('should call onBlock when Never button clicked', () => {
+    const onEnable = vi.fn();
+    const onDismiss = vi.fn();
+    const onBlock = vi.fn();
+
+    const banner = showOptInBanner('owner', 'repo', onEnable, onDismiss, onBlock);
+    const blockBtn = banner.querySelector('.gn-banner-block') as HTMLElement;
+
+    expect(blockBtn).not.toBeNull();
+    blockBtn.click();
+
+    expect(onBlock).toHaveBeenCalledOnce();
+    expect(onEnable).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it('should remove banner from DOM when Never clicked', () => {
+    const onEnable = vi.fn();
+    const onDismiss = vi.fn();
+    const onBlock = vi.fn();
+
+    const banner = showOptInBanner('owner', 'repo', onEnable, onDismiss, onBlock);
+    expect(document.body.contains(banner)).toBe(true);
+
+    const blockBtn = banner.querySelector('.gn-banner-block') as HTMLElement;
+    blockBtn.click();
+
+    expect(document.body.contains(banner)).toBe(false);
+  });
 });

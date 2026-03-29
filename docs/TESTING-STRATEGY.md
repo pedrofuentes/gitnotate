@@ -117,3 +117,24 @@ Run them after any change to `textarea-target.ts`, `highlighter.ts`,
 | **MT-13** Submitted comment color | 1. Submit 2 comments on different lines | Each comment thread has a colored left border + author name matching its highlight color | ✅ Passed |
 | **MT-14** Multiple highlights same line | 1. Submit 2 comments on the same line (different text ranges) | Each highlight has a distinct color; each comment thread matches its highlight | ✅ Passed |
 | **MT-15** Pending comment box color | 1. Open a comment form on a line with a pending `^gn` selection | The "Add a comment on line" heading matches the highlight color | ✅ Passed |
+
+### Per-Repo Opt-In / Opt-Out
+
+| # | Steps | Expected Result | Status |
+|---|-------|-----------------|--------|
+| **MT-16** Enable via banner | 1. Visit a PR on a new repo  2. Click "Enable" on the banner | Banner disappears; Gitnotate activates; repo appears in popup "Enabled" list | ✅ Passed |
+| **MT-17** Dismiss via "Not now" | 1. Visit a PR on a new repo  2. Click "Not now" | Banner disappears; banner reappears on next visit | ✅ Passed |
+| **MT-18** Block via "Never" | 1. Visit a PR on a new repo  2. Click "Never" | Banner disappears; banner does NOT reappear on subsequent visits | |
+| **MT-19** Blocked repo skips banner | 1. Block a repo via "Never"  2. Navigate away and return to the PR | No banner shown; no Gitnotate features activated | |
+| **MT-20** Popup shows enabled repos | 1. Enable 2 repos  2. Open extension popup | Both repos listed under "Enabled Repositories" | |
+| **MT-21** Popup disable repo | 1. Open popup  2. Click "Disable" on an enabled repo  3. Visit that repo's PR | Repo removed from enabled list; banner shows again on next PR visit | |
+| **MT-22** Popup shows blocked repos | 1. Block 2 repos via "Never"  2. Open extension popup | Both repos listed under "Blocked Repositories" | |
+| **MT-23** Popup unblock repo | 1. Open popup  2. Click "Unblock" on a blocked repo  3. Visit that repo's PR | Repo removed from blocked list; banner shows again (can enable) | |
+
+### Debug Logging
+
+| # | Steps | Expected Result | Status |
+|---|-------|-----------------|--------|
+| **MT-24** Logs suppressed by default | 1. Open PR with Gitnotate enabled  2. Check console | No `[Gitnotate]` log messages visible | ✅ Passed |
+| **MT-25** Enable debug mode | 1. Run `localStorage.setItem('gitnotate-debug', 'true')` in console  2. Reload page | All `[Gitnotate]` debug messages appear in console | |
+| **MT-26** Disable debug mode | 1. Run `localStorage.removeItem('gitnotate-debug')`  2. Reload | Debug messages suppressed again | |

@@ -5,6 +5,10 @@ import {
   disableRepo,
   getRepoSettings,
   getAllEnabledRepos,
+  isRepoBlocked,
+  blockRepo,
+  unblockRepo,
+  getAllBlockedRepos,
 } from '../../src/storage/repo-settings.js';
 
 // Mock chrome.storage.local for tests
@@ -25,6 +29,13 @@ globalThis.chrome = {
       },
       set: (items: Record<string, unknown>) => {
         Object.assign(store, items);
+        return Promise.resolve();
+      },
+      remove: (keys: string | string[]) => {
+        const keysArr = Array.isArray(keys) ? keys : [keys];
+        for (const k of keysArr) {
+          delete store[k];
+        }
         return Promise.resolve();
       },
     },
@@ -104,5 +115,60 @@ describe('repo-settings', () => {
   it('should return null for repo with no settings', async () => {
     const settings = await getRepoSettings('owner', 'nonexistent');
     expect(settings).toBeNull();
+  });
+
+  it('should block a repo', async () => {
+    await blockRepo('owner', 'repo');
+    expect(await isRepoBlocked('owner', 'repo')).toBe(true);
+    expect(await isRepoEnabled('owner', 'repo')).toBe(false);
+  });
+
+  it('should unblock a repo (removes settings entirely)', async () => {
+    await blockRepo('owner', 'repo');
+    await unblockRepo('owner', 'repo');
+    expect(await isRepoBlocked('owner', 'repo')).toBe(false);
+    expect(await getRepoSettings('owner', 'repo')).toBeNull();
+  });
+
+  it('should return false for isRepoBlocked on unknown repo', async () => {
+    expect(await isRepoBlocked('owner', 'unknown')).toBe(false);
+  });
+
+  it('should list all blocked repos', async () => {
+    await blockRepo('owner1', 'repo1');
+    await blockRepo('owner2', 'repo2');
+    await enableRepo('owner3', 'repo3');
+
+    const blocked = await getAllBlockedRepos();
+    expect(blocked).toContain('owner1/repo1');
+    expect(blocked).toContain('owner2/repo2');
+    expect(blocked).not.toContain('owner3/repo3');
+    expect(blocked).toHaveLength(2);
+  });
+
+  it('should not include blocked repos in enabled list', async () => {
+    await enableRepo('owner', 'repo-a');
+    await blockRepo('owner', 'repo-b');
+
+    const enabled = await getAllEnabledRepos();
+    expect(enabled).toContain('owner/repo-a');
+    expect(enabled).not.toContain('owner/repo-b');
+  });
+
+  it('should allow blocking a previously enabled repo', async () => {
+    await enableRepo('owner', 'repo');
+    expect(await isRepoEnabled('owner', 'repo')).toBe(true);
+
+    await blockRepo('owner', 'repo');
+    expect(await isRepoEnabled('owner', 'repo')).toBe(false);
+    expect(await isRepoBlocked('owner', 'repo')).toBe(true);
+  });
+
+  it('should allow enabling a previously blocked repo after unblocking', async () => {
+    await blockRepo('owner', 'repo');
+    await unblockRepo('owner', 'repo');
+    await enableRepo('owner', 'repo');
+    expect(await isRepoEnabled('owner', 'repo')).toBe(true);
+    expect(await isRepoBlocked('owner', 'repo')).toBe(false);
   });
 });
