@@ -337,6 +337,8 @@ describe('injectGnMetadata', () => {
     injectGnMetadata(textarea, selInfo);
 
     expect(textarea.value).toContain('@gn:7:0:5');
+    // No backticks
+    expect(textarea.value).not.toContain('`');
   });
 
   it('should dispatch input and change events', () => {

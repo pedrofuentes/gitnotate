@@ -13,7 +13,7 @@ describe('buildGnComment', () => {
     };
     const result = buildGnComment(metadata, 'Can we add the exact percentage?');
 
-    expect(result).toBe('Can we add the exact percentage? `@gn:5:12:47`');
+    expect(result).toBe('Can we add the exact percentage?\n@gn:5:12:47');
   });
 
   it('should return just the tag for empty user comment', () => {
@@ -21,7 +21,7 @@ describe('buildGnComment', () => {
 
     const result = buildGnComment(metadata, '');
 
-    expect(result).toBe('`@gn:1:0:4`');
+    expect(result).toBe('@gn:1:0:4');
   });
 
   it('should handle multi-line user comments', () => {
@@ -29,7 +29,7 @@ describe('buildGnComment', () => {
 
     const result = buildGnComment(metadata, 'First line.\n\nSecond paragraph.');
 
-    expect(result).toBe('First line.\n\nSecond paragraph. `@gn:10:0:3`');
+    expect(result).toBe('First line.\n\nSecond paragraph.\n@gn:10:0:3');
   });
 
   it('should produce output that parser can round-trip', () => {
@@ -56,7 +56,7 @@ describe('buildGnComment', () => {
     const result = buildGnComment(metadata, 'Check "this" & <that>');
 
     expect(result).toContain('Check "this" & <that>');
-    expect(result).toContain('`@gn:3:5:9`');
+    expect(result).toContain('@gn:3:5:9');
   });
 
   it('should handle large offsets', () => {
@@ -64,6 +64,6 @@ describe('buildGnComment', () => {
 
     const result = buildGnComment(metadata, 'Comment');
 
-    expect(result).toBe('Comment `@gn:500:1000:2000`');
+    expect(result).toBe('Comment\n@gn:500:1000:2000');
   });
 });

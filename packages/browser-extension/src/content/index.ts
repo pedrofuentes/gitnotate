@@ -231,16 +231,27 @@ function scanAndHighlight(): void {
 }
 
 function hideGnMetadataInComment(commentEl: HTMLElement): void {
-  const body = commentEl.querySelector('.comment-body');
-  if (!body) return;
+  // commentEl is the <p> (or container) holding the @gn tag.
+  // If it only contains the @gn metadata (no user text), hide it entirely.
+  // Otherwise, hide just the @gn text node within it.
+  const text = commentEl.textContent ?? '';
+  const cleaned = text.replace(/@gn:\d+:\d+:\d+/, '').trim();
 
-  for (const child of Array.from(body.children)) {
-    if (child.tagName === 'P' && child.textContent?.includes('<!-- @gn')) {
-      (child as HTMLElement).style.display = 'none';
-      continue;
-    }
-    if (child.tagName === 'BLOCKQUOTE' && child.textContent?.includes('📌')) {
-      (child as HTMLElement).style.display = 'none';
+  if (!cleaned) {
+    // Tag-only paragraph — hide the whole element
+    commentEl.style.display = 'none';
+  } else {
+    // User text + tag — hide the text node containing @gn
+    const walker = document.createTreeWalker(commentEl, NodeFilter.SHOW_TEXT);
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      if (node.textContent && /@gn:\d+:\d+:\d+/.test(node.textContent)) {
+        const span = document.createElement('span');
+        span.style.display = 'none';
+        span.textContent = node.textContent;
+        node.replaceWith(span);
+        break;
+      }
     }
   }
 }

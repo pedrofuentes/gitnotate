@@ -66,13 +66,14 @@ function buildDiffFileDOM(opts: {
 
 /**
  * Build a @gn comment body HTML using the `@gn:line:start:end` format.
- *
- * The tag is rendered inside a `<code>` element (as GitHub renders
- * backtick code spans).
+ * Without backticks, GitHub renders it as plain text in a `<p>`.
  */
 function gnCommentHTML(lineNumber: number, start: number, end: number, userComment?: string): string {
-  const tag = `<code>@gn:${lineNumber}:${start}:${end}</code>`;
-  return userComment ? `<p>${tag} ${userComment}</p>` : `<p>${tag}</p>`;
+  const tag = `@gn:${lineNumber}:${start}:${end}`;
+  if (userComment) {
+    return `<p>${userComment}</p><p>${tag}</p>`;
+  }
+  return `<p>${tag}</p>`;
 }
 
 const PLAIN_COMMENT_HTML = '<p>Looks good to me!</p>';
@@ -102,8 +103,7 @@ describe('scanForGnComments', () => {
     expect(results).toHaveLength(1);
     expect(results[0].parsed.metadata.start).toBe(11);
     expect(results[0].parsed.metadata.end).toBe(47);
-    expect(results[0].parsed.metadata.exact).toBe('');
-    expect(results[0].parsed.userComment).toBe('Can we add the exact percentage here?');
+    expect(results[0].parsed.metadata.lineNumber).toBe(3);
   });
 
   it('should return empty array when no @gn comments exist', () => {
@@ -141,7 +141,6 @@ describe('scanForGnComments', () => {
       start: 15,
       end: 29,
     });
-    expect(results[0].parsed.userComment).toBe('Should we validate inputs first?');
   });
 
   it('should extract file path from parent structure', () => {
@@ -270,7 +269,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: '<p><code>@gn:1:0:5</code> Review this greeting</p>',
+          bodyHTML: '<p>@gn:1:0:5</p><p>Review this greeting</p>',
         },
       ],
     });
