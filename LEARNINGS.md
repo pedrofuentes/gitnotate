@@ -19,7 +19,21 @@
 
 <!-- Add new learnings below this line, most recent first -->
 
-### [2026-03-29] TDD choreography violations led to Sentinel rejection
+### [2026-03-29] Post-merge Sentinel audit found 9 CRITICAL findings across entire codebase
+
+**Context**: All 96 commits were merged to main without Sentinel review. A retroactive Sentinel audit (SENTINEL-2025-0714-RETRO-001) reviewed the full diff (8f38b03..HEAD, 127 files, ~18K lines).
+
+**Learning**: The audit identified 9 🔴 CRITICAL, 32 🟡 IMPORTANT, and 17 🟢 MINOR findings. Key categories:
+- **Data loss bugs**: `btoa()` crashes on Unicode (emoji, CJK, accents) — replaced with `TextEncoder`/`TextDecoder`-based helpers
+- **Crash-on-malformed-input**: `JSON.parse(atob(data.content))` without try/catch or schema validation — added resilience and `validateSidecarFile()` call
+- **Memory leaks (3)**: MutationObserver and event listeners accumulating across Turbo navigations — tracked via `ObserverLifecycle` and `AbortSignal`
+- **Dependency CVEs**: `undici@5.29.0` (via `@actions/github@6.0.1`) had 5 CVEs — upgraded to `@actions/github@9.0.0`
+- **Coverage gap**: `github-action/src/index.ts` at 0% coverage — added 8 tests, coverage now 98.2%
+- **Lint violations**: 3 non-null assertions — replaced with optional chaining / nullish coalescing
+
+**Impact**: Always run Sentinel before merging. Retroactive audits are expensive (10+ minutes, multiple sub-agents) and produce more findings that accumulate. The `btoa`/`atob` issue should be caught by a lint rule or utility function mandate — consider adding a `no-restricted-globals` ESLint rule for `btoa`/`atob` to prevent future occurrences.
+
+
 
 **Context**: During the `fix/textarea-proximity-targeting` merge, the Sentinel post-audit found that only 2 of 27 feat/fix commits followed proper TDD choreography (separate test commit before implementation commit). Of the 25 violations: 11 bundled test and implementation code in a single commit, 13 had no corresponding tests at all, and 1 had tests committed after implementation (reversed order).
 
