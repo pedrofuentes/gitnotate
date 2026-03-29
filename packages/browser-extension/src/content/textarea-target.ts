@@ -32,6 +32,7 @@ export const TEXTAREA_SELECTORS = [
 export function findClosestTextarea(
   nearElement?: HTMLElement,
   lineNumber?: number,
+  side?: 'LEFT' | 'RIGHT',
 ): HTMLTextAreaElement | null {
   // Collect all visible textareas, deduplicating across selectors
   const seen = new Set<HTMLTextAreaElement>();
@@ -60,14 +61,15 @@ export function findClosestTextarea(
   if (pool.length === 0) return null;
 
   // Match by line number — exact match first, then ±1 tolerance
-  // (GitHub's diff DOM sometimes has the inline comment form one row
-  // away from the actual code row, causing an off-by-one in the line
-  // number extracted from the textarea's nearest code row.)
   if (lineNumber !== undefined) {
-    // Pass 1: exact match
+    const diffSide = side === 'LEFT' ? 'left' : side === 'RIGHT' ? 'right' : null;
+
+    // Pass 1: exact line match with side filtering
     for (const ta of pool) {
       const taLines = getTextareaLineNumbers(ta);
       if (taLines.includes(lineNumber)) {
+        // If side is specified, verify the textarea is on the correct side
+        if (diffSide && !isTextareaOnSide(ta, diffSide)) continue;
         return ta;
       }
     }
@@ -75,6 +77,7 @@ export function findClosestTextarea(
     for (const ta of pool) {
       const taLines = getTextareaLineNumbers(ta);
       if (taLines.some((n) => Math.abs(n - lineNumber) <= 1)) {
+        if (diffSide && !isTextareaOnSide(ta, diffSide)) continue;
         return ta;
       }
     }
@@ -91,6 +94,26 @@ export function findClosestTextarea(
   }
 
   return closest;
+}
+
+/**
+ * Check whether a textarea's comment form is on the specified diff side.
+ * Walks up from the textarea to find a parent element with side info.
+ */
+function isTextareaOnSide(textarea: HTMLTextAreaElement, diffSide: string): boolean {
+  let el: HTMLElement | null = textarea;
+  while (el) {
+    const side = el.getAttribute('data-diff-side');
+    if (side) return side === diffSide;
+    if (el.classList.contains('left-side') || el.classList.contains('left-side-diff-cell')) {
+      return diffSide === 'left';
+    }
+    if (el.classList.contains('right-side') || el.classList.contains('right-side-diff-cell')) {
+      return diffSide === 'right';
+    }
+    el = el.parentElement;
+  }
+  return true;
 }
 
 /**
