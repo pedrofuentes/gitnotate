@@ -148,7 +148,15 @@ export function highlightTextRange(info: HighlightInfo): HighlightResult | null 
   try {
     range.surroundContents(span);
   } catch {
-    return null;
+    // surroundContents fails when the range crosses element boundaries
+    // (e.g., syntax highlighting spans). Fall back to extractContents.
+    try {
+      const fragment = range.extractContents();
+      span.appendChild(fragment);
+      range.insertNode(span);
+    } catch {
+      return null;
+    }
   }
 
   // Store metadata on the parent code cell <td> for future use (supports multiple)
