@@ -11,20 +11,15 @@
   </defs>
   <!-- Background -->
   <rect width="512" height="512" rx="77" fill="url(#bg)"/>
-  <!-- Bubble body -->
-  <path d="M256,56.31999999999999
-           C108.80000000000001,56.31999999999999 102.4,152.32 102.4,184.32
-           C102.4,241.92 134.4,280.32 209.92000000000002,299.52
-           L256,337.92
-           L302.08,299.52
-           C377.6,280.32 409.6,241.92 409.6,184.32
-           C409.6,152.32 403.2,56.31999999999999 256,56.31999999999999 Z"
-        fill="url(#pin)"/>
-  <!-- Text lines inside bubble -->
-  <rect x="168.95999999999998" y="148.48" width="174.08" height="23" rx="12" fill="#71717A" opacity="0.35"/><rect x="184.32" y="220.16" width="143.36" height="23" rx="12" fill="#71717A" opacity="0.35"/>
-  <!-- Highlight bar on first line -->
-  <rect x="199.68" y="141.98" width="112.64" height="36" rx="13" fill="#10B981"/>
-  <!-- Caret BELOW the bubble tail, with gap -->
-  <path d="M209.92000000000002,404.48 L256,363.52000000000004 L302.08,404.48"
+  <!-- Square bubble with rounded corners -->
+  <rect x="112.63999999999999" y="71.68" width="286.72" height="174.08" rx="31" fill="url(#pin)"/>
+  <!-- Tail triangle -->
+  <polygon points="215.04,244.76000000000002 256,327.68 296.96,244.76000000000002" fill="url(#pin)"/>
+  <!-- Text lines -->
+  <rect x="168.95999999999998" y="133.12000000000003" width="174.08" height="23" rx="12" fill="#71717A" opacity="0.35"/><rect x="184.32" y="189.44000000000003" width="143.36" height="23" rx="12" fill="#71717A" opacity="0.35"/>
+  <!-- Highlight bar -->
+  <rect x="199.68" y="126.62000000000003" width="112.64" height="36" rx="13" fill="#10B981"/>
+  <!-- Caret below tail -->
+  <path d="M209.92000000000002,394.24 L256,353.28000000000003 L302.08,394.24"
         stroke="#10B981" stroke-width="15" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
