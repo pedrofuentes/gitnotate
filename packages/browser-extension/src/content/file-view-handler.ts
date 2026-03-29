@@ -175,14 +175,11 @@ export async function initFileViewComments(
           selectionInfo.end,
         );
 
-        // Build or update sidecar
-        if (!sidecar) {
-          sidecar = createSidecarFile(filePath);
-        }
-
-        sidecar = addAnnotation(sidecar, {
+        // Build updated sidecar without mutating current state
+        const current = sidecar ?? createSidecarFile(filePath);
+        const updated = addAnnotation(current, {
           target: selector,
-          author: { github: '' }, // will be resolved by the sidecar client
+          author: { github: '' },
           body: userComment,
         });
 
@@ -190,13 +187,16 @@ export async function initFileViewComments(
           owner,
           repo,
           filePath,
-          sidecar,
+          updated,
           `Add annotation on ${filePath}`,
         );
 
         if (!success) {
           throw new Error('Failed to save annotation. Please try again.');
         }
+
+        // Only update in-memory state after confirmed write
+        sidecar = updated;
 
         hideCommentForm();
       },
