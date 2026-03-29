@@ -156,3 +156,34 @@ describe('createGitHubApiClient', () => {
     await expect(client!.get('/user')).rejects.toThrow('rate limit');
   });
 });
+
+describe('fetch timeout (I-13)', () => {
+  it('should pass an AbortSignal with timeout to fetch', async () => {
+    store['gn_auth_token'] = 'ghp_test';
+    fetchMock.mockResolvedValueOnce(okResponse());
+
+    const client = await createGitHubApiClient();
+    await client!.get('/user');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.signal).toBeDefined();
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('should abort fetch when request exceeds timeout', async () => {
+    store['gn_auth_token'] = 'ghp_test';
+    // Mock fetch that never resolves — the AbortSignal should abort it
+    fetchMock.mockImplementationOnce((_url: string, init: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        if (init.signal) {
+          init.signal.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted.', 'AbortError'));
+          });
+        }
+      });
+    });
+
+    const client = await createGitHubApiClient();
+    await expect(client!.get('/user')).rejects.toThrow();
+  }, 15_000);
+});
