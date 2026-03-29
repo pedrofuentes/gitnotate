@@ -4,7 +4,7 @@ import { validateSidecarFile } from '@gitnotate/core';
 import { validateAnchors, type AnchorValidationResult } from './anchor-validator.js';
 import { buildSummaryComment } from './summary-reporter.js';
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   try {
     const token = core.getInput('github-token', { required: true });
     const octokit = github.getOctokit(token);
@@ -17,7 +17,8 @@ async function run(): Promise<void> {
 
     const owner = context.repo.owner;
     const repo = context.repo.repo;
-    const pull_number = context.payload.pull_request.number;
+    const pr = context.payload.pull_request;
+    const pull_number = pr.number;
 
     // 1. Find all changed files in this PR
     const { data: files } = await octokit.rest.pulls.listFiles({
@@ -38,18 +39,18 @@ async function run(): Promise<void> {
 
     const allResults: AnchorValidationResult[] = [];
 
-    for (const sidecarFile of sidecarFiles) {
+    const processSidecar = async (sidecarFile: { filename: string }) => {
       // 2. Get the sidecar file content
       const { data: sidecarData } = await octokit.rest.repos.getContent({
         owner,
         repo,
         path: sidecarFile.filename,
-        ref: context.payload.pull_request.head.sha,
+        ref: pr.head.sha,
       });
 
       if (!('content' in sidecarData)) {
         core.warning(`Could not read content of ${sidecarFile.filename}`);
-        continue;
+        return [];
       }
 
       const sidecarContent = Buffer.from(sidecarData.content, 'base64').toString('utf-8');
@@ -60,17 +61,14 @@ async function run(): Promise<void> {
         core.warning(
           `Schema validation failed for ${sidecarFile.filename}: ${validation.errors.join(', ')}`,
         );
-        continue;
+        return [];
       }
 
       // 3. Derive target file path from sidecar path
-      // Sidecar path: path/to/file.ext.comments/file.ext.json
-      // Target file:  path/to/file.ext
       const sidecarDir = sidecarFile.filename.substring(
         0,
         sidecarFile.filename.lastIndexOf('/'),
       );
-      // Remove .comments suffix to get the target file path
       const targetFilePath = sidecarDir.replace(/\.comments$/, '');
 
       // Get target file content
@@ -79,21 +77,33 @@ async function run(): Promise<void> {
           owner,
           repo,
           path: targetFilePath,
-          ref: context.payload.pull_request.head.sha,
+          ref: pr.head.sha,
         });
 
         if (!('content' in targetData)) {
           core.warning(`Could not read content of target file ${targetFilePath}`);
-          continue;
+          return [];
         }
 
         const fileContent = Buffer.from(targetData.content, 'base64').toString('utf-8');
 
         // 4. Validate anchors
-        const results = await validateAnchors(sidecarFile.filename, sidecarContent, fileContent);
-        allResults.push(...results);
+        return await validateAnchors(sidecarFile.filename, sidecarContent, fileContent);
       } catch {
         core.warning(`Target file ${targetFilePath} not found`);
+        return [];
+      }
+    };
+
+    const settled = await Promise.allSettled(
+      sidecarFiles.map((f) => processSidecar(f)),
+    );
+
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        allResults.push(...result.value);
+      } else {
+        core.warning(`Failed to process sidecar file: ${result.reason}`);
       }
     }
 
@@ -120,4 +130,4 @@ async function run(): Promise<void> {
   }
 }
 
-run();
+export const runPromise = run();

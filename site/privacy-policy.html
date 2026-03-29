@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Gitnotate</title>
+  <meta name="description" content="Privacy policy for the Gitnotate browser extension.">
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #18181B;
+      --bg-surface: #27272A;
+      --bg-hover: #3F3F46;
+      --accent: #10B981;
+      --accent-hover: #34D399;
+      --text: #F4F4F5;
+      --text-muted: #A1A1AA;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: var(--accent-hover);
+    }
+
+    header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--bg-surface);
+    }
+
+    .header-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+    }
+
+    .back-link {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    main {
+      flex: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+    .effective-date {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .summary {
+      background: var(--bg-surface);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2.5rem;
+      border-left: 3px solid var(--accent);
+    }
+
+    .summary p {
+      font-size: 0.9375rem;
+      color: var(--text-muted);
+    }
+
+    .summary strong {
+      color: var(--text);
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.01em;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      font-size: 0.9375rem;
+    }
+
+    ul, ol {
+      margin-bottom: 1rem;
+      padding-left: 1.5rem;
+      font-size: 0.9375rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    li strong {
+      color: var(--text);
+    }
+
+    code {
+      background: var(--bg-surface);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.8125rem;
+      font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+      color: var(--accent);
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--bg-surface);
+      margin: 2.5rem 0 0;
+    }
+
+    .permission-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+      font-size: 0.9375rem;
+    }
+
+    .permission-table th,
+    .permission-table td {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--bg-surface);
+    }
+
+    .permission-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8125rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .permission-table td:first-child {
+      white-space: nowrap;
+    }
+
+    .permission-table td:first-child code {
+      font-size: 0.8125rem;
+    }
+
+    .permission-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      border-top: 1px solid var(--bg-surface);
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+
+    footer .links {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-bottom: 0.75rem;
+    }
+
+    @media (max-width: 480px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      h2 {
+        font-size: 1.125rem;
+      }
+
+      .permission-table {
+        font-size: 0.8125rem;
+      }
+
+      .permission-table th,
+      .permission-table td {
+        padding: 0.5rem 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="./" class="logo">
+        <img src="./icon-128.png" alt="Gitnotate" class="logo-icon" width="28" height="28">
+        Gitnotate
+      </a>
+      <a href="./" class="back-link">← Back to home</a>
+    </div>
+  </header>
+
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="effective-date">Effective date: March 1, 2026</p>
+
+    <div class="summary">
+      <p>
+        <strong>The short version:</strong> Gitnotate stores your preferences locally in your browser and does not make any network requests.
+        We do not collect, track, or share any personal information. There are no third-party servers, no analytics, and no telemetry.
+      </p>
+    </div>
+
+    <!-- What Gitnotate Does -->
+    <h2>What Gitnotate Does</h2>
+    <p>
+      Gitnotate is a browser extension for Chrome and Edge that adds sub-line commenting to Markdown files in GitHub pull request reviews.
+      It lets you select specific words, phrases, or sentences within rendered Markdown content and attach review comments to those selections —
+      going beyond GitHub's built-in line-level commenting.
+    </p>
+    <p>
+      Comments created by Gitnotate are stored as standard GitHub PR review comments, visible to all participants in the pull request.
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- Information We Collect -->
+    <h2>Information We Collect</h2>
+    <p>
+      Gitnotate collects only the minimal information needed to function. All data is provided by you explicitly through the extension's settings:
+    </p>
+    <ul>
+      <li><strong>Repository preferences</strong> — A list of repositories you have enabled or disabled Gitnotate for, stored as simple on/off settings.</li>
+      <li><strong>Highlight style preference</strong> — Your chosen visual style for text selections (e.g., underline, background color).</li>
+    </ul>
+    <p>
+      Gitnotate does <strong>not</strong> collect browsing history, page content, personal information, usage analytics, or any data beyond what is listed above.
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- How Information Is Stored -->
+    <h2>How Information Is Stored</h2>
+    <p>
+      All data is stored locally in your browser using the <code>chrome.storage.local</code> API. This means:
+    </p>
+    <ul>
+      <li>Your data <strong>never leaves your browser</strong> — it is not uploaded to any server</li>
+      <li>Data is sandboxed to the extension and cannot be accessed by websites or other extensions</li>
+      <li>Data persists until you explicitly clear it or uninstall the extension</li>
+    </ul>
+
+    <hr class="section-divider">
+
+    <!-- Information Transmitted -->
+    <h2>Information Transmitted</h2>
+    <p>
+      Gitnotate does <strong>not</strong> make any network requests of its own. It operates entirely by reading and modifying the GitHub page you are viewing in your browser. Specifically, Gitnotate does <strong>not</strong>:
+    </p>
+    <ul>
+      <li>Send data to any third-party servers</li>
+      <li>Send data to any Gitnotate servers (there are none)</li>
+      <li>Use any analytics or tracking services</li>
+      <li>Include any telemetry, crash reporting, or usage monitoring</li>
+      <li>Make network requests to any domain</li>
+    </ul>
+
+    <hr class="section-divider">
+
+    <!-- Permissions Explained -->
+    <h2>Permissions Explained</h2>
+    <p>
+      Gitnotate requests the minimum browser permissions necessary to function:
+    </p>
+    <table class="permission-table">
+      <thead>
+        <tr>
+          <th>Permission</th>
+          <th>Why It's Needed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>activeTab</code></td>
+          <td>Allows the extension to interact with the GitHub page you are currently viewing — reading the PR diff content and injecting the selection UI. Only activates on the tab you are actively using.</td>
+        </tr>
+        <tr>
+          <td><code>storage</code></td>
+          <td>Allows the extension to save your settings (repository preferences, highlight style) locally in your browser.</td>
+        </tr>
+        <tr>
+          <td><code>host_permissions</code><br><span style="color: var(--text-muted); font-size: 0.8125rem;">github.com/*</span></td>
+          <td>Allows the extension to run on GitHub pages so it can detect pull request reviews and add the sub-line commenting functionality. The extension only activates on <code>github.com</code> pages.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <hr class="section-divider">
+
+    <!-- Data Sharing -->
+    <h2>Data Sharing</h2>
+    <p>
+      Gitnotate does <strong>not</strong> share any data with third parties. Period.
+    </p>
+    <ul>
+      <li>No data is sold, rented, or traded</li>
+      <li>No data is shared with advertisers or marketing partners</li>
+      <li>No data is sent to analytics platforms</li>
+      <li>The only external communication is between your browser and GitHub's API, initiated by your actions</li>
+    </ul>
+
+    <hr class="section-divider">
+
+    <!-- Data Retention & Deletion -->
+    <h2>Data Retention &amp; Deletion</h2>
+    <p>
+      Your data is stored locally and you have full control over it. To delete your data:
+    </p>
+    <ul>
+      <li><strong>Disable repos:</strong> Open the Gitnotate extension popup and disable individual repositories</li>
+      <li><strong>Clear all extension data:</strong> Go to your browser's extension management page, find Gitnotate, and select "Clear data" or "Remove"</li>
+      <li><strong>Uninstall the extension:</strong> Removing the extension from your browser deletes all associated local storage data</li>
+    </ul>
+    <p>
+      Comments you have already posted to GitHub via Gitnotate are standard GitHub PR comments.
+      They are governed by <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy policy</a>
+      and can be managed through GitHub's interface.
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- Open Source -->
+    <h2>Open Source Transparency</h2>
+    <p>
+      Gitnotate is fully open source under the MIT License. You can review every line of code to verify that
+      the extension does exactly what this policy describes — nothing more, nothing less.
+    </p>
+    <p>
+      Source code: <a href="https://github.com/pedrofuentes/gitnotate">github.com/pedrofuentes/gitnotate</a>
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- Children's Privacy -->
+    <h2>Children's Privacy</h2>
+    <p>
+      Gitnotate is not directed at children under the age of 13. We do not knowingly collect personal information from children.
+      The extension is a developer tool designed for use by software developers participating in GitHub code reviews.
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- Changes to This Policy -->
+    <h2>Changes to This Policy</h2>
+    <p>
+      If we make changes to this privacy policy, we will update the effective date at the top of this page and include a note in the
+      extension's changelog. For significant changes, we will also post a notice in the
+      <a href="https://github.com/pedrofuentes/gitnotate">GitHub repository</a>.
+    </p>
+    <p>
+      Since Gitnotate is open source, any changes to the privacy policy will be visible in the repository's commit history.
+    </p>
+
+    <hr class="section-divider">
+
+    <!-- Contact -->
+    <h2>Contact</h2>
+    <p>
+      If you have questions or concerns about this privacy policy, please open an issue on our GitHub repository:
+    </p>
+    <p>
+      <a href="https://github.com/pedrofuentes/gitnotate/issues">github.com/pedrofuentes/gitnotate/issues</a>
+    </p>
+  </main>
+
+  <footer>
+    <nav class="links">
+      <a href="./">Home</a>
+      <a href="https://github.com/pedrofuentes/gitnotate">GitHub</a>
+      <a href="https://github.com/pedrofuentes/gitnotate/issues">Support</a>
+    </nav>
+    <p>Gitnotate is open source under the MIT License.</p>
+  </footer>
+</body>
+</html>

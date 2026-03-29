@@ -6,7 +6,7 @@ import { scanForGnComments, type GnReviewComment } from '../../src/content/comme
  *
  * A `.file[data-path]` wraps a `.diff-table` with numbered lines.
  * Review comments sit inside the same `.file` container, after the
- * diff row they refer to.  The `@gn:start:end` tag lives inside a
+ * diff row they refer to.  The `^gn:start:end` tag lives inside a
  * `<code>` element (as GitHub renders backtick code spans).
  */
 function buildDiffFileDOM(opts: {
@@ -65,16 +65,15 @@ function buildDiffFileDOM(opts: {
 }
 
 /**
- * Build a @gn comment body HTML using the `@gn:start:end` format.
- *
- * The tag is rendered inside a `<code>` element (as GitHub renders
- * backtick code spans).  Backtick text nodes surround the `<code>`
- * so that the container's textContent includes the backticks the
- * parser requires.
+ * Build a ^gn comment body HTML using the `^gn:line:side:start:end` format.
+ * Without backticks, GitHub renders it as plain text in a `<p>`.
  */
-function gnCommentHTML(start: number, end: number, userComment?: string): string {
-  const tag = `\`<code>@gn:${start}:${end}</code>\``;
-  return userComment ? `${tag} ${userComment}` : tag;
+function gnCommentHTML(lineNumber: number, start: number, end: number, userComment?: string, side: 'L' | 'R' = 'R'): string {
+  const tag = `^gn:${lineNumber}:${side}:${start}:${end}`;
+  if (userComment) {
+    return `<p>${userComment}</p><p>${tag}</p>`;
+  }
+  return `<p>${tag}</p>`;
 }
 
 const PLAIN_COMMENT_HTML = '<p>Looks good to me!</p>';
@@ -84,7 +83,7 @@ describe('scanForGnComments', () => {
     document.body.innerHTML = '';
   });
 
-  it('should find @gn comments in review comment elements', () => {
+  it('should find ^gn comments in review comment elements', () => {
     const file = buildDiffFileDOM({
       filePath: 'docs/proposal.md',
       lines: [
@@ -93,7 +92,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 3,
-          bodyHTML: gnCommentHTML(11, 47, 'Can we add the exact percentage here?'),
+          bodyHTML: gnCommentHTML(3, 11, 47, 'Can we add the exact percentage here?'),
         },
       ],
     });
@@ -104,11 +103,10 @@ describe('scanForGnComments', () => {
     expect(results).toHaveLength(1);
     expect(results[0].parsed.metadata.start).toBe(11);
     expect(results[0].parsed.metadata.end).toBe(47);
-    expect(results[0].parsed.metadata.exact).toBe('');
-    expect(results[0].parsed.userComment).toBe('Can we add the exact percentage here?');
+    expect(results[0].parsed.metadata.lineNumber).toBe(3);
   });
 
-  it('should return empty array when no @gn comments exist', () => {
+  it('should return empty array when no ^gn comments exist', () => {
     const file = buildDiffFileDOM({
       filePath: 'docs/readme.md',
       lines: [{ number: 1, text: 'Hello world' }],
@@ -128,7 +126,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 10,
-          bodyHTML: gnCommentHTML(15, 29, 'Should we validate inputs first?'),
+          bodyHTML: gnCommentHTML(10, 15, 29, 'Should we validate inputs first?'),
         },
       ],
     });
@@ -139,10 +137,11 @@ describe('scanForGnComments', () => {
     expect(results).toHaveLength(1);
     expect(results[0].parsed.metadata).toEqual({
       exact: '',
+      lineNumber: 10,
+      side: 'R',
       start: 15,
       end: 29,
     });
-    expect(results[0].parsed.userComment).toBe('Should we validate inputs first?');
   });
 
   it('should extract file path from parent structure', () => {
@@ -152,7 +151,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 5,
-          bodyHTML: gnCommentHTML(16, 22, 'Rename this function'),
+          bodyHTML: gnCommentHTML(5, 16, 22, 'Rename this function'),
         },
       ],
     });
@@ -171,7 +170,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 42,
-          bodyHTML: gnCommentHTML(5, 9, 'Clarify this'),
+          bodyHTML: gnCommentHTML(42, 5, 9, 'Clarify this'),
         },
       ],
     });
@@ -194,7 +193,7 @@ describe('scanForGnComments', () => {
         { line: 1, bodyHTML: PLAIN_COMMENT_HTML },
         {
           line: 2,
-          bodyHTML: gnCommentHTML(5, 8, 'Fix this'),
+          bodyHTML: gnCommentHTML(2, 5, 8, 'Fix this'),
         },
       ],
     });
@@ -206,14 +205,14 @@ describe('scanForGnComments', () => {
     expect(results[0].lineNumber).toBe(2);
   });
 
-  it('should handle multiple @gn comments on the same page', () => {
+  it('should handle multiple ^gn comments on the same page', () => {
     const file1 = buildDiffFileDOM({
       filePath: 'a.ts',
       lines: [{ number: 1, text: 'alpha beta gamma' }],
       comments: [
         {
           line: 1,
-          bodyHTML: gnCommentHTML(0, 5, 'Comment A'),
+          bodyHTML: gnCommentHTML(1, 0, 5, 'Comment A'),
         },
       ],
     });
@@ -224,7 +223,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 7,
-          bodyHTML: gnCommentHTML(6, 13, 'Comment B'),
+          bodyHTML: gnCommentHTML(7, 6, 13, 'Comment B'),
         },
       ],
     });
@@ -250,7 +249,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: gnCommentHTML(0, 5, 'Greeting'),
+          bodyHTML: gnCommentHTML(1, 0, 5, 'Greeting'),
         },
       ],
     });
@@ -260,17 +259,18 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].commentElement).toBeInstanceOf(HTMLElement);
-    expect(results[0].commentElement.classList.contains('comment-body')).toBe(true);
+    // commentElement is the nearest container (p, div, td, li) of the ^gn tag
+    expect(results[0].commentElement.tagName).toBe('P');
   });
 
-  it('should handle @gn tag inside a paragraph with code element', () => {
+  it('should handle ^gn tag inside a paragraph with code element', () => {
     const file = buildDiffFileDOM({
       filePath: 'file.ts',
       lines: [{ number: 1, text: 'hello world' }],
       comments: [
         {
           line: 1,
-          bodyHTML: '<p>`<code>@gn:0:5</code>` Review this greeting</p>',
+          bodyHTML: '<p>^gn:1:R:0:5</p><p>Review this greeting</p>',
         },
       ],
     });
@@ -290,7 +290,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: gnCommentHTML(0, 5, 'Use greeting'),
+          bodyHTML: gnCommentHTML(1, 0, 5, 'Use greeting'),
         },
       ],
       useDataDiffAnchor: true,
@@ -302,5 +302,51 @@ describe('scanForGnComments', () => {
 
     expect(results).toHaveLength(1);
     expect(results[0].filePath).toBe('README.md');
+  });
+
+  it('should parse L-side ^gn comment and return side=L in metadata', () => {
+    const file = buildDiffFileDOM({
+      filePath: 'src/old-code.ts',
+      lines: [{ number: 15, text: 'const removed = true;' }],
+      comments: [
+        {
+          line: 15,
+          bodyHTML: gnCommentHTML(15, 6, 13, 'Why was this removed?', 'L'),
+        },
+      ],
+    });
+    document.body.appendChild(file);
+
+    const results = scanForGnComments();
+
+    expect(results).toHaveLength(1);
+    expect(results[0].parsed.metadata.side).toBe('L');
+    expect(results[0].parsed.metadata.lineNumber).toBe(15);
+    expect(results[0].parsed.metadata.start).toBe(6);
+    expect(results[0].parsed.metadata.end).toBe(13);
+  });
+
+  it('should deduplicate L-side and R-side comments on same line separately', () => {
+    const file = buildDiffFileDOM({
+      filePath: 'diff.ts',
+      lines: [{ number: 5, text: 'changed line' }],
+      comments: [
+        {
+          line: 5,
+          bodyHTML: gnCommentHTML(5, 0, 7, 'Old code', 'L'),
+        },
+        {
+          line: 5,
+          bodyHTML: gnCommentHTML(5, 0, 7, 'New code', 'R'),
+        },
+      ],
+    });
+    document.body.appendChild(file);
+
+    const results = scanForGnComments();
+
+    expect(results).toHaveLength(2);
+    expect(results[0].parsed.metadata.side).toBe('L');
+    expect(results[1].parsed.metadata.side).toBe('R');
   });
 });

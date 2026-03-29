@@ -1,6 +1,8 @@
 import type { PullRequestInfo } from './github-api';
 import { exec as execCallback } from 'child_process';
 
+const REQUEST_TIMEOUT_MS = 10_000;
+
 function exec(command: string): Promise<string> {
   return new Promise((resolve, reject) => {
     execCallback(command, (error, result) => {
@@ -45,8 +47,14 @@ export async function detectCurrentPR(): Promise<PullRequestInfo | null> {
         headers: {
           Accept: 'application/vnd.github+json',
         },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       }
     );
+
+    if (response.status === 403 || response.status === 429) {
+      console.warn('[Gitnotate] GitHub API rate limit exceeded for unauthenticated request');
+      return null;
+    }
 
     if (!response.ok) {
       return null;
@@ -64,7 +72,8 @@ export async function detectCurrentPR(): Promise<PullRequestInfo | null> {
       number: pr.number,
       headSha: pr.head.sha,
     };
-  } catch {
+  } catch (err) {
+    console.error('[Gitnotate] detectCurrentPR failed:', err);
     return null;
   }
 }

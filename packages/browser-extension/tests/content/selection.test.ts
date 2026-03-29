@@ -303,4 +303,257 @@ describe('getSelectionInfo', () => {
 
     expect(getSelectionInfo()).toBeNull();
   });
+
+  // --- determineSide: data-diff-side attribute ---
+
+  it('should determine LEFT side from data-diff-side="left" on parent td', () => {
+    const file = document.createElement('div');
+    file.className = 'file';
+    file.setAttribute('data-path', 'side-test.ts');
+
+    const header = document.createElement('div');
+    header.className = 'file-header';
+    header.setAttribute('data-path', 'side-test.ts');
+    file.appendChild(header);
+
+    const table = document.createElement('table');
+    file.appendChild(table);
+    const tr = document.createElement('tr');
+    table.appendChild(tr);
+
+    // Left num
+    const leftNum = document.createElement('td');
+    leftNum.className = 'blob-num';
+    leftNum.setAttribute('data-line-number', '5');
+    tr.appendChild(leftNum);
+
+    // Left code: no blob-code-deletion class, but td has data-diff-side="left"
+    const leftTd = document.createElement('td');
+    leftTd.setAttribute('data-diff-side', 'left');
+    const leftCode = document.createElement('div');
+    leftCode.className = 'blob-code-inner';
+    leftCode.textContent = 'left side text';
+    leftTd.appendChild(leftCode);
+    tr.appendChild(leftTd);
+
+    // Right num
+    const rightNum = document.createElement('td');
+    rightNum.className = 'blob-num';
+    rightNum.setAttribute('data-line-number', '5');
+    tr.appendChild(rightNum);
+
+    // Right code
+    const rightTd = document.createElement('td');
+    rightTd.setAttribute('data-diff-side', 'right');
+    const rightCode = document.createElement('div');
+    rightCode.className = 'blob-code-inner';
+    rightCode.textContent = 'right side text';
+    rightTd.appendChild(rightCode);
+    tr.appendChild(rightTd);
+
+    document.body.appendChild(file);
+
+    mockSelection(leftCode, 0, 4);
+    const info = getSelectionInfo();
+    expect(info).not.toBeNull();
+    expect(info!.side).toBe('LEFT');
+  });
+
+  it('should determine RIGHT side from data-diff-side="right" on parent td', () => {
+    const file = document.createElement('div');
+    file.className = 'file';
+    file.setAttribute('data-path', 'side-test2.ts');
+
+    const header = document.createElement('div');
+    header.className = 'file-header';
+    header.setAttribute('data-path', 'side-test2.ts');
+    file.appendChild(header);
+
+    const table = document.createElement('table');
+    file.appendChild(table);
+    const tr = document.createElement('tr');
+    table.appendChild(tr);
+
+    const leftNum = document.createElement('td');
+    leftNum.className = 'blob-num';
+    leftNum.setAttribute('data-line-number', '7');
+    tr.appendChild(leftNum);
+
+    const leftTd = document.createElement('td');
+    leftTd.setAttribute('data-diff-side', 'left');
+    const leftCode = document.createElement('div');
+    leftCode.className = 'blob-code-inner';
+    leftCode.textContent = 'left content';
+    leftTd.appendChild(leftCode);
+    tr.appendChild(leftTd);
+
+    const rightNum = document.createElement('td');
+    rightNum.className = 'blob-num';
+    rightNum.setAttribute('data-line-number', '7');
+    tr.appendChild(rightNum);
+
+    const rightTd = document.createElement('td');
+    rightTd.setAttribute('data-diff-side', 'right');
+    const rightCode = document.createElement('div');
+    rightCode.className = 'blob-code-inner';
+    rightCode.textContent = 'right content';
+    rightTd.appendChild(rightCode);
+    tr.appendChild(rightTd);
+
+    document.body.appendChild(file);
+
+    mockSelection(rightCode, 0, 5);
+    const info = getSelectionInfo();
+    expect(info).not.toBeNull();
+    expect(info!.side).toBe('RIGHT');
+  });
+
+  // --- determineSide: left-side / right-side class checks ---
+
+  it('should determine LEFT side from left-side class on parent td', () => {
+    const file = document.createElement('div');
+    file.className = 'file';
+    file.setAttribute('data-path', 'class-test.ts');
+
+    const header = document.createElement('div');
+    header.className = 'file-header';
+    header.setAttribute('data-path', 'class-test.ts');
+    file.appendChild(header);
+
+    const table = document.createElement('table');
+    file.appendChild(table);
+    const tr = document.createElement('tr');
+    table.appendChild(tr);
+
+    const leftNum = document.createElement('td');
+    leftNum.className = 'blob-num';
+    leftNum.setAttribute('data-line-number', '15');
+    tr.appendChild(leftNum);
+
+    const leftTd = document.createElement('td');
+    leftTd.className = 'left-side';
+    const leftCode = document.createElement('div');
+    leftCode.className = 'blob-code-inner';
+    leftCode.textContent = 'left class code';
+    leftTd.appendChild(leftCode);
+    tr.appendChild(leftTd);
+
+    const rightNum = document.createElement('td');
+    rightNum.className = 'blob-num';
+    rightNum.setAttribute('data-line-number', '15');
+    tr.appendChild(rightNum);
+
+    const rightTd = document.createElement('td');
+    rightTd.className = 'right-side';
+    const rightCode = document.createElement('div');
+    rightCode.className = 'blob-code-inner';
+    rightCode.textContent = 'right class code';
+    rightTd.appendChild(rightCode);
+    tr.appendChild(rightTd);
+
+    document.body.appendChild(file);
+
+    mockSelection(leftCode, 0, 4);
+    const info = getSelectionInfo();
+    expect(info).not.toBeNull();
+    expect(info!.side).toBe('LEFT');
+  });
+
+  it('should determine RIGHT side from right-side class on parent td', () => {
+    const file = document.createElement('div');
+    file.className = 'file';
+    file.setAttribute('data-path', 'class-test2.ts');
+
+    const header = document.createElement('div');
+    header.className = 'file-header';
+    header.setAttribute('data-path', 'class-test2.ts');
+    file.appendChild(header);
+
+    const table = document.createElement('table');
+    file.appendChild(table);
+    const tr = document.createElement('tr');
+    table.appendChild(tr);
+
+    const leftNum = document.createElement('td');
+    leftNum.className = 'blob-num';
+    leftNum.setAttribute('data-line-number', '20');
+    tr.appendChild(leftNum);
+
+    const leftTd = document.createElement('td');
+    leftTd.className = 'left-side';
+    const leftCode = document.createElement('div');
+    leftCode.className = 'blob-code-inner';
+    leftCode.textContent = 'old content';
+    leftTd.appendChild(leftCode);
+    tr.appendChild(leftTd);
+
+    const rightNum = document.createElement('td');
+    rightNum.className = 'blob-num';
+    rightNum.setAttribute('data-line-number', '20');
+    tr.appendChild(rightNum);
+
+    const rightTd = document.createElement('td');
+    rightTd.className = 'right-side';
+    const rightCode = document.createElement('div');
+    rightCode.className = 'blob-code-inner';
+    rightCode.textContent = 'new content';
+    rightTd.appendChild(rightCode);
+    tr.appendChild(rightTd);
+
+    document.body.appendChild(file);
+
+    mockSelection(rightCode, 0, 3);
+    const info = getSelectionInfo();
+    expect(info).not.toBeNull();
+    expect(info!.side).toBe('RIGHT');
+  });
+
+  it('should determine LEFT side from left-side-diff-cell class on parent td', () => {
+    const file = document.createElement('div');
+    file.className = 'file';
+    file.setAttribute('data-path', 'diff-cell-test.ts');
+
+    const header = document.createElement('div');
+    header.className = 'file-header';
+    header.setAttribute('data-path', 'diff-cell-test.ts');
+    file.appendChild(header);
+
+    const table = document.createElement('table');
+    file.appendChild(table);
+    const tr = document.createElement('tr');
+    table.appendChild(tr);
+
+    const leftNum = document.createElement('td');
+    leftNum.className = 'blob-num';
+    leftNum.setAttribute('data-line-number', '8');
+    tr.appendChild(leftNum);
+
+    const leftTd = document.createElement('td');
+    leftTd.className = 'left-side-diff-cell';
+    const leftCode = document.createElement('div');
+    leftCode.className = 'blob-code-inner';
+    leftCode.textContent = 'diff cell left';
+    leftTd.appendChild(leftCode);
+    tr.appendChild(leftTd);
+
+    const rightNum = document.createElement('td');
+    rightNum.className = 'blob-num';
+    rightNum.setAttribute('data-line-number', '8');
+    tr.appendChild(rightNum);
+
+    const rightTd = document.createElement('td');
+    rightTd.className = 'right-side-diff-cell';
+    const rightCode = document.createElement('div');
+    rightCode.className = 'blob-code-inner';
+    rightCode.textContent = 'diff cell right';
+    rightTd.appendChild(rightCode);
+    tr.appendChild(rightTd);
+
+    document.body.appendChild(file);
+
+    mockSelection(leftCode, 0, 4);
+    const info = getSelectionInfo();
+    expect(info).not.toBeNull();
+    expect(info!.side).toBe('LEFT');
+  });
 });

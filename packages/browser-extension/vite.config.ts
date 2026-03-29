@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { copyFileSync, writeFileSync, readFileSync } from 'fs';
+import { copyFileSync, writeFileSync, readFileSync, cpSync, mkdirSync } from 'fs';
 import { build } from 'vite';
 
 // We need two separate builds:
@@ -36,6 +36,14 @@ export default defineConfig({
           resolve(__dirname, 'manifest.json'),
           resolve(__dirname, 'dist/manifest.json'),
         );
+
+        // Copy icons
+        const iconsSrc = resolve(__dirname, 'icons');
+        const iconsDest = resolve(__dirname, 'dist/icons');
+        mkdirSync(iconsDest, { recursive: true });
+        for (const icon of ['icon-16.png', 'icon-32.png', 'icon-48.png', 'icon-128.png']) {
+          copyFileSync(resolve(iconsSrc, icon), resolve(iconsDest, icon));
+        }
 
         // Build content script as IIFE (self-contained, no imports)
         await build({

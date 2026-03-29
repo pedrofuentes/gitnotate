@@ -58,10 +58,10 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // Listen for active editor changes to apply @gn decorations
+  // Listen for active editor changes to apply ^gn decorations
   const editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
     (_editor) => {
-      // TODO: fetch PR comments, parse @gn metadata, apply decorations
+      // TODO: fetch PR comments, parse ^gn metadata, apply decorations
     }
   );
 

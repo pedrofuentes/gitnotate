@@ -1,18 +1,20 @@
 const DIFF_SELECTORS = ['.diff-table', '[data-diff-anchor]', '.file'] as const;
+const DIFF_SELECTOR = DIFF_SELECTORS.join(', ');
 
 function findDiffElements(): HTMLElement[] {
-  const selector = DIFF_SELECTORS.join(', ');
-  return Array.from(document.querySelectorAll<HTMLElement>(selector));
+  return Array.from(document.querySelectorAll<HTMLElement>(DIFF_SELECTOR));
 }
 
 function containsDiffElements(node: Node): boolean {
   if (!(node instanceof HTMLElement)) return false;
 
-  // Check if the node itself matches
-  if (node.matches(DIFF_SELECTORS.join(', '))) return true;
+  if (node.matches(DIFF_SELECTOR)) return true;
 
-  // Check descendants
-  return node.querySelector(DIFF_SELECTORS.join(', ')) !== null;
+  return node.querySelector(DIFF_SELECTOR) !== null;
+}
+
+export interface ObserveDiffOptions {
+  signal?: AbortSignal;
 }
 
 /**
@@ -22,6 +24,7 @@ function containsDiffElements(node: Node): boolean {
  */
 export function observeDiffContent(
   callback: (diffElements: HTMLElement[]) => void,
+  options?: ObserveDiffOptions,
 ): MutationObserver {
   // Fire immediately for any existing diff elements
   const existing = findDiffElements();
@@ -36,12 +39,12 @@ export function observeDiffContent(
       for (const node of mutation.addedNodes) {
         if (containsDiffElements(node)) {
           // Collect the actual diff elements (not the container)
-          if (node instanceof HTMLElement && node.matches(DIFF_SELECTORS.join(', '))) {
+          if (node instanceof HTMLElement && node.matches(DIFF_SELECTOR)) {
             found.push(node);
           }
           if (node instanceof HTMLElement) {
             found.push(
-              ...Array.from(node.querySelectorAll<HTMLElement>(DIFF_SELECTORS.join(', '))),
+              ...Array.from(node.querySelectorAll<HTMLElement>(DIFF_SELECTOR)),
             );
           }
         }
@@ -58,13 +61,13 @@ export function observeDiffContent(
     subtree: true,
   });
 
-  // Handle GitHub's turbo navigation
+  // Handle GitHub's turbo navigation — use signal for cleanup
   document.addEventListener('turbo:load', () => {
     const elements = findDiffElements();
     if (elements.length > 0) {
       callback(elements);
     }
-  });
+  }, { signal: options?.signal });
 
   return observer;
 }
