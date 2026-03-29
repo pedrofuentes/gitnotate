@@ -98,6 +98,7 @@ Run them after any change to `textarea-target.ts`, `highlighter.ts`,
 | **MT-4** Selection without comment box | 1. Open form on line X, inject metadata  2. Select text on a DISTANT line (no form open there) | Nothing happens — line X's textarea is NOT updated | ✅ Passed |
 | **MT-5** Re-select on same line | 1. Open form on line X, select text → metadata injected  2. Select DIFFERENT text on line X | Line X's textarea updates with the new selection's metadata | ✅ Passed |
 | **MT-6** Split-view diff | 1. Switch to split-view mode  2. Open form on the right side, select text | Metadata is injected into the correct textarea | ✅ Passed |
+| **MT-6b** Open form first then select | 1. Click "+" on line X to open comment form first  2. Then select text on line X | Pending highlight appears on selected text; `^gn` metadata in textarea | ✅ Passed |
 | **MT-7** Page re-navigation | 1. Open PR files-changed page  2. Navigate away and back via turbo links  3. Open form, select text | Single injection (no duplicates); metadata goes to correct textarea | ✅ Passed |
 
 ### Submitted Comment Highlighting
