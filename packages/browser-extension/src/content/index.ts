@@ -5,6 +5,7 @@ import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
 import { hideGnMetadataInComment } from './metadata-hider';
 import { colorizeCommentThread, clearCommentColorIndicators } from './thread-colorizer';
+import { createObserverLifecycle, type ObserverLifecycle } from './observer-lifecycle';
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
 import { isRepoEnabled, enableRepo, isRepoBlocked, blockRepo } from '../storage/repo-settings';
 import { getHighlightStyle, applyHighlightStyle } from '../storage/highlight-style';
@@ -15,7 +16,7 @@ import './ui/optin-banner.css';
 import { debug } from './logger';
 
 let currentPageInfo: GitHubPageInfo = detectGitHubPage();
-let featureAbort: AbortController | null = null;
+let featureLifecycle: ObserverLifecycle | null = null;
 
 debug('[Gitnotate] Content script loaded at:', window.location.href);
 
@@ -75,11 +76,11 @@ async function init(): Promise<void> {
 }
 
 function activateFeatures(pageInfo: GitHubPageInfo): void {
-  // Abort previous event listeners to avoid double-registration
-  // when init() is called again (e.g. turbo:load navigation).
-  featureAbort?.abort();
-  featureAbort = new AbortController();
-  const { signal } = featureAbort;
+  // Abort previous lifecycle to disconnect observers and clear timers,
+  // avoiding double-registration on turbo:load navigation.
+  featureLifecycle?.abort();
+  featureLifecycle = createObserverLifecycle();
+  const { signal } = featureLifecycle;
 
   hideOptInBanner();
 
@@ -92,6 +93,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
 
     // Track one pending highlight per textarea so multiple selections
     // can coexist across different inline comment forms.
+    // Cleared on each activation to avoid holding detached DOM references.
     const pendingHighlights = new Map<HTMLTextAreaElement, HTMLElement>();
 
     // When user selects text while a comment textarea is open,
@@ -144,6 +146,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
       }
     });
     formObserver.observe(document.body, { childList: true, subtree: true });
+    featureLifecycle.trackObserver(formObserver);
 
     function removePendingHighlightFor(textarea: HTMLTextAreaElement): void {
       const highlight = pendingHighlights.get(textarea);
@@ -167,22 +170,25 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
     // Re-scan when comment forms appear or disappear (not on every DOM change)
     let lastCommentCount = 0;
     let lastTextareaCount = 0;
-    const rescanObserver = new MutationObserver(() => {
-      // Only re-scan if the number of comment bodies or textareas changed
-      const commentBodies = document.querySelectorAll('.comment-body, .markdown-body, [data-testid="markdown-body"]').length;
-      const textareas = document.querySelectorAll('textarea').length;
-      
-      if (commentBodies !== lastCommentCount || textareas !== lastTextareaCount) {
-        lastCommentCount = commentBodies;
-        lastTextareaCount = textareas;
-        clearTimeout(rescanTimer);
-        rescanTimer = setTimeout(() => {
-          scanAndHighlight();
-        }, 500);
-      }
-    });
     let rescanTimer: ReturnType<typeof setTimeout>;
+    const rescanObserver = new MutationObserver(() => {
+      clearTimeout(rescanTimer);
+      rescanTimer = setTimeout(() => {
+        // Move counting queries inside debounced callback to avoid
+        // expensive querySelectorAll on every single mutation
+        const commentBodies = document.querySelectorAll('.comment-body, .markdown-body, [data-testid="markdown-body"]').length;
+        const textareas = document.querySelectorAll('textarea').length;
+
+        if (commentBodies !== lastCommentCount || textareas !== lastTextareaCount) {
+          lastCommentCount = commentBodies;
+          lastTextareaCount = textareas;
+          scanAndHighlight();
+        }
+      }, 500);
+      featureLifecycle!.trackTimer(rescanTimer);
+    });
     rescanObserver.observe(document.body, { childList: true, subtree: true });
+    featureLifecycle.trackObserver(rescanObserver);
   }
 }
 
