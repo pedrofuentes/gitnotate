@@ -163,18 +163,17 @@ describe('submitViaGitHubUI', () => {
     const fileEl = buildDiffDOM(3, 'docs/proposal.md');
     document.body.appendChild(fileEl);
 
+    let inputFired = false;
+
     const btn = fileEl.querySelector<HTMLButtonElement>('button.js-add-line-comment')!;
     btn.addEventListener('click', () => {
       simulateGitHubFormInjection(fileEl, 3);
+      // Attach listener right after injection, before submitViaGitHubUI touches the textarea
+      const textarea = fileEl.querySelector<HTMLTextAreaElement>('.comment-form-textarea')!;
+      textarea.addEventListener('input', () => {
+        inputFired = true;
+      });
     });
-
-    let inputFired = false;
-
-    // We need to add the event listener after the form is injected
-    const origAddEventListener = btn.addEventListener.bind(btn);
-    btn.addEventListener = (type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
-      origAddEventListener(type, listener, options);
-    };
 
     await submitViaGitHubUI({
       filePath: 'docs/proposal.md',
@@ -183,16 +182,9 @@ describe('submitViaGitHubUI', () => {
       commentBody: 'test',
     });
 
-    // Check that the textarea received an input event by verifying it was set
     const textarea = document.querySelector<HTMLTextAreaElement>('.comment-form-textarea')!;
-    // Listen for subsequent input events - verify the value was set via nativeInputValueSetter or direct
-    textarea.addEventListener('input', () => {
-      inputFired = true;
-    });
-
-    // The input event should have already been dispatched during submitViaGitHubUI
-    // We verify by checking the textarea value is set correctly
     expect(textarea.value).toBe('test');
+    expect(inputFired).toBe(true);
   });
 
   it('should return false if line button not found', async () => {
