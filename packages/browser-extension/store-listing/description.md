@@ -79,11 +79,7 @@ This means: file `file.md`, line 42, characters 10–25, with the quoted text as
 2. Click the Gitnotate icon in your browser toolbar.
 
 ### Setup
-1. **Add a GitHub Personal Access Token (PAT):**
-   - Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic).
-   - Generate a token with the `repo` scope.
-   - Paste it into the Gitnotate popup and save.
-2. **Enable per repository:**
+1. **Enable per repository:**
    - Visit a Pull Request on any repository.
    - Gitnotate shows an opt-in banner — click "Enable" to activate it for that repo.
    - Or manage repositories from the popup menu.
@@ -99,8 +95,8 @@ This means: file `file.md`, line 42, characters 10–25, with the quoted text as
 
 Gitnotate is designed with privacy as a core principle:
 
-- **Local storage only** — your token and preferences never leave your browser.
-- **No external servers** — communicates only with GitHub.
+- **Local storage only** — your preferences never leave your browser.
+- **No network requests** — does not communicate with any server.
 - **No data collection** — zero analytics, tracking, or telemetry.
 - **Minimal permissions** — only `activeTab`, `storage`, and access to `github.com`.
 
@@ -121,7 +117,7 @@ Contributions, bug reports, and feature requests are welcome.
 ## 📋 Requirements
 
 - **Browser:** Chrome or Edge (Manifest V3)
-- **GitHub:** A GitHub account with a Personal Access Token (repo scope)
+- **GitHub:** A GitHub account
 - **Works on:** Any GitHub repository with Pull Requests
 
 ---

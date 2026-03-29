@@ -40,8 +40,8 @@ Coming soon — same extension works on both browsers (Manifest V3).
 
 ### Setup
 1. Click the Gitnotate icon in your toolbar
-2. Add a GitHub Personal Access Token with `repo` scope
-3. Visit any PR → click "Enable" on the opt-in banner
+2. Visit any PR → click "Enable" on the opt-in banner
+3. Select text in a diff to start commenting
 
 ## Status
 
