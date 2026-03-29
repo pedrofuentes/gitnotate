@@ -93,4 +93,11 @@ describe('parseGnComment', () => {
     expect(left!.metadata.side).toBe('L');
     expect(right!.metadata.side).toBe('R');
   });
+
+  it('should return null for inverted range (start >= end)', () => {
+    // start > end
+    expect(parseGnComment('^gn:5:R:20:10')).toBeNull();
+    // start == end (zero-width range is invalid)
+    expect(parseGnComment('^gn:5:R:10:10')).toBeNull();
+  });
 });

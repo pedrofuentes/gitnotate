@@ -279,6 +279,189 @@ describe('highlightTextRange', () => {
   });
 });
 
+describe('findCodeCell lookup strategies', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('strategy 1: should find code cell via data-diff-side on td with line number', () => {
+    const table = document.createElement('table');
+    table.setAttribute('data-diff-anchor', 'strat1.ts');
+    const tr = document.createElement('tr');
+
+    const numTd = document.createElement('td');
+    numTd.setAttribute('data-diff-side', 'right');
+    numTd.setAttribute('data-line-number', '5');
+    tr.appendChild(numTd);
+
+    const codeTd = document.createElement('td');
+    codeTd.setAttribute('data-diff-side', 'right');
+    const inner = document.createElement('div');
+    inner.className = 'diff-text-inner';
+    inner.textContent = 'strategy one content';
+    codeTd.appendChild(inner);
+    tr.appendChild(codeTd);
+
+    table.appendChild(tr);
+    document.body.appendChild(table);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'strat1.ts', lineNumber: 5, side: 'R', start: 0, end: 8, commentId: 's1' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('strategy');
+  });
+
+  it('strategy 2: should find code cell via side-class (left-side-diff-cell) on td', () => {
+    const table = document.createElement('table');
+    table.setAttribute('data-diff-anchor', 'strat2.ts');
+    const tr = document.createElement('tr');
+
+    const numTd = document.createElement('td');
+    numTd.className = 'left-side-diff-cell';
+    numTd.setAttribute('data-line-number', '12');
+    tr.appendChild(numTd);
+
+    const codeTd = document.createElement('td');
+    codeTd.className = 'left-side-diff-cell';
+    const inner = document.createElement('div');
+    inner.className = 'diff-text-inner';
+    inner.textContent = 'left side class content';
+    codeTd.appendChild(inner);
+    tr.appendChild(codeTd);
+
+    table.appendChild(tr);
+    document.body.appendChild(table);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'strat2.ts', lineNumber: 12, side: 'L', start: 0, end: 4, commentId: 's2' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('left');
+  });
+
+  it('strategy 3: should find code cell via generic td[data-line-number] (unified view)', () => {
+    const table = document.createElement('table');
+    table.setAttribute('data-diff-anchor', 'strat3.ts');
+    const tr = document.createElement('tr');
+
+    const numTd = document.createElement('td');
+    numTd.setAttribute('data-line-number', '7');
+    tr.appendChild(numTd);
+
+    const codeTd = document.createElement('td');
+    const inner = document.createElement('div');
+    inner.className = 'diff-text-inner';
+    inner.textContent = 'unified view content';
+    codeTd.appendChild(inner);
+    tr.appendChild(codeTd);
+
+    table.appendChild(tr);
+    document.body.appendChild(table);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'strat3.ts', lineNumber: 7, side: 'R', start: 0, end: 7, commentId: 's3' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('unified');
+  });
+
+  it('strategy 4: should find code cell via old UI blob-num + blob-code-inner', () => {
+    // This is the buildDiffLine helper path — already tested, but explicit here
+    const file = buildDiffLine('strat4.ts', 3, 'old ui content');
+    document.body.appendChild(file);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'strat4.ts', lineNumber: 3, side: 'R', start: 0, end: 3, commentId: 's4' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('old');
+  });
+
+  it('strategy 5: should find code cell via data-line-number sibling with side filtering', () => {
+    // Build a split view where strategy 1-4 don't match but sibling fallback does
+    const table = document.createElement('table');
+    table.setAttribute('data-diff-anchor', 'strat5.ts');
+    const tr = document.createElement('tr');
+
+    // Left side num
+    const leftNum = document.createElement('td');
+    leftNum.setAttribute('data-line-number', '20');
+    leftNum.setAttribute('data-diff-side', 'left');
+    tr.appendChild(leftNum);
+
+    // Left side code
+    const leftCodeTd = document.createElement('td');
+    leftCodeTd.setAttribute('data-diff-side', 'left');
+    const leftInner = document.createElement('div');
+    leftInner.className = 'diff-text-inner';
+    leftInner.textContent = 'left fallback';
+    leftCodeTd.appendChild(leftInner);
+    tr.appendChild(leftCodeTd);
+
+    // Right side num
+    const rightNum = document.createElement('td');
+    rightNum.setAttribute('data-line-number', '20');
+    rightNum.setAttribute('data-diff-side', 'right');
+    tr.appendChild(rightNum);
+
+    // Right side code
+    const rightCodeTd = document.createElement('td');
+    rightCodeTd.setAttribute('data-diff-side', 'right');
+    const rightInner = document.createElement('div');
+    rightInner.className = 'diff-text-inner';
+    rightInner.textContent = 'right fallback';
+    rightCodeTd.appendChild(rightInner);
+    tr.appendChild(rightCodeTd);
+
+    table.appendChild(tr);
+    document.body.appendChild(table);
+
+    // Request L side — should get left side content
+    const leftResult = highlightTextRange(
+      makeInfo({ filePath: 'strat5.ts', lineNumber: 20, side: 'L', start: 0, end: 4, commentId: 's5-l' }),
+    );
+
+    expect(leftResult).not.toBeNull();
+    expect(leftResult!.span.textContent).toBe('left');
+  });
+
+  it('strategy 6: should skip cells with wrong data-diff-side in sibling fallback', () => {
+    const table = document.createElement('table');
+    table.setAttribute('data-diff-anchor', 'strat6.ts');
+    const tr = document.createElement('tr');
+
+    // Only left-side num cell
+    const leftNum = document.createElement('td');
+    leftNum.setAttribute('data-line-number', '30');
+    leftNum.setAttribute('data-diff-side', 'left');
+    tr.appendChild(leftNum);
+
+    // Left code only
+    const leftCodeTd = document.createElement('td');
+    leftCodeTd.setAttribute('data-diff-side', 'left');
+    const leftInner = document.createElement('div');
+    leftInner.className = 'diff-text-inner';
+    leftInner.textContent = 'only left here';
+    leftCodeTd.appendChild(leftInner);
+    tr.appendChild(leftCodeTd);
+
+    table.appendChild(tr);
+    document.body.appendChild(table);
+
+    // Request R side — the left-side num cell should be skipped since it has data-diff-side="left"
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'strat6.ts', lineNumber: 30, side: 'R', start: 0, end: 4, commentId: 's6' }),
+    );
+
+    expect(result).toBeNull();
+  });
+});
+
 describe('clearHighlight', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
