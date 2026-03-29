@@ -6,6 +6,15 @@ export interface HighlightInfo {
   commentId: string;
 }
 
+const HIGHLIGHT_COLOR_COUNT = 6;
+
+// Track how many highlights exist per line to assign distinct colors
+const lineColorCounters = new Map<string, number>();
+
+export function resetColorCounters(): void {
+  lineColorCounters.clear();
+}
+
 /**
  * Find the code cell for a given file path + line number.
  * Supports both old (.blob-code-inner) and new (.diff-text-inner) GitHub UI.
@@ -98,6 +107,12 @@ export function highlightTextRange(info: HighlightInfo): HTMLElement | null {
   span.setAttribute('data-gn-start', String(info.start));
   span.setAttribute('data-gn-end', String(info.end));
 
+  // Assign a distinct color per highlight on the same line
+  const lineKey = `${info.filePath}:${info.lineNumber}`;
+  const colorIndex = (lineColorCounters.get(lineKey) ?? 0) % HIGHLIGHT_COLOR_COUNT;
+  lineColorCounters.set(lineKey, colorIndex + 1);
+  span.classList.add(`gn-highlight-color-${colorIndex}`);
+
   try {
     range.surroundContents(span);
   } catch {
@@ -171,6 +186,7 @@ export function clearAllHighlights(): void {
   for (const span of highlights) {
     unwrapSpan(span);
   }
+  resetColorCounters();
 }
 
 /**

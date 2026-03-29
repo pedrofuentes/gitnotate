@@ -1,12 +1,55 @@
 .gn-highlight {
-  background-color: rgba(255, 213, 79, 0.4);
-  border-bottom: 2px solid #f9a825;
   cursor: pointer;
   position: relative;
 }
 
-.gn-highlight:hover {
+/* Color palette for multiple highlights on the same line */
+.gn-highlight-color-0 {
+  background-color: rgba(255, 213, 79, 0.4);
+  border-bottom: 2px solid #f9a825;
+}
+.gn-highlight-color-0:hover {
   background-color: rgba(255, 213, 79, 0.7);
+}
+
+.gn-highlight-color-1 {
+  background-color: rgba(129, 199, 132, 0.4);
+  border-bottom: 2px solid #43a047;
+}
+.gn-highlight-color-1:hover {
+  background-color: rgba(129, 199, 132, 0.7);
+}
+
+.gn-highlight-color-2 {
+  background-color: rgba(144, 202, 249, 0.4);
+  border-bottom: 2px solid #1e88e5;
+}
+.gn-highlight-color-2:hover {
+  background-color: rgba(144, 202, 249, 0.7);
+}
+
+.gn-highlight-color-3 {
+  background-color: rgba(239, 154, 154, 0.4);
+  border-bottom: 2px solid #e53935;
+}
+.gn-highlight-color-3:hover {
+  background-color: rgba(239, 154, 154, 0.7);
+}
+
+.gn-highlight-color-4 {
+  background-color: rgba(206, 147, 216, 0.4);
+  border-bottom: 2px solid #8e24aa;
+}
+.gn-highlight-color-4:hover {
+  background-color: rgba(206, 147, 216, 0.7);
+}
+
+.gn-highlight-color-5 {
+  background-color: rgba(255, 183, 77, 0.4);
+  border-bottom: 2px solid #ef6c00;
+}
+.gn-highlight-color-5:hover {
+  background-color: rgba(255, 183, 77, 0.7);
 }
 
 .gn-highlight-tooltip {
