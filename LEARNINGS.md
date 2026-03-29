@@ -19,6 +19,14 @@
 
 <!-- Add new learnings below this line, most recent first -->
 
+### [2026-03-29] TDD choreography violations led to Sentinel rejection
+
+**Context**: During the `fix/textarea-proximity-targeting` merge, the Sentinel post-audit found that only 2 of 27 feat/fix commits followed proper TDD choreography (separate test commit before implementation commit). Of the 25 violations: 11 bundled test and implementation code in a single commit, 13 had no corresponding tests at all, and 1 had tests committed after implementation (reversed order).
+
+**Learning**: TDD choreography requires three distinct, ordered commits per behavioral change: (1) a `test(scope)` commit containing only tests that fail, (2) a `feat|fix(scope)` commit with minimal implementation to pass those tests, and (3) an optional `refactor(scope)` commit. Bundling tests with implementation defeats the purpose — it provides no proof the tests ever failed, so they may be testing nothing meaningful. Skipping tests entirely is worse. The Sentinel rejected the merge in post-audit, requiring remediation before the work could land.
+
+**Impact**: Every feat/fix commit must be preceded by a separate test-only commit. Run tests after the test commit to confirm they fail (RED), then implement and confirm they pass (GREEN). Consider adding a `commit-msg` hook or CI check that verifies feat/fix commits are preceded by a corresponding test commit on the same branch, to catch violations before they reach the Sentinel.
+
 ### [2026-03-29] GitHub's `@` prefix triggers user mention lookups
 **Context**: Users reported that `@gn:...` metadata tags were being interpreted as GitHub @mentions, linking to github.com/GN.
 **Learning**: The `@` character is reserved by GitHub for user/team mentions. Any metadata prefix starting with `@` followed by alphanumeric characters will trigger mention resolution. The caret (`^`) is safe — GitHub doesn't use it for any feature.
