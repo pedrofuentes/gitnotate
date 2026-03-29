@@ -212,13 +212,19 @@ my-repo/
 
 ## Key Design Decisions
 
-1. **`@gn` metadata format**: Exact JSON structure for PR comment metadata
+1. **`^gn` metadata format**: `^gn:LINE:START:END` plain text in PR comments (caret prefix avoids GitHub @mention conflicts)
 2. **Storage location for sidecar**: `.comments/` directory (hidden dot-prefix)
 3. **Commit strategy**: Auto-commit each comment vs. batch/manual commit
 4. **Branch strategy**: Comments on same branch vs. separate comments branch
 5. **Auth**: GitHub OAuth App vs. Personal Access Token
 6. **Conflict handling**: Behavior when two people comment on overlapping text simultaneously
 7. **Anchor resilience**: How aggressively to fuzzy-match when exact text changes
+
+---
+
+## Future Improvements
+
+- **Overlapping highlight support**: When multiple comments highlight overlapping text ranges on the same line, implement character-level painting instead of `surroundContents`. Each character position would be painted with the union of all highlights covering it, with overlapping regions showing a slightly darker highlight and multiple comment IDs.
 
 ---
 
