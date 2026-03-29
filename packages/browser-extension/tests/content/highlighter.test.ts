@@ -3,6 +3,7 @@ import {
   highlightTextRange,
   clearAllHighlights,
   clearHighlight,
+  resetColorCounters,
   type HighlightInfo,
 } from '../../src/content/highlighter';
 
@@ -343,5 +344,119 @@ describe('clearAllHighlights', () => {
 
     const codeCell = document.querySelector('.blob-code-inner');
     expect(codeCell?.textContent).toBe('alpha beta gamma');
+  });
+});
+
+describe('SEC-01: CSS selector injection via filePath', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    resetColorCounters();
+  });
+
+  it('should handle filePath containing double quotes without throwing', () => {
+    const maliciousPath = 'file"with"quotes.ts';
+    const file = buildDiffLine(maliciousPath, 1, 'hello world');
+    document.body.appendChild(file);
+
+    expect(() =>
+      highlightTextRange(
+        makeInfo({ filePath: maliciousPath, lineNumber: 1, start: 0, end: 5, commentId: 'sec1a' }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('should handle filePath containing square brackets', () => {
+    const bracketPath = 'src/[id]/page.tsx';
+    const file = buildDiffLine(bracketPath, 1, 'hello world');
+    document.body.appendChild(file);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: bracketPath, lineNumber: 1, start: 0, end: 5, commentId: 'sec1b' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('hello');
+  });
+
+  it('should handle filePath with CSS selector special characters', () => {
+    const specialPath = 'path/to/file#1.component.test.ts';
+    const file = buildDiffLine(specialPath, 1, 'const x = 1;');
+    document.body.appendChild(file);
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: specialPath, lineNumber: 1, start: 6, end: 7, commentId: 'sec1c' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('x');
+  });
+});
+
+describe('SEC-02: unprotected JSON.parse of data-gn-metadata', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    resetColorCounters();
+  });
+
+  it('should not throw when data-gn-metadata contains invalid JSON', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    // First highlight to create the td with metadata
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'sec2a' }),
+    );
+
+    // Corrupt the metadata attribute
+    const td = document.querySelector('td.blob-code');
+    td?.setAttribute('data-gn-metadata', '{not valid json!!!');
+
+    // Second highlight on same line should not throw
+    expect(() =>
+      highlightTextRange(
+        makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'sec2b' }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('should still create highlight when metadata is corrupted', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'sec2c' }),
+    );
+
+    // Corrupt metadata
+    const td = document.querySelector('td.blob-code');
+    td?.setAttribute('data-gn-metadata', 'corrupt');
+
+    const result = highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'sec2d' }),
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.span.textContent).toBe('beta');
+  });
+
+  it('should reset metadata to valid state after encountering corruption', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta gamma');
+    document.body.appendChild(file);
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId: 'sec2e' }),
+    );
+
+    // Corrupt metadata
+    const td = document.querySelector('td.blob-code');
+    td?.setAttribute('data-gn-metadata', 'not-json');
+
+    highlightTextRange(
+      makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 6, end: 10, commentId: 'sec2f' }),
+    );
+
+    // Metadata should be valid JSON again
+    const metadata = td?.getAttribute('data-gn-metadata');
+    expect(() => JSON.parse(metadata!)).not.toThrow();
   });
 });

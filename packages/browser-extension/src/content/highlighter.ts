@@ -31,6 +31,19 @@ export function resetColorCounters(): void {
 }
 
 /**
+ * Escape a string for safe use inside a CSS selector attribute value.
+ * Uses CSS.escape when available (browsers); falls back to a manual
+ * escape that handles the characters querySelector would choke on.
+ */
+function cssEscape(value: string): string {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(value);
+  }
+  // Fallback: escape characters that are special in CSS selectors
+  return value.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+}
+
+/**
  * Find the code cell for a given file path + line number.
  * Supports both old (.blob-code-inner) and new (.diff-text-inner) GitHub UI.
  */
@@ -39,9 +52,10 @@ function findCodeCell(filePath: string, lineNumber: number, side: 'L' | 'R'): HT
   const diffSide = side === 'L' ? 'left' : 'right';
 
   // Scope search to the correct file container when filePath is available
+  const escapedPath = filePath ? cssEscape(filePath) : '';
   const scopeEl = filePath
     ? document.querySelector<HTMLElement>(
-        `.file[data-path="${filePath}"], [data-diff-anchor="${filePath}"]`,
+        `.file[data-path="${escapedPath}"], [data-diff-anchor="${escapedPath}"]`,
       )
     : null;
   const scope: ParentNode = scopeEl ?? document;
@@ -164,7 +178,12 @@ export function highlightTextRange(info: HighlightInfo): HighlightResult | null 
   if (td) {
     const entry = `${info.lineNumber}:${info.start}:${info.end}`;
     const existing = td.getAttribute('data-gn-metadata');
-    const entries: string[] = existing ? JSON.parse(existing) : [];
+    let entries: string[];
+    try {
+      entries = existing ? JSON.parse(existing) : [];
+    } catch {
+      entries = [];
+    }
     if (!entries.includes(entry)) {
       entries.push(entry);
     }
