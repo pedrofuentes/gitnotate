@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gitnotate — Sub-line Commenting for GitHub PR Reviews</title>
   <meta name="description" content="Gitnotate is a browser extension that adds sub-line commenting to Markdown files in GitHub PR reviews.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+  <link rel="icon" type="image/png" href="./favicon.png">
   <style>
     *, *::before, *::after {
       margin: 0;
@@ -62,17 +62,7 @@
     .logo-icon {
       width: 32px;
       height: 32px;
-      background: var(--accent);
       border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .logo-icon svg {
-      width: 20px;
-      height: 20px;
-      fill: var(--bg);
     }
 
     main {
@@ -224,11 +214,7 @@
 <body>
   <header>
     <div class="logo">
-      <div class="logo-icon">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-3 12H7c-.55 0-1-.45-1-1s.45-1 1-1h10c.55 0 1 .45 1 1s-.45 1-1 1zm0-3H7c-.55 0-1-.45-1-1s.45-1 1-1h10c.55 0 1 .45 1 1s-.45 1-1 1zm0-3H7c-.55 0-1-.45-1-1s.45-1 1-1h10c.55 0 1 .45 1 1s-.45 1-1 1z"/>
-        </svg>
-      </div>
+      <img src="./icon-128.png" alt="Gitnotate" class="logo-icon" width="32" height="32">
       Gitnotate
     </div>
   </header>
