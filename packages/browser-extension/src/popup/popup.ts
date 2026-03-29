@@ -10,102 +10,112 @@ import {
   type HighlightStyle,
 } from '../storage/highlight-style.js';
 
+const REPO_ICON_SVG = '<svg class="repo-icon" viewBox="0 0 16 16" fill="currentColor" width="14" height="14"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>';
+
+function createRepoItem(
+  repo: string,
+  actionLabel: string,
+  actionClass: string,
+  onAction: () => Promise<void>,
+): HTMLElement {
+  const item = document.createElement('div');
+  item.className = 'repo-item';
+
+  const [owner, repoName] = repo.split('/');
+  const nameEl = document.createElement('span');
+  nameEl.className = 'repo-name';
+  nameEl.innerHTML = `${REPO_ICON_SVG} <span class="owner">${owner}</span><span class="slash">/</span>${repoName}`;
+
+  const btn = document.createElement('button');
+  btn.className = `repo-action ${actionClass}`;
+  btn.textContent = actionLabel;
+  btn.addEventListener('click', onAction);
+
+  item.appendChild(nameEl);
+  item.appendChild(btn);
+  return item;
+}
+
 // --- Enabled repos ---
 
 async function renderEnabledRepos(): Promise<void> {
   const container = document.getElementById('gn-repo-list');
+  const countEl = document.getElementById('gn-enabled-count');
   if (!container) return;
 
   const repos = await getAllEnabledRepos();
-
   container.innerHTML = '';
 
   if (repos.length === 0) {
-    const msg = document.createElement('p');
-    msg.className = 'gn-muted';
-    msg.textContent = 'No repos enabled yet. Visit a PR and click "Enable" when prompted.';
-    container.appendChild(msg);
+    if (countEl) countEl.hidden = true;
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.innerHTML = '<span class="emoji">📂</span>No repos enabled yet.<br>Visit a PR and click "Enable" when prompted.';
+    container.appendChild(empty);
   } else {
-    const list = document.createElement('ul');
-    list.className = 'gn-repo-list';
-
-    for (const repo of repos) {
-      const li = document.createElement('li');
-      li.className = 'gn-repo-item';
-
-      const name = document.createElement('span');
-      name.textContent = repo;
-
-      const btn = document.createElement('button');
-      btn.className = 'gn-btn gn-btn-small';
-      btn.textContent = 'Disable';
-      btn.addEventListener('click', async () => {
-        const [owner, repoName] = repo.split('/');
-        await disableRepo(owner, repoName);
-        await renderEnabledRepos();
-      });
-
-      li.appendChild(name);
-      li.appendChild(btn);
-      list.appendChild(li);
+    if (countEl) {
+      countEl.textContent = String(repos.length);
+      countEl.hidden = false;
     }
-    container.appendChild(list);
+    for (const repo of repos) {
+      container.appendChild(
+        createRepoItem(repo, 'Disable', '', async () => {
+          const [owner, repoName] = repo.split('/');
+          await disableRepo(owner, repoName);
+          await renderEnabledRepos();
+        }),
+      );
+    }
   }
 }
 
+// --- Blocked repos ---
+
 async function renderBlockedRepos(): Promise<void> {
   const container = document.getElementById('gn-blocked-list');
+  const countEl = document.getElementById('gn-blocked-count');
+  const section = document.getElementById('gn-blocked-section');
   if (!container) return;
 
   const repos = await getAllBlockedRepos();
-
   container.innerHTML = '';
 
   if (repos.length === 0) {
-    const msg = document.createElement('p');
-    msg.className = 'gn-muted';
-    msg.textContent = 'No blocked repos.';
-    container.appendChild(msg);
+    if (section) section.hidden = true;
   } else {
-    const list = document.createElement('ul');
-    list.className = 'gn-repo-list';
-
+    if (section) section.hidden = false;
+    if (countEl) countEl.textContent = String(repos.length);
     for (const repo of repos) {
-      const li = document.createElement('li');
-      li.className = 'gn-repo-item';
-
-      const name = document.createElement('span');
-      name.textContent = repo;
-
-      const btn = document.createElement('button');
-      btn.className = 'gn-btn gn-btn-small';
-      btn.textContent = 'Unblock';
-      btn.addEventListener('click', async () => {
-        const [owner, repoName] = repo.split('/');
-        await unblockRepo(owner, repoName);
-        await renderBlockedRepos();
-      });
-
-      li.appendChild(name);
-      li.appendChild(btn);
-      list.appendChild(li);
+      container.appendChild(
+        createRepoItem(repo, 'Unblock', 'unblock', async () => {
+          const [owner, repoName] = repo.split('/');
+          await unblockRepo(owner, repoName);
+          await renderBlockedRepos();
+        }),
+      );
     }
-    container.appendChild(list);
   }
 }
 
 // --- Highlight style ---
 
 async function renderHighlightStyle(): Promise<void> {
-  const select = document.getElementById('gn-style-select') as HTMLSelectElement | null;
-  if (!select) return;
+  const picker = document.getElementById('gn-style-picker');
+  if (!picker) return;
 
   const current = await getHighlightStyle();
-  select.value = current;
+  const options = picker.querySelectorAll('.style-option');
 
-  select.addEventListener('change', async () => {
-    await setHighlightStyle(select.value as HighlightStyle);
-  });
+  for (const opt of options) {
+    const style = opt.getAttribute('data-style');
+    if (style === current) opt.classList.add('active');
+
+    opt.addEventListener('click', async () => {
+      for (const o of options) o.classList.remove('active');
+      opt.classList.add('active');
+      await setHighlightStyle(style as HighlightStyle);
+    });
+  }
 }
 
 // --- Bootstrap ---

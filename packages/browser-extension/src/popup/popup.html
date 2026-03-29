@@ -7,41 +7,82 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <div id="app">
-      <h1>Gitnotate</h1>
-      <p class="gn-subtitle">Sub-line commenting for GitHub PRs</p>
 
-      <!-- Status section -->
-      <div id="gn-status" class="gn-section">
-        <p id="gn-status-text" class="gn-label">Ready — select text in a PR diff to comment</p>
-      </div>
-
-      <!-- Enabled repos section -->
-      <div id="gn-repos" class="gn-section">
-        <h2 class="gn-section-title">Enabled Repositories</h2>
-        <div id="gn-repo-list">
-          <p class="gn-muted">No repos enabled yet. Visit a PR and click "Enable" when prompted.</p>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <img src="../../icons/icon-128.png" alt="" class="header-icon" width="28" height="28">
+        <div class="header-text">
+          <h1>Gitnotate</h1>
+          <span class="tagline">Sub-line PR commenting</span>
         </div>
       </div>
-
-      <!-- Highlight style section -->
-      <div id="gn-style" class="gn-section">
-        <h2 class="gn-section-title">Highlight Style</h2>
-        <select id="gn-style-select" class="gn-select">
-          <option value="dashed">Dashed + subtle tint</option>
-          <option value="underline">Underline only</option>
-          <option value="background">Background fill</option>
-        </select>
-      </div>
-
-      <!-- Blocked repos section -->
-      <div id="gn-blocked" class="gn-section">
-        <h2 class="gn-section-title">Blocked Repositories</h2>
-        <div id="gn-blocked-list">
-          <p class="gn-muted">No blocked repos.</p>
-        </div>
+      <div id="gn-status" class="status-badge">
+        <div class="status-dot"></div>
+        <span id="gn-status-text">Ready</span>
       </div>
     </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Highlight Style -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Highlight Style</span>
+        </div>
+        <div id="gn-style-picker" class="style-picker">
+          <button class="style-option" data-style="dashed" type="button">
+            <div class="style-preview">ab<span class="hl">cde</span>fg</div>
+            <span class="style-label">Dashed</span>
+          </button>
+          <button class="style-option" data-style="underline" type="button">
+            <div class="style-preview">ab<span class="hl">cde</span>fg</div>
+            <span class="style-label">Underline</span>
+          </button>
+          <button class="style-option" data-style="background" type="button">
+            <div class="style-preview">ab<span class="hl">cde</span>fg</div>
+            <span class="style-label">Background</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Enabled Repos -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Enabled Repositories</span>
+          <span id="gn-enabled-count" class="section-count" hidden>0</span>
+        </div>
+        <div id="gn-repo-list" class="repo-list">
+          <div class="empty-state">
+            <span class="emoji">📂</span>
+            No repos enabled yet.<br>Visit a PR and click "Enable" when prompted.
+          </div>
+        </div>
+      </div>
+
+      <!-- Blocked Repos (collapsible) -->
+      <details id="gn-blocked-section" class="section collapsible" hidden>
+        <summary class="collapsible-trigger">
+          <div class="section-header" style="flex:1">
+            <span class="section-title">Blocked Repositories</span>
+            <span id="gn-blocked-count" class="section-count">0</span>
+          </div>
+          <svg class="chevron" viewBox="0 0 16 16" fill="currentColor" width="14" height="14"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>
+        </summary>
+        <div class="collapsible-content">
+          <div id="gn-blocked-list" class="repo-list"></div>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span class="footer-version">v0.1.0</span>
+      <a href="https://github.com/pedrofuentes/gitnotate" target="_blank" class="footer-link">GitHub ↗</a>
+    </div>
+
     <script type="module" src="popup.ts"></script>
   </body>
 </html>
