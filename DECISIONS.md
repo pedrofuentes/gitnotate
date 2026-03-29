@@ -30,13 +30,13 @@
 **Alternatives considered**: Separate repos with npm package publishing; single-repo without workspaces.
 **Consequences**: Enables atomic cross-package changes and shared TypeScript types. Requires pnpm workspace awareness in CI and build tooling.
 
-### ADR-002: `@gn` Metadata in PR Comments
-**Date**: 2026-03-27
-**Status**: Accepted
-**Context**: Need a way to store sub-line comment anchoring data within GitHub's existing PR comment system without requiring extra infrastructure.
-**Decision**: Embed `<!-- @gn {...} -->` hidden metadata in comment bodies with a human-readable `> 📌 "quoted text"` fallback.
-**Alternatives considered**: Separate database; GitHub Labels; custom file in repo; Hypothesis-style external storage.
-**Consequences**: Zero infrastructure, graceful degradation without extension, uses all existing GitHub features. Character offsets are fragile if line is edited.
+### ADR-002: `^gn` Metadata in PR Comments
+**Date**: 2026-03-27 (updated 2026-03-29)
+**Status**: Accepted (supersedes original `@gn` format)
+**Context**: Need a way to store sub-line comment anchoring data within GitHub's existing PR comment system without requiring extra infrastructure. The original `@gn` prefix conflicted with GitHub's user mention system.
+**Decision**: Embed `^gn:LINE:START:END` plain-text metadata in comment bodies. The caret prefix (`^`) avoids GitHub @mention conflicts. Line number is embedded in the metadata so the scanner doesn't need fragile DOM inference. Metadata is visually hidden in submitted comments but preserved in the edit source.
+**Alternatives considered**: `@gn` (conflicts with @mentions); HTML comments `<!-- -->` (stripped by GitHub security); backtick-wrapped code spans (stripped from textContent in rendered comments).
+**Consequences**: Zero infrastructure, metadata survives GitHub rendering. Line number in metadata makes scanning reliable across UI changes. Breaking change from old 2-field format — old comments won't highlight.
 
 ### ADR-003: W3C TextQuoteSelector for Sidecar Anchoring
 **Date**: 2026-03-27
