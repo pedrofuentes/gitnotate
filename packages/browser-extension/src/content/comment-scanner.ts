@@ -37,15 +37,24 @@ export function scanForGnComments(): GnReviewComment[] {
     const fullText = container.textContent ?? '';
 
     const parsed = parseGnComment(fullText);
-    if (!parsed) continue;
-
-    // Deduplicate by start:end
-    const key = `${parsed.metadata.start}:${parsed.metadata.end}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (!parsed) {
+      continue;
+    }
 
     const filePath = resolveFilePath(container);
     const lineNumber = resolveLineNumber(container);
+
+    // Deduplicate by start:end.
+    // When file/line can't be resolved (comment appears in a non-diff
+    // context like a review summary panel), skip it — a later occurrence
+    // in the actual diff thread will have valid context.
+    const key = `${parsed.metadata.start}:${parsed.metadata.end}`;
+    if (seen.has(key)) continue;
+
+    if (!filePath || lineNumber <= 0) {
+      continue;
+    }
+    seen.add(key);
 
     console.log(`[Gitnotate] Found @gn:${parsed.metadata.start}:${parsed.metadata.end} file=${filePath} line=${lineNumber}`);
 
