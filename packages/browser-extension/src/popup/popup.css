@@ -86,6 +86,16 @@ body {
 }
 
 .status-badge.status-inactive {
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+}
+
+.status-badge.status-disabled {
+  color: var(--danger);
+  background: var(--danger-dim);
+}
+
+.status-badge.status-not-github {
   color: var(--text-tertiary);
   background: var(--bg-surface);
 }
@@ -103,6 +113,16 @@ body {
 }
 
 .status-dot.inactive {
+  background: var(--text-secondary);
+  animation: none;
+}
+
+.status-dot.disabled {
+  background: var(--danger);
+  animation: none;
+}
+
+.status-dot.not-github {
   background: var(--text-tertiary);
   animation: none;
 }

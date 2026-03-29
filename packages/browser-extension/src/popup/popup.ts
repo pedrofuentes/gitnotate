@@ -4,6 +4,7 @@ import {
   disableRepo,
   unblockRepo,
   isRepoEnabled,
+  isRepoBlocked,
 } from '../storage/repo-settings.js';
 import {
   getHighlightStyle,
@@ -43,9 +44,17 @@ async function renderStatus(): Promise<void> {
 
     const info = parseGitHubUrl(tab.url);
     if (!info) {
-      textEl.textContent = 'Inactive';
-      badge.className = 'status-badge status-inactive';
-      if (dotEl) dotEl.className = 'status-dot inactive';
+      textEl.textContent = 'Not GitHub';
+      badge.className = 'status-badge status-not-github';
+      if (dotEl) dotEl.className = 'status-dot not-github';
+      return;
+    }
+
+    const blocked = await isRepoBlocked(info.owner, info.repo);
+    if (blocked) {
+      textEl.textContent = 'Disabled';
+      badge.className = 'status-badge status-disabled';
+      if (dotEl) dotEl.className = 'status-dot disabled';
       return;
     }
 
