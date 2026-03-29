@@ -233,6 +233,7 @@ function scanAndHighlight(): void {
     const result = highlightTextRange({
       filePath: gc.filePath,
       lineNumber: gc.lineNumber,
+      side: metadata.side,
       start: metadata.start,
       end: metadata.end,
       commentId,
@@ -254,7 +255,7 @@ function hideGnMetadataInComment(commentEl: HTMLElement): void {
   }
 
   const text = commentEl.textContent ?? '';
-  const cleaned = text.replace(/\^gn:\d+:\d+:\d+/, '').trim();
+  const cleaned = text.replace(/\^gn:\d+:[LR]:\d+:\d+/, '').trim();
 
   if (!cleaned) {
     commentEl.style.display = 'none';
@@ -262,7 +263,7 @@ function hideGnMetadataInComment(commentEl: HTMLElement): void {
     const walker = document.createTreeWalker(commentEl, NodeFilter.SHOW_TEXT);
     let node: Text | null;
     while ((node = walker.nextNode() as Text | null)) {
-      if (node.textContent && /\^gn:\d+:\d+:\d+/.test(node.textContent)) {
+      if (node.textContent && /\^gn:\d+:[LR]:\d+:\d+/.test(node.textContent)) {
         // Don't touch text nodes inside textareas or form inputs
         if (node.parentElement?.closest('textarea, input')) continue;
         const span = document.createElement('span');

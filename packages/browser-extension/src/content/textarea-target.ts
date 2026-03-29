@@ -212,6 +212,7 @@ export function injectGnMetadata(
   const metadata = {
     exact: selInfo.exact,
     lineNumber: selInfo.lineNumber,
+    side: (selInfo.side === 'LEFT' ? 'L' : 'R') as 'L' | 'R',
     start: selInfo.start,
     end: selInfo.end,
   };

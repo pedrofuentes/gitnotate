@@ -134,6 +134,7 @@ export async function initFileViewComments(
       highlightTextRange({
         filePath,
         lineNumber,
+        side: 'R',
         start: lineStart,
         end: lineEnd,
         commentId: annotation.id,

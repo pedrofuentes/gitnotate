@@ -1,6 +1,7 @@
 export interface HighlightInfo {
   filePath: string;
   lineNumber: number;
+  side: 'L' | 'R';
   start: number;
   end: number;
   commentId: string;
@@ -33,7 +34,10 @@ export function resetColorCounters(): void {
  * Find the code cell for a given file path + line number.
  * Supports both old (.blob-code-inner) and new (.diff-text-inner) GitHub UI.
  */
-function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null {
+function findCodeCell(filePath: string, lineNumber: number, side: 'L' | 'R'): HTMLElement | null {
+  const sideClass = side === 'L' ? 'left-side' : 'right-side';
+  const diffSide = side === 'L' ? 'left' : 'right';
+
   // Scope search to the correct file container when filePath is available
   const scopeEl = filePath
     ? document.querySelector<HTMLElement>(
@@ -42,17 +46,23 @@ function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null 
     : null;
   const scope: ParentNode = scopeEl ?? document;
 
-  // New GitHub UI: td[data-line-number] contains .diff-text-inner
-  const newCell = scope.querySelector<HTMLElement>(
+  // New GitHub UI: use data-diff-side to find the correct side's cell
+  const sidedCell = scope.querySelector<HTMLElement>(
+    `td[data-diff-side="${diffSide}"][data-line-number="${lineNumber}"] .diff-text-inner`,
+  );
+  if (sidedCell) return sidedCell;
+
+  // New GitHub UI: side class on the cell
+  const sideClassCell = scope.querySelector<HTMLElement>(
+    `td.${sideClass}-diff-cell[data-line-number="${lineNumber}"] .diff-text-inner`,
+  );
+  if (sideClassCell) return sideClassCell;
+
+  // Generic fallback (unified view — no side distinction)
+  const genericCell = scope.querySelector<HTMLElement>(
     `td[data-line-number="${lineNumber}"] .diff-text-inner`,
   );
-  if (newCell) return newCell;
-
-  // Also try right-side cells specifically
-  const rightCell = scope.querySelector<HTMLElement>(
-    `td.right-side-diff-cell[data-line-number="${lineNumber}"] .diff-text-inner`,
-  );
-  if (rightCell) return rightCell;
+  if (genericCell) return genericCell;
 
   // Old GitHub UI fallback: blob-num + blob-code-inner in the same row
   const lineNumCell = scope.querySelector<HTMLElement>(
@@ -66,17 +76,25 @@ function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null 
     }
   }
 
-  // New GitHub UI fallback: line number and code cell are SIBLING <td>s
+  // New GitHub UI fallback: sibling <td>s with side filtering
   const lineNumCells = scope.querySelectorAll<HTMLElement>(
     `[data-line-number="${lineNumber}"]`,
   );
   for (const cell of lineNumCells) {
+    // Prefer the cell matching the requested side
+    const cellSide = cell.getAttribute('data-diff-side');
+    if (cellSide && cellSide !== diffSide) continue;
+
     const row = cell.closest('tr');
     if (!row) continue;
-    const codeCell =
-      row.querySelector<HTMLElement>('.diff-text-inner') ??
-      row.querySelector<HTMLElement>('.blob-code-inner');
-    if (codeCell) return codeCell;
+
+    // Look for code cell on the correct side
+    const codeCells = row.querySelectorAll<HTMLElement>('.diff-text-inner, .blob-code-inner');
+    for (const cc of codeCells) {
+      const ccTd = cc.closest('td');
+      const ccSide = ccTd?.getAttribute('data-diff-side');
+      if (!ccSide || ccSide === diffSide) return cc;
+    }
   }
 
   return null;
@@ -89,7 +107,7 @@ function findCodeCell(filePath: string, lineNumber: number): HTMLElement | null 
  * Returns the created span, or `null` if the line/range could not be resolved.
  */
 export function highlightTextRange(info: HighlightInfo): HighlightResult | null {
-  const codeCell = findCodeCell(info.filePath, info.lineNumber);
+  const codeCell = findCodeCell(info.filePath, info.lineNumber, info.side);
   if (!codeCell) return null;
 
   const fullText = codeCell.textContent ?? '';

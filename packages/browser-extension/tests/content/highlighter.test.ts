@@ -77,6 +77,7 @@ function makeInfo(overrides: Partial<HighlightInfo> = {}): HighlightInfo {
   return {
     filePath: 'docs/proposal.md',
     lineNumber: 3,
+    side: 'R' as const,
     start: 11,
     end: 47,
     commentId: 'c1',

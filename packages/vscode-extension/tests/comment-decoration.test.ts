@@ -28,7 +28,7 @@ describe('comment-decoration', () => {
 
   describe('parseGnDecorations', () => {
     it('should parse ^gn comment and return decoration with correct range', () => {
-      const comment = 'Can we add a source?\n^gn:0:12:26';
+      const comment = 'Can we add a source?\n^gn:0:R:12:26';
 
       const decorations = parseGnDecorations([comment]);
 
@@ -53,8 +53,8 @@ describe('comment-decoration', () => {
 
     it('should handle multiple ^gn comments', () => {
       const comments = [
-        'First comment\n^gn:0:0:5',
-        'Second comment\n^gn:0:10:15',
+        'First comment\n^gn:0:R:0:5',
+        'Second comment\n^gn:0:R:10:15',
       ];
 
       const decorations = parseGnDecorations(comments);
@@ -67,7 +67,7 @@ describe('comment-decoration', () => {
     });
 
     it('should extract hover message from user comment', () => {
-      const comment = 'This needs revision.\n^gn:0:0:4';
+      const comment = 'This needs revision.\n^gn:0:R:0:4';
 
       const decorations = parseGnDecorations([comment]);
 
@@ -77,7 +77,7 @@ describe('comment-decoration', () => {
     });
 
     it('should handle comments with special characters', () => {
-      const comment = 'Interesting "quote" & <tag>\n^gn:0:0:20';
+      const comment = 'Interesting "quote" & <tag>\n^gn:0:R:0:20';
 
       const decorations = parseGnDecorations([comment]);
 
@@ -88,7 +88,7 @@ describe('comment-decoration', () => {
     });
 
     it('should use lineOffset when provided', () => {
-      const comment = 'Comment on a specific line.\n^gn:0:5:9';
+      const comment = 'Comment on a specific line.\n^gn:0:R:5:9';
 
       const decorations = parseGnDecorations([comment], 42);
 
@@ -100,7 +100,7 @@ describe('comment-decoration', () => {
     });
 
     it('should set hover message to highlighted text when user comment is empty', () => {
-      const comment = '^gn:0:0:11';
+      const comment = '^gn:0:R:0:11';
 
       const decorations = parseGnDecorations([comment]);
 
@@ -111,7 +111,7 @@ describe('comment-decoration', () => {
     it('should filter out non-^gn comments from mixed input', () => {
       const comments = [
         'Regular comment without metadata',
-        'A note\n^gn:0:3:7',
+        'A note\n^gn:0:R:3:7',
         'Another regular comment',
       ];
 

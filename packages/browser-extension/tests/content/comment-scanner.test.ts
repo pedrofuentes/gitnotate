@@ -69,7 +69,7 @@ function buildDiffFileDOM(opts: {
  * Without backticks, GitHub renders it as plain text in a `<p>`.
  */
 function gnCommentHTML(lineNumber: number, start: number, end: number, userComment?: string): string {
-  const tag = `^gn:${lineNumber}:${start}:${end}`;
+  const tag = `^gn:${lineNumber}:R:${start}:${end}`;
   if (userComment) {
     return `<p>${userComment}</p><p>${tag}</p>`;
   }
@@ -138,6 +138,7 @@ describe('scanForGnComments', () => {
     expect(results[0].parsed.metadata).toEqual({
       exact: '',
       lineNumber: 10,
+      side: 'R',
       start: 15,
       end: 29,
     });
@@ -269,7 +270,7 @@ describe('scanForGnComments', () => {
       comments: [
         {
           line: 1,
-          bodyHTML: '<p>^gn:1:0:5</p><p>Review this greeting</p>',
+          bodyHTML: '<p>^gn:1:R:0:5</p><p>Review this greeting</p>',
         },
       ],
     });
