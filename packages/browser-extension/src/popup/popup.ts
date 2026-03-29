@@ -16,7 +16,7 @@ const REPO_ICON_SVG = '<svg class="repo-icon" viewBox="0 0 16 16" fill="currentC
 
 // --- Status badge ---
 
-function parseGitHubUrl(url: string): { owner: string; repo: string; isPrFiles: boolean } | null {
+export function parseGitHubUrl(url: string): { owner: string; repo: string; isPrFiles: boolean } | null {
   try {
     const parsed = new URL(url);
     if (parsed.hostname !== 'github.com') return null;
@@ -87,7 +87,7 @@ async function reloadActiveTab(): Promise<void> {
   } catch { /* ignore — may not have tab access */ }
 }
 
-function createRepoItem(
+export function createRepoItem(
   repo: string,
   actionLabel: string,
   actionClass: string,
@@ -99,7 +99,25 @@ function createRepoItem(
   const [owner, repoName] = repo.split('/');
   const nameEl = document.createElement('span');
   nameEl.className = 'repo-name';
-  nameEl.innerHTML = `${REPO_ICON_SVG} <span class="owner">${owner}</span><span class="slash">/</span>${repoName}`;
+
+  const iconEl = document.createElement('span');
+  iconEl.innerHTML = REPO_ICON_SVG;
+
+  const ownerEl = document.createElement('span');
+  ownerEl.className = 'owner';
+  ownerEl.textContent = owner;
+
+  const slashEl = document.createElement('span');
+  slashEl.className = 'slash';
+  slashEl.textContent = '/';
+
+  const repoEl = document.createElement('span');
+  repoEl.textContent = repoName;
+
+  nameEl.appendChild(iconEl);
+  nameEl.appendChild(ownerEl);
+  nameEl.appendChild(slashEl);
+  nameEl.appendChild(repoEl);
 
   const btn = document.createElement('button');
   btn.className = `repo-action ${actionClass}`;
