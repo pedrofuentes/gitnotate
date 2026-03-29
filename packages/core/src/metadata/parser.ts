@@ -10,7 +10,7 @@ export function parseGnComment(commentBody: string): GnCommentBody | null {
     const side = tagMatch[2] as 'L' | 'R';
     const start = Number(tagMatch[3]);
     const end = Number(tagMatch[4]);
-    if (!isNaN(lineNumber) && !isNaN(start) && !isNaN(end)) {
+    if (!isNaN(lineNumber) && !isNaN(start) && !isNaN(end) && start < end) {
       const userComment = commentBody.replace(GN_TAG_RE, '').trim();
       return {
         metadata: { exact: '', lineNumber, side, start, end },
