@@ -1,0 +1,1 @@
+Sub-line commenting for GitHub PR reviews. Select specific words and phrases in diffs, not just whole lines.
