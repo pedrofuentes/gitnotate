@@ -3,6 +3,7 @@ import {
   getHighlightStyle,
   setHighlightStyle,
   applyHighlightStyle,
+  isValidStyle,
 } from '../../src/storage/highlight-style.js';
 import type { HighlightStyle } from '../../src/storage/highlight-style.js';
 
@@ -94,6 +95,50 @@ describe('highlight-style', () => {
     it('should set background style', () => {
       applyHighlightStyle('background');
       expect(document.body.getAttribute('data-gn-style')).toBe('background');
+    });
+  });
+
+  describe('SEC-03: runtime validation on setHighlightStyle', () => {
+    it('should reject invalid style values', async () => {
+      await expect(
+        setHighlightStyle('malicious-value' as HighlightStyle),
+      ).rejects.toThrow();
+    });
+
+    it('should not persist invalid style to storage', async () => {
+      try {
+        await setHighlightStyle('hacked' as HighlightStyle);
+      } catch {
+        // expected
+      }
+      expect(store['gitnotate-highlight-style']).toBeUndefined();
+    });
+
+    it('should accept all valid style values', async () => {
+      for (const style of ['dashed', 'underline', 'background'] as HighlightStyle[]) {
+        await setHighlightStyle(style);
+        expect(store['gitnotate-highlight-style']).toBe(style);
+      }
+    });
+  });
+
+  describe('isValidStyle', () => {
+    it('should return true for valid styles', () => {
+      expect(isValidStyle('dashed')).toBe(true);
+      expect(isValidStyle('underline')).toBe(true);
+      expect(isValidStyle('background')).toBe(true);
+    });
+
+    it('should return false for invalid styles', () => {
+      expect(isValidStyle('invalid')).toBe(false);
+      expect(isValidStyle('')).toBe(false);
+      expect(isValidStyle('DASHED')).toBe(false);
+    });
+
+    it('should return false for non-string values', () => {
+      expect(isValidStyle(null as unknown as string)).toBe(false);
+      expect(isValidStyle(undefined as unknown as string)).toBe(false);
+      expect(isValidStyle(42 as unknown as string)).toBe(false);
     });
   });
 });
