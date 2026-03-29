@@ -15,6 +15,10 @@ function containsDiffElements(node: Node): boolean {
   return node.querySelector(DIFF_SELECTORS.join(', ')) !== null;
 }
 
+export interface ObserveDiffOptions {
+  signal?: AbortSignal;
+}
+
 /**
  * Watches for diff content being added to the DOM.
  * Calls `callback` with matching diff elements when they appear.
@@ -22,6 +26,7 @@ function containsDiffElements(node: Node): boolean {
  */
 export function observeDiffContent(
   callback: (diffElements: HTMLElement[]) => void,
+  options?: ObserveDiffOptions,
 ): MutationObserver {
   // Fire immediately for any existing diff elements
   const existing = findDiffElements();
@@ -58,13 +63,13 @@ export function observeDiffContent(
     subtree: true,
   });
 
-  // Handle GitHub's turbo navigation
+  // Handle GitHub's turbo navigation — use signal for cleanup
   document.addEventListener('turbo:load', () => {
     const elements = findDiffElements();
     if (elements.length > 0) {
       callback(elements);
     }
-  });
+  }, { signal: options?.signal });
 
   return observer;
 }

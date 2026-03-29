@@ -85,7 +85,7 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
   hideOptInBanner();
 
   if (pageInfo.type === 'file-view' && pageInfo.filePath) {
-    initFileViewComments(pageInfo);
+    initFileViewComments(pageInfo, { signal });
   }
 
   if (pageInfo.type === 'pr-files-changed') {
@@ -162,10 +162,11 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
       pendingHighlights.delete(textarea);
     }
 
-    observeDiffContent((diffElements) => {
+    const diffObserver = observeDiffContent((diffElements) => {
       debug('[Gitnotate] Diff elements loaded:', diffElements.length);
       scanAndHighlight();
-    });
+    }, { signal });
+    featureLifecycle.trackObserver(diffObserver);
 
     // Re-scan when comment forms appear or disappear (not on every DOM change)
     let lastCommentCount = 0;

@@ -105,6 +105,7 @@ function getFileViewSelectionInfo(
  */
 export async function initFileViewComments(
   pageInfo: GitHubPageInfo,
+  options?: { signal?: AbortSignal },
 ): Promise<void> {
   const { owner, repo, branch, filePath } = pageInfo;
   if (!filePath) return;
@@ -152,14 +153,14 @@ export async function initFileViewComments(
         hideFloatButton();
       }
     }, 10);
-  });
+  }, { signal: options?.signal });
 
   document.addEventListener('selectionchange', () => {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) {
       hideFloatButton();
     }
-  });
+  }, { signal: options?.signal });
 
   function handleFloatButtonClick(selectionInfo: TextSelectionInfo): void {
     hideFloatButton();
