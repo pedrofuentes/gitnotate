@@ -9,17 +9,11 @@
       <stop offset="100%" stop-color="#E4E4E7"/>
     </linearGradient>
   </defs>
-  <!-- Background -->
   <rect width="512" height="512" rx="77" fill="url(#bg)"/>
-  <!-- Square bubble with rounded corners -->
-  <rect x="112.63999999999999" y="71.68" width="286.72" height="174.08" rx="31" fill="url(#pin)"/>
-  <!-- Tail triangle -->
-  <polygon points="215.04,244.76000000000002 256,327.68 296.96,244.76000000000002" fill="url(#pin)"/>
-  <!-- Text lines -->
-  <rect x="168.95999999999998" y="133.12000000000003" width="174.08" height="23" rx="12" fill="#71717A" opacity="0.35"/><rect x="184.32" y="189.44000000000003" width="143.36" height="23" rx="12" fill="#71717A" opacity="0.35"/>
-  <!-- Highlight bar -->
-  <rect x="199.68" y="126.62000000000003" width="112.64" height="36" rx="13" fill="#10B981"/>
-  <!-- Caret below tail -->
-  <path d="M209.92000000000002,394.24 L256,353.28000000000003 L302.08,394.24"
+  <rect x="128" y="66.56" width="256" height="217.6" rx="26" fill="url(#pin)"/>
+  <polygon points="220.16,283.15999999999997 256,355.84 291.84000000000003,283.15999999999997" fill="url(#pin)"/>
+  <rect x="179.2" y="144.64000000000001" width="153.6" height="23" rx="12" fill="#71717A" opacity="0.35"/><rect x="194.56" y="206.08" width="122.88" height="23" rx="12" fill="#71717A" opacity="0.35"/>
+  <rect x="204.8" y="138.14000000000001" width="102.4" height="36" rx="13" fill="#10B981"/>
+  <path d="M209.92000000000002,422.4 L256,381.44 L302.08,422.4"
         stroke="#10B981" stroke-width="15" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
