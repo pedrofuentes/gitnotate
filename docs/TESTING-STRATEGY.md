@@ -11,13 +11,13 @@
 | Type | Purpose | Location | Runner |
 |------|---------|----------|--------|
 | Unit | Core logic, pure functions, isolated components | `tests/unit/` or `*.test.ts` | Vitest |
-| Integration | Cross-component interactions, API calls, DOM manipulation | `tests/integration/` | Vitest |
+| Integration | Cross-component interactions, DOM manipulation | `tests/integration/` | Vitest |
 | E2E | Critical user flows end-to-end | `tests/e2e/` | Playwright |
 
 ## Coverage Requirements
 
 - **New code**: 80% coverage required
-- **Critical paths**: 100% coverage required (auth, comment creation, anchor resolution)
+- **Critical paths**: 100% coverage required (`^gn` injection, textarea targeting, metadata hiding, diff highlighting, thread colorization, repo settings, opt-in banner)
 - **Run coverage**: `pnpm test --coverage`
 - **Sentinel verifies coverage thresholds on every PR**
 
@@ -28,25 +28,25 @@
 Use Vitest's built-in mocking (`vi.mock`, `vi.fn`, `vi.stubGlobal`) for dependency isolation.
 
 ```typescript
-// Module mocking with vi.mock
-vi.mock('child_process', () => ({
-  exec: vi.fn(),
-}));
+// DOM stubbing with vi.stubGlobal
+const mockQuerySelector = vi.fn();
+vi.stubGlobal('document', {
+  querySelector: mockQuerySelector,
+  querySelectorAll: vi.fn().mockReturnValue([]),
+});
 
-// Global API stubbing with vi.stubGlobal
-const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
-
-// Typed mock access with vi.mocked
-import { exec } from 'child_process';
-const mockExec = vi.mocked(exec);
+// Chrome extension API mocking
+const mockChromeStorage = {
+  local: { get: vi.fn(), set: vi.fn() },
+};
+vi.stubGlobal('chrome', { storage: mockChromeStorage });
 
 // Drive behavior with targeted implementations
-mockExec.mockImplementationOnce(simulateExec('main\n') as any);
-mockFetch.mockResolvedValueOnce({
-  ok: false,
-  status: 500,
-  json: async () => ({ message: 'Internal Server Error' }),
+mockQuerySelector.mockReturnValueOnce(
+  createMockTextarea('existing comment text')
+);
+mockChromeStorage.local.get.mockResolvedValueOnce({
+  enabledRepos: ['owner/repo'],
 });
 ```
 

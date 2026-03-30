@@ -57,27 +57,29 @@ As AI agents increasingly use Markdown files for professional work (specs, propo
 
 ## Architecture: Two-Tier Approach
 
-### Tier 1: Lightweight Mode — `@gn` Metadata in PR Comments
+### Tier 1: DOM-Based PR Comment Mode — `^gn` Metadata ✅ SHIPPED (v0.1.0)
 
-The simplest, fastest approach. Uses GitHub's existing PR comment system with embedded sub-line metadata in the comment body.
+The simplest, fastest approach. Injects sub-line metadata directly into GitHub's own PR comment textareas using pure DOM manipulation — no API calls, no OAuth, no network requests.
 
 **How it works:**
 
 When a user selects specific text within a line in a PR diff, the extension:
-1. Creates a regular GitHub PR line comment via the API (attached to that line)
-2. Embeds a metadata block in the comment body indicating the exact character range and quoted text
+1. Detects the selection's line number and character range within the diff
+2. Opens GitHub's native comment textarea for that line (via DOM interaction)
+3. Injects a `^gn:LINE:START:END` metadata marker followed by a human-readable quote into the textarea
+4. The user adds their comment and submits using GitHub's own UI (the extension never calls any API)
 
 **Comment format:**
 
 ```
-<!-- @gn {"exact":"revenue growth exceeded expectations","start":12,"end":47} -->
+^gn:42:12:47
 > 📌 **"revenue growth exceeded expectations"** (chars 12–47)
 
 Can we add the exact percentage here?
 ```
 
 Two layers:
-1. `<!-- @gn {...} -->` — Hidden metadata (HTML comment, not rendered) — parsed by the extension
+1. `^gn:LINE:START:END` — Machine-readable metadata line (caret prefix avoids GitHub @mention conflicts) — parsed by the extension
 2. `> 📌 **"quoted text"**` — Human-readable fallback — visible even without extension
 3. Actual comment text below
 
@@ -86,13 +88,14 @@ Two layers:
 | Viewer | Experience |
 |---|---|
 | With Gitnotate extension | Highlighted text range in diff, refined comment indicator |
-| Without extension | Normal line comment with quoted text block — perfectly usable |
+| Without extension | Normal line comment with `^gn:` prefix and quoted text block — perfectly usable |
 | GitHub mobile app | Same as without extension |
 | Email notification | Same — blockquote makes reference clear |
-| API / AI agent | Parse `<!-- @gn -->` metadata or read quoted text |
+| API / AI agent | Parse `^gn:LINE:START:END` metadata or read quoted text |
 
 **Advantages:**
-- Zero extra files, zero infrastructure, zero commits
+- Zero extra files, zero infrastructure, zero commits, zero API calls
+- No authentication required — works entirely through DOM manipulation
 - All GitHub features work out of the box: threading, resolve, reactions, @mentions, notifications, email
 - Uses GitHub's existing PR comment permissions (no repo write needed)
 - Searchable via GitHub's comment search
@@ -100,10 +103,11 @@ Two layers:
 **Limitations:**
 - Only works on PR diffs (not standalone file views)
 - Character offsets fragile if line is subsequently edited
+- Dependent on GitHub's DOM structure (may require updates when GitHub changes their UI)
 
-### Tier 2: Full Mode — Sidecar `.comments/*.json` Files
+### Tier 2: Full Mode — Sidecar `.comments/*.json` Files 🔮 PLANNED
 
-For persistent comments outside PRs, stored in the repository.
+For persistent comments outside PRs, stored in the repository. **Not yet implemented — planned for Phase 2.**
 
 **Structure:**
 ```
@@ -154,35 +158,34 @@ my-repo/
 
 ## Implementation Phases
 
-### Phase 1: Lightweight PR Comment Mode — Browser Extension (MVP)
+### Phase 1: DOM-Based PR Comment Mode — Browser Extension ✅ COMPLETE (v0.1.0)
 
-**Deliverable:** Chrome/Edge extension (Manifest V3)
+**Deliverable:** Chrome/Edge extension (Manifest V3) — **RELEASED**
 
-- Scaffold extension: manifest.json, content scripts targeting `github.com`, background service worker, popup UI
-- Detect PR diff pages (Files Changed view) on github.com
-- Enable text selection within diff lines (override GitHub's default line-only selection)
-- On text selection → show floating "Add Comment" button
-- Define `@gn` metadata format for PR comment bodies
-- Create standard GitHub PR line comment via API with embedded `<!-- @gn -->` metadata + human-readable quoted text fallback
-- Parse existing PR comments for `@gn` metadata
-- Highlight exact text ranges within diff lines for `@gn`-enhanced comments
-- Implement GitHub OAuth authentication
-- Graceful degradation for users without the extension
+- ✅ Scaffold extension: manifest.json, content scripts targeting `github.com`, popup UI
+- ✅ Detect PR diff pages (Files Changed view) on github.com
+- ✅ Enable text selection within diff lines (override GitHub's default line-only selection)
+- ✅ On text selection → show floating "Comment" button
+- ✅ Define `^gn:LINE:START:END` metadata format for PR comment bodies
+- ✅ Inject metadata + human-readable quoted text into GitHub's native comment textarea via DOM manipulation (no API calls)
+- ✅ Parse existing PR comments for `^gn` metadata
+- ✅ Highlight exact text ranges within diff lines for `^gn`-enhanced comments
+- ✅ Graceful degradation for users without the extension
 
-**Tech stack:** TypeScript, Manifest V3 (Chrome/Edge), GitHub REST API
+**Tech stack:** TypeScript, Manifest V3 (Chrome/Edge), Vite, pure DOM manipulation (no GitHub API, no OAuth)
 
-### Phase 1.5: Lightweight PR Comment Mode — VSCode Extension
+### Phase 1.5: PR Comment Mode — VSCode Extension 🔮 PLANNED
 
 **Deliverable:** VSCode extension
 
 - Scaffold VSCode extension project
 - Shared core library with browser extension (TypeScript)
-- Reuse `@gn` metadata format from Phase 1
+- Reuse `^gn` metadata format from Phase 1
 - Hook into VSCode GitHub PR diff views for sub-line text selection
-- Add comments with `@gn` metadata via GitHub API
-- Parse and highlight `@gn`-enhanced comments in VSCode diff view
+- Add comments with `^gn` metadata via GitHub API
+- Parse and highlight `^gn`-enhanced comments in VSCode diff view
 
-### Phase 2: Full Sidecar Mode (persistent comments outside PRs)
+### Phase 2: Full Sidecar Mode (persistent comments outside PRs) 🔮 PLANNED
 
 **Deliverable:** Sidecar file support in both extensions
 
@@ -193,7 +196,7 @@ my-repo/
 - Richer sidebar panel with threading, resolve, filter, navigation
 - Write comments as commits to `.comments/` via GitHub API (browser) or filesystem (VSCode)
 
-### Phase 3: Enhanced Extensions
+### Phase 3: Enhanced Extensions 🔮 PLANNED
 
 - Comment notifications / badges
 - Support for PR-specific comment branches
@@ -202,7 +205,7 @@ my-repo/
 - Settings: auto-commit vs. batch commit, branch selection
 - "Suggest edit" comment type (like Word Track Changes)
 
-### Phase 4: GitHub Action (Optional)
+### Phase 4: GitHub Action (Optional) 🔮 PLANNED
 
 - Render `.comments/` content as PR review comments
 - Validate anchor integrity on markdown changes
@@ -216,7 +219,7 @@ my-repo/
 2. **Storage location for sidecar**: `.comments/` directory (hidden dot-prefix)
 3. **Commit strategy**: Auto-commit each comment vs. batch/manual commit
 4. **Branch strategy**: Comments on same branch vs. separate comments branch
-5. **Auth**: GitHub OAuth App vs. Personal Access Token
+5. **Auth**: GitHub OAuth App vs. Personal Access Token — **deferred** (not needed for Phase 1's DOM-based approach; revisit when Phase 1.5/2 require API access)
 6. **Conflict handling**: Behavior when two people comment on overlapping text simultaneously
 7. **Anchor resilience**: How aggressively to fuzzy-match when exact text changes
 

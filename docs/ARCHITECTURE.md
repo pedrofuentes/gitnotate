@@ -1,6 +1,8 @@
 # Architecture
 
 > Extended architectural context for AI agents. Referenced from AGENTS.md.
+>
+> **Status:** Reflects v0.1.0 — Phase 1 (PR diff sub-line commenting via DOM manipulation).
 
 ---
 
@@ -11,48 +13,44 @@ gitnotate/
 ├── packages/
 │   ├── core/                    ← Shared core library
 │   │   ├── src/
-│   │   │   ├── metadata/        ← @gn metadata parser/writer
-│   │   │   ├── anchor/          ← TextQuoteSelector anchor engine
-│   │   │   ├── schema/          ← JSON schema validation, sidecar CRUD
-│   │   │   └── index.ts         ← Public API barrel export
+│   │   │   ├── parser.ts        ← ^gn metadata parser
+│   │   │   └── ...              ← Other shared utilities
 │   │   └── tests/
-│   ├── browser-extension/       ← Chrome/Edge Manifest V3 extension
+│   ├── browser-extension/       ← Chrome/Edge Manifest V3 extension (v0.1.0 shipped)
 │   │   ├── src/
-│   │   │   ├── auth/            ← GitHub OAuth + API client
 │   │   │   ├── content/         ← Content scripts (github.com)
-│   │   │   │   ├── ui/          ← UI components (comment button, highlights)
-│   │   │   │   ├── detector.ts  ← PR diff page detection
-│   │   │   │   ├── selection.ts ← Text selection handling
-│   │   │   │   ├── highlighter.ts ← Sub-line highlight rendering
-│   │   │   │   ├── comment-scanner.ts  ← @gn metadata extraction from comments
-│   │   │   │   ├── comment-submitter.ts ← GitHub API comment creation
-│   │   │   │   ├── diff-observer.ts    ← MutationObserver for dynamic diff loading
-│   │   │   │   ├── file-view-handler.ts ← File view page handling
-│   │   │   │   └── sidecar-client.ts   ← Sidecar file read/write
-│   │   │   ├── background/      ← Service worker
-│   │   │   ├── popup/           ← Extension popup UI
-│   │   │   └── storage/         ← Repo settings persistence
+│   │   │   │   ├── index.ts              ← Orchestration entry point
+│   │   │   │   ├── detector.ts           ← GitHub page type detection
+│   │   │   │   ├── selection.ts          ← Text selection in diffs
+│   │   │   │   ├── textarea-target.ts    ← Finds closest textarea, injects ^gn metadata
+│   │   │   │   ├── comment-scanner.ts    ← Scans rendered comments for ^gn tags
+│   │   │   │   ├── highlighter.ts        ← Sub-line highlight rendering
+│   │   │   │   ├── highlighter.css       ← Highlight styles
+│   │   │   │   ├── metadata-hider.ts     ← Hides ^gn metadata in rendered comments
+│   │   │   │   ├── thread-colorizer.ts   ← Colors comment threads to match highlights
+│   │   │   │   ├── diff-observer.ts      ← Watches for diff content loading
+│   │   │   │   ├── observer-lifecycle.ts ← Cleanup for observers/timers
+│   │   │   │   ├── github-selectors.ts   ← Centralized DOM selector list
+│   │   │   │   ├── logger.ts             ← Debug logging
+│   │   │   │   ├── metadata-store.ts     ← WeakMap metadata store
+│   │   │   │   └── ui/
+│   │   │   │       ├── optin-banner.ts   ← Opt-in banner for new repos
+│   │   │   │       └── optin-banner.css
+│   │   │   ├── background/
+│   │   │   │   └── service-worker.ts     ← Minimal service worker
+│   │   │   ├── popup/
+│   │   │   │   ├── popup.ts              ← Extension popup logic
+│   │   │   │   ├── popup.html
+│   │   │   │   └── popup.css
+│   │   │   └── storage/
+│   │   │       ├── repo-settings.ts      ← Per-repo enable/disable/block
+│   │   │       └── highlight-style.ts    ← Highlight style preference
 │   │   ├── manifest.json
 │   │   └── tests/
-│   ├── vscode-extension/        ← VSCode extension
-│   │   ├── src/
-│   │   │   ├── extension.ts     ← Extension entry point
-│   │   │   ├── comment-command.ts     ← PR comment commands
-│   │   │   ├── file-comment-command.ts ← File-level comment commands
-│   │   │   ├── comment-decoration.ts  ← Comment display decorations
-│   │   │   ├── decoration-manager.ts  ← Decoration lifecycle management
-│   │   │   ├── pr-detector.ts         ← PR context detection
-│   │   │   ├── github-api.ts          ← GitHub API client
-│   │   │   ├── sidecar-provider.ts    ← Sidecar file provider
-│   │   │   └── settings.ts           ← Extension settings
-│   │   └── tests/
-│   └── github-action/           ← GitHub Action for CI integration
-│       ├── src/
-│       │   ├── index.ts              ← Action entry point
-│       │   ├── anchor-validator.ts   ← Validates anchors against markdown
-│       │   └── summary-reporter.ts   ← PR summary report generation
-│       ├── action.yml
-│       └── tests/
+│   ├── vscode-extension/        ← VSCode extension (planned — not yet released)
+│   │   └── ...
+│   └── github-action/           ← GitHub Action (planned — not yet released)
+│       └── ...
 ├── docs/                        ← Associated documentation
 │   ├── ARCHITECTURE.md          ← This file
 │   ├── DEVELOPMENT-WORKFLOW.md  ← Branching, worktrees, PR process
@@ -76,48 +74,54 @@ gitnotate/
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Monorepo strategy | pnpm workspaces | Shared core library between browser extension, VSCode extension, and GitHub Action |
-| `@gn` metadata format | `<!-- @gn {...} -->` in PR comments | Zero infrastructure, graceful degradation without extension, uses all GitHub features |
-| Anchor strategy (sidecar) | W3C TextQuoteSelector (`exact` + `prefix`/`suffix`) | Resilient to nearby edits, aligns with web annotation standards |
-| GitHub API | REST API for PR comment CRUD, Contents API for sidecar file read/write | Widely supported, well-documented, works with both OAuth and PAT |
-| Auth | GitHub OAuth App + PAT fallback | Best UX for most users, PAT covers enterprise environments |
-| Sidecar storage | `.comments/document.md.json` files in repo | Git-native, no external infrastructure, versioned with content |
-| Build tool | Vite (browser extension), esbuild (action) | Fast builds, good TypeScript support, tree-shaking |
+| Monorepo strategy | pnpm workspaces | Shared core library across packages |
+| `^gn` metadata format | `^gn:LINE:START:END` in PR comment text | Zero infrastructure, purely DOM-based, graceful degradation without extension |
+| Operation model | DOM manipulation only — zero network requests | No auth needed, no API keys, no permissions beyond content script |
+| Build tool | Vite (browser extension) | Fast builds, good TypeScript support, tree-shaking |
 | TypeScript config | Strict mode, ES2022 target, ESNext modules, bundler resolution | Maximum type safety, modern output |
 
 ## Module Boundaries
 
-- `core/` — Shared logic (metadata parsing/building, anchor engine, schema validation). No dependencies on browser APIs, VSCode APIs, or GitHub API. Pure TypeScript.
-- `browser-extension/` — Depends on `core/`. Provides content scripts for github.com that enable sub-line text selection, comment creation with `@gn` metadata, and highlight rendering. Uses Manifest V3, Chrome extension APIs.
-- `vscode-extension/` — Depends on `core/`. Provides VSCode extension that integrates sub-line commenting into VSCode's diff view and editor. Uses VSCode Extension API.
-- `github-action/` — Depends on `core/`. GitHub Action that validates anchor integrity when markdown files change and generates PR summary reports.
+- `core/` — Shared logic (metadata parsing). No dependencies on browser APIs, VSCode APIs, or GitHub API. Pure TypeScript.
+- `browser-extension/` — Depends on `core/`. Content scripts for github.com that enable sub-line text selection in PR diffs, `^gn` metadata injection into comment textareas, highlight rendering, and metadata hiding. Purely DOM-based — makes zero network requests. Uses Manifest V3, Chrome extension APIs.
+- `vscode-extension/` — Planned, not yet released. Will depend on `core/`.
+- `github-action/` — Planned, not yet released. Will depend on `core/`.
 
 ## Data Flow
 
-### PR Comment Flow (Tier 1 — Lightweight Mode)
-1. User selects text within a PR diff line → browser extension captures selection range
-2. Extension creates a standard GitHub PR line comment via REST API
-3. Comment body contains `<!-- @gn {"exact":"selected text","start":N,"end":M} -->` metadata
-4. On page load, extension scans existing comments for `@gn` metadata
-5. For each `@gn` comment, extension highlights the exact text range in the diff
+### PR Diff Sub-Line Comment Flow (Phase 1 — DOM-based)
+1. User selects text within a PR diff line → `selection.ts` captures the selection range (line number, start/end offsets)
+2. `textarea-target.ts` finds the closest GitHub comment textarea and injects `^gn:LINE:START:END` metadata into the comment text
+3. User submits the comment normally through GitHub's own UI — the extension makes no API calls
+4. On page load / diff expansion, `comment-scanner.ts` scans rendered comments for `^gn` metadata tags
+5. `highlighter.ts` renders highlight spans over the exact text ranges in the diff
+6. `metadata-hider.ts` hides the raw `^gn:LINE:START:END` text in rendered comments so it doesn't clutter the view
+7. `thread-colorizer.ts` colors comment thread markers to match their corresponding highlights
+8. `diff-observer.ts` watches for dynamically loaded diff content and re-triggers scanning/highlighting
 
-### Sidecar Flow (Tier 2 — Full Mode, Phase 2)
-1. User selects text in a rendered markdown file → extension captures selection
-2. Extension creates a W3C TextQuoteSelector anchor with `exact`, `prefix`, `suffix`
-3. Annotation stored in `.comments/filename.md.json` sidecar file
-4. Sidecar file committed to repo via GitHub Contents API or filesystem
-5. On file view, extension reads sidecar, resolves anchors, renders highlights
+### Key Characteristics
+- **No authentication** — the extension never contacts GitHub's API
+- **No sidecar files** — annotations live entirely in PR comment text
+- **Graceful degradation** — without the extension, `^gn` metadata is visible but harmless plain text
+- **Per-repo opt-in** — `repo-settings.ts` + `optin-banner.ts` manage per-repo enable/disable/block preferences stored via `chrome.storage`
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `packages/core/src/metadata/parser.ts` | Parses `@gn` metadata from PR comment bodies |
-| `packages/core/src/metadata/builder.ts` | Builds PR comment bodies with `@gn` metadata |
-| `packages/core/src/anchor/engine.ts` | TextQuoteSelector anchor resolution engine |
-| `packages/core/src/schema/validation.ts` | JSON schema validation for sidecar files |
+| `packages/core/src/parser.ts` | Parses `^gn:LINE:START:END` metadata from comment text |
 | `packages/browser-extension/manifest.json` | Extension manifest (permissions, content scripts) |
-| `packages/browser-extension/src/content/index.ts` | Content script entry point |
-| `packages/browser-extension/src/content/selection.ts` | Text selection handling in PR diffs |
-| `packages/vscode-extension/src/extension.ts` | VSCode extension entry point |
-| `packages/github-action/action.yml` | GitHub Action definition |
+| `packages/browser-extension/src/content/index.ts` | Content script orchestration entry point |
+| `packages/browser-extension/src/content/detector.ts` | Detects GitHub page type (PR diff, file view, etc.) |
+| `packages/browser-extension/src/content/selection.ts` | Captures text selection in PR diffs |
+| `packages/browser-extension/src/content/textarea-target.ts` | Injects `^gn` metadata into comment textareas |
+| `packages/browser-extension/src/content/comment-scanner.ts` | Scans rendered comments for `^gn` tags |
+| `packages/browser-extension/src/content/highlighter.ts` | Renders sub-line highlights in diff views |
+| `packages/browser-extension/src/content/metadata-hider.ts` | Hides `^gn` metadata in rendered comments |
+| `packages/browser-extension/src/content/thread-colorizer.ts` | Colors comment threads to match highlights |
+| `packages/browser-extension/src/content/diff-observer.ts` | MutationObserver for dynamically loaded diffs |
+| `packages/browser-extension/src/content/github-selectors.ts` | Centralized GitHub DOM selectors |
+| `packages/browser-extension/src/content/metadata-store.ts` | WeakMap-based metadata store |
+| `packages/browser-extension/src/storage/repo-settings.ts` | Per-repo enable/disable/block settings |
+| `packages/browser-extension/src/popup/popup.ts` | Extension popup UI logic |
+| `packages/browser-extension/src/background/service-worker.ts` | Minimal Manifest V3 service worker |
