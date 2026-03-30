@@ -43,12 +43,6 @@
           "items": {
             "type": "string"
           }
-        },
-        "gitnotate.githubToken": {
-          "type": "string",
-          "default": "",
-          "description": "GitHub personal access token for PR commenting",
-          "markdownDescription": "GitHub personal access token (PAT) with `repo` scope for PR review commenting"
         }
       }
     },
