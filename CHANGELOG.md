@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Proximity-based textarea targeting — metadata injected into the correct comment box by line number
 - Multiple pending highlights tracked independently per textarea
 - Submitted comment highlighting via `findCodeCell` (supports GitHub's new React diff UI)
-- 3-field metadata format `^gn:LINE:START:END` with line number embedded
+- 4-field metadata format `^gn:LINE:SIDE:START:END` with line number and diff side embedded
 - Metadata visually hidden in submitted comments (preserved in edit source)
 - Distinct highlight colors for multiple comments on the same line (6-color palette)
 - Color association between highlights and comment threads (border + author name)
@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 - Annotation IDs now use `crypto.randomUUID()` (UUID v4 format) instead of `Math.random()`-based 21-char base62 strings — existing annotations are unaffected (IDs are validated as non-empty strings)
 - Metadata prefix changed from `@gn` to `^gn` (avoids GitHub @mention conflicts)
-- Metadata format changed from 2-field `^gn:START:END` to 3-field `^gn:LINE:START:END`
+- Metadata format changed from 2-field `^gn:START:END` to 4-field `^gn:LINE:SIDE:START:END`
 - Backticks removed from metadata tags (plain text instead of code spans)
 - Scanner reads line number from metadata instead of fragile DOM inference
 - Double-init prevention via AbortController instead of boolean flag
@@ -46,5 +46,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Unused import lint errors across packages
 
 ### Removed
-- Legacy `<!-- @gn {...} -->` HTML comment format (superseded by `^gn:LINE:START:END`)
+- Legacy `<!-- @gn {...} -->` HTML comment format (superseded by `^gn:LINE:SIDE:START:END`)
 - `resolveLineNumber()` DOM walker in scanner (replaced by metadata-embedded line number)
