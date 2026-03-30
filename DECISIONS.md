@@ -48,7 +48,7 @@
 
 ### ADR-004: GitHub OAuth with PAT Fallback
 **Date**: 2026-03-27
-**Status**: Accepted
+**Status**: Superseded — Deferred to Phase 2. The v0.1.0 browser extension is purely DOM-based and does not require authentication or API access.
 **Context**: Browser extension needs authenticated GitHub API access for creating PR comments.
 **Decision**: Primary auth via GitHub OAuth App; Personal Access Token as fallback.
 **Alternatives considered**: PAT only; GitHub App installation tokens.

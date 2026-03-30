@@ -102,14 +102,11 @@ pnpm test                       # Run all tests
 # Core library
 cd packages/core && pnpm test
 
-# Browser extension
+# Browser extension (primary — shipped in v0.1.0)
 cd packages/browser-extension && pnpm build   # Builds to dist/
-# Load dist/ as unpacked extension in Chrome
-
-# VSCode extension
-cd packages/vscode-extension && pnpm build
-# Press F5 in VSCode to launch Extension Development Host
-
-# GitHub Action
-cd packages/github-action && pnpm build
+# Load dist/ as unpacked extension in Chrome/Edge
 ```
+
+> **Not yet released:** The VSCode extension (`packages/vscode-extension`) and
+> GitHub Action (`packages/github-action`) are planned for Phase 2 and are not
+> included in the v0.1.0 release.
