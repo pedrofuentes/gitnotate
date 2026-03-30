@@ -66,20 +66,20 @@ The simplest, fastest approach. Injects sub-line metadata directly into GitHub's
 When a user selects specific text within a line in a PR diff, the extension:
 1. Detects the selection's line number and character range within the diff
 2. Opens GitHub's native comment textarea for that line (via DOM interaction)
-3. Injects a `^gn:LINE:START:END` metadata marker followed by a human-readable quote into the textarea
+3. Injects a `^gn:LINE:SIDE:START:END` metadata marker followed by a human-readable quote into the textarea
 4. The user adds their comment and submits using GitHub's own UI (the extension never calls any API)
 
 **Comment format:**
 
 ```
-^gn:42:12:47
+^gn:42:R:12:47
 > 📌 **"revenue growth exceeded expectations"** (chars 12–47)
 
 Can we add the exact percentage here?
 ```
 
 Two layers:
-1. `^gn:LINE:START:END` — Machine-readable metadata line (caret prefix avoids GitHub @mention conflicts) — parsed by the extension
+1. `^gn:LINE:SIDE:START:END` — Machine-readable metadata line (caret prefix avoids GitHub @mention conflicts) — parsed by the extension
 2. `> 📌 **"quoted text"**` — Human-readable fallback — visible even without extension
 3. Actual comment text below
 
@@ -91,7 +91,7 @@ Two layers:
 | Without extension | Normal line comment with `^gn:` prefix and quoted text block — perfectly usable |
 | GitHub mobile app | Same as without extension |
 | Email notification | Same — blockquote makes reference clear |
-| API / AI agent | Parse `^gn:LINE:START:END` metadata or read quoted text |
+| API / AI agent | Parse `^gn:LINE:SIDE:START:END` metadata or read quoted text |
 
 **Advantages:**
 - Zero extra files, zero infrastructure, zero commits, zero API calls
@@ -166,7 +166,7 @@ my-repo/
 - ✅ Detect PR diff pages (Files Changed view) on github.com
 - ✅ Enable text selection within diff lines (override GitHub's default line-only selection)
 - ✅ On text selection → show floating "Comment" button
-- ✅ Define `^gn:LINE:START:END` metadata format for PR comment bodies
+- ✅ Define `^gn:LINE:SIDE:START:END` metadata format for PR comment bodies
 - ✅ Inject metadata + human-readable quoted text into GitHub's native comment textarea via DOM manipulation (no API calls)
 - ✅ Parse existing PR comments for `^gn` metadata
 - ✅ Highlight exact text ranges within diff lines for `^gn`-enhanced comments
@@ -215,7 +215,7 @@ my-repo/
 
 ## Key Design Decisions
 
-1. **`^gn` metadata format**: `^gn:LINE:START:END` plain text in PR comments (caret prefix avoids GitHub @mention conflicts)
+1. **`^gn` metadata format**: `^gn:LINE:SIDE:START:END` plain text in PR comments (caret prefix avoids GitHub @mention conflicts)
 2. **Storage location for sidecar**: `.comments/` directory (hidden dot-prefix)
 3. **Commit strategy**: Auto-commit each comment vs. batch/manual commit
 4. **Branch strategy**: Comments on same branch vs. separate comments branch
