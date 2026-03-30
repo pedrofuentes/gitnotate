@@ -34,7 +34,7 @@
 **Date**: 2026-03-27 (updated 2026-03-29)
 **Status**: Accepted (supersedes original `@gn` format)
 **Context**: Need a way to store sub-line comment anchoring data within GitHub's existing PR comment system without requiring extra infrastructure. The original `@gn` prefix conflicted with GitHub's user mention system.
-**Decision**: Embed `^gn:LINE:START:END` plain-text metadata in comment bodies. The caret prefix (`^`) avoids GitHub @mention conflicts. Line number is embedded in the metadata so the scanner doesn't need fragile DOM inference. Metadata is visually hidden in submitted comments but preserved in the edit source.
+**Decision**: Embed `^gn:LINE:SIDE:START:END` plain-text metadata in comment bodies. The caret prefix (`^`) avoids GitHub @mention conflicts. Line number is embedded in the metadata so the scanner doesn't need fragile DOM inference. Metadata is visually hidden in submitted comments but preserved in the edit source.
 **Alternatives considered**: `@gn` (conflicts with @mentions); HTML comments `<!-- -->` (stripped by GitHub security); backtick-wrapped code spans (stripped from textContent in rendered comments).
 **Consequences**: Zero infrastructure, metadata survives GitHub rendering. Line number in metadata makes scanning reliable across UI changes. Breaking change from old 2-field format — old comments won't highlight.
 
