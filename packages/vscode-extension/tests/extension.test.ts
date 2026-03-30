@@ -6,6 +6,22 @@ vi.mock('../src/settings', () => ({
   disableWorkspace: vi.fn(),
 }));
 
+// Mock new dependencies used by extension
+vi.mock('../src/git-service', () => ({
+  GitService: vi.fn().mockImplementation(() => ({
+    isAvailable: () => false,
+    getCurrentBranch: () => undefined,
+    getRemoteUrl: () => undefined,
+    getHeadCommit: () => undefined,
+    parseGitHubOwnerRepo: () => null,
+    isDefaultBranch: () => false,
+  })),
+}));
+
+vi.mock('../src/auth', () => ({
+  getGitHubToken: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { activate, deactivate } from '../src/extension';
 import { commands } from '../__mocks__/vscode';
 

@@ -5,6 +5,8 @@ let mockWorkspaceFolders: Array<{ uri: { fsPath: string } }> | undefined =
   undefined;
 let mockGithubToken: string | undefined = undefined;
 let mockActiveTextEditor: unknown = undefined;
+let mockAuthSession: { accessToken: string; id: string; scopes: string[] } | undefined = undefined;
+let mockGitRepository: unknown = undefined;
 
 export const ConfigurationTarget = {
   Global: 1,
@@ -105,6 +107,44 @@ export const commands = {
   registerCommand: vi.fn(),
 };
 
+export const authentication = {
+  getSession: vi.fn(async (_providerId: string, _scopes: string[], _options?: unknown) => {
+    return mockAuthSession;
+  }),
+  onDidChangeSessions: vi.fn((_listener: unknown) => ({
+    dispose: vi.fn(),
+  })),
+};
+
+export const extensions = {
+  getExtension: vi.fn((_extensionId: string) => {
+    if (_extensionId === 'vscode.git' && mockGitRepository !== undefined) {
+      return {
+        isActive: true,
+        exports: {
+          getAPI: () => ({
+            repositories: [mockGitRepository],
+          }),
+        },
+      };
+    }
+    return undefined;
+  }),
+};
+
+export enum CommentMode {
+  Preview = 0,
+  Editing = 1,
+}
+
+export const comments = {
+  createCommentController: vi.fn((_id: string, _label: string) => ({
+    dispose: vi.fn(),
+    commentingRangeProvider: undefined,
+    createCommentThread: vi.fn(),
+  })),
+};
+
 export const MarkdownString = vi.fn().mockImplementation((value?: string) => ({
   value: value ?? '',
   isTrusted: false,
@@ -138,10 +178,44 @@ export function __getStatusBarItem() {
   return mockStatusBarItem;
 }
 
+export function __setAuthSession(session: { accessToken: string; id: string; scopes: string[] } | undefined) {
+  mockAuthSession = session;
+  authentication.getSession.mockImplementation(async () => session);
+}
+
+export function __clearAuth() {
+  mockAuthSession = undefined;
+  authentication.getSession.mockImplementation(async () => undefined);
+}
+
+export function __setGitRepository(repo: unknown) {
+  mockGitRepository = repo;
+  extensions.getExtension.mockImplementation((_extensionId: string) => {
+    if (_extensionId === 'vscode.git' && repo !== undefined) {
+      return {
+        isActive: true,
+        exports: {
+          getAPI: () => ({
+            repositories: [repo],
+          }),
+        },
+      };
+    }
+    return undefined;
+  });
+}
+
 export function __reset() {
   mockEnabledRepos = [];
   mockWorkspaceFolders = undefined;
   mockGithubToken = undefined;
   mockActiveTextEditor = undefined;
+  mockAuthSession = undefined;
+  mockGitRepository = undefined;
   vi.clearAllMocks();
+  authentication.getSession.mockImplementation(async () => undefined);
+  authentication.onDidChangeSessions.mockImplementation((_listener: unknown) => ({
+    dispose: vi.fn(),
+  }));
+  extensions.getExtension.mockImplementation(() => undefined);
 }

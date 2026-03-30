@@ -3,6 +3,8 @@ import { buildGnComment } from '@gitnotate/core';
 import { GitHubApiClient } from './github-api';
 import { detectCurrentPR } from './pr-detector';
 import { getRelativePath } from './utils';
+import { GitService } from './git-service';
+import { getGitHubToken } from './auth';
 import type { GnMetadata } from '@gitnotate/core';
 
 export async function addCommentCommand(
@@ -14,18 +16,18 @@ export async function addCommentCommand(
     return;
   }
 
-  // Check for GitHub token
-  const config = vscode.workspace.getConfiguration('gitnotate');
-  const token = config.get<string>('githubToken');
+  // Authenticate via OAuth
+  const token = await getGitHubToken();
   if (!token) {
     vscode.window.showErrorMessage(
-      'GitHub token not configured. Set gitnotate.githubToken in settings.'
+      'GitHub authentication required. Please sign in to GitHub.'
     );
     return;
   }
 
   // Detect current PR
-  const pr = await detectCurrentPR();
+  const gitService = new GitService();
+  const pr = await detectCurrentPR(gitService, token);
   if (!pr) {
     vscode.window.showWarningMessage(
       'No pull request found for the current branch.'
