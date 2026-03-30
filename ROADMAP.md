@@ -174,16 +174,66 @@ my-repo/
 
 **Tech stack:** TypeScript, Manifest V3 (Chrome/Edge), Vite, pure DOM manipulation (no GitHub API, no OAuth)
 
-### Phase 1.5: PR Comment Mode — VSCode Extension 🔮 PLANNED
+### Phase 1.5: PR Comment Mode — VSCode Extension 🟡 IN PROGRESS
 
-**Deliverable:** VSCode extension
+**Deliverable:** VSCode extension with `^gn` sub-line commenting via GitHub PR review comments
 
-- Scaffold VSCode extension project
-- Shared core library with browser extension (TypeScript)
-- Reuse `^gn` metadata format from Phase 1
-- Hook into VSCode GitHub PR diff views for sub-line text selection
-- Add comments with `^gn` metadata via GitHub API
-- Parse and highlight `^gn`-enhanced comments in VSCode diff view
+**Architecture decisions** (from research — see `docs/internal/VSCODE-GHPR-INTEGRATION.md`):
+- **`vscode.authentication`** for GitHub OAuth — shared session with GH PR extension, no PAT management
+- **VSCode Comments API** (`createCommentController`) for native comment threading — replaces custom decorations
+- **VSCode Git API** (`vscode.git`) for branch/remote detection — replaces `child_process` shell calls
+- **Companion extension** — works standalone, complements GitHub PR & Issues extension when installed
+
+#### Increment 1: Auth + Git Service Foundation ✅ COMPLETE
+
+- ✅ `auth.ts` — OAuth wrapper via `vscode.authentication.getSession('github', ['repo'])`
+- ✅ `git-service.ts` — VSCode Git API wrapper (branch, remote, commit, owner/repo parsing)
+- ✅ Refactored `pr-detector.ts` — accepts `GitService` + token via dependency injection
+- ✅ Refactored `comment-command.ts` — migrated from PAT to OAuth auth flow
+- ✅ Refactored `extension.ts` — wired new modules, removed `checkGitHubToken()` PAT warning
+- ✅ Removed `gitnotate.githubToken` config setting (replaced by OAuth)
+- ✅ URL parameters percent-encoded in GitHub API calls
+- ✅ 95 tests, 97.53% coverage
+
+#### Increment 2: Comment Controller & Thread Sync 🔮 PLANNED
+
+Core pipeline — fetch PR comments, parse `^gn` metadata, display as native comment threads.
+
+- `comment-controller.ts` — wraps `vscode.comments.createCommentController` with sub-line ranges
+- `comment-thread-sync.ts` — orchestrator: fetch → parse → create threads, with in-memory cache
+- Rename `github-api.ts` → `pr-service.ts` with extended response fields (`side`, `in_reply_to_id`, `user.login`)
+- Wire `onDidChangeActiveTextEditor` handler (currently a TODO) with 300ms debounce
+- Remove `decoration-manager.ts` and `comment-decoration.ts` (replaced by Comments API)
+- `CommentingRangeProvider` enables gutter `+` on markdown files
+
+#### Increment 3: Comment Lifecycle & Refresh 🔮 PLANNED
+
+Keep comment threads in sync with editor state.
+
+- Debounced lifecycle handlers: editor change, save, close, auth session change
+- Cache-first approach: show stale data instantly, refresh in background
+- `forceRefresh()` after posting a new comment
+- `debounce()` utility function
+
+#### Increment 4: Comments Sidebar (TreeView) 🔮 PLANNED
+
+Implement the contributed `gitnotateComments` view.
+
+- `TreeDataProvider` via `createTreeView()` for reveal/selection support
+- Root items: file paths (collapsible) → child items: `^gn` comments
+- Click-to-navigate: opens file at the annotated range
+- `EventEmitter` for selective refresh, context keys, empty/loading states
+
+#### Increment 5: UX Polish & Integration 🔮 PLANNED
+
+Full round-trip polish and GH PR extension coexistence.
+
+- Post-comment → refresh decorations + sidebar
+- Reply/resolve handlers on comment threads
+- Status bar: "Gitnotate: PR #N" with auto-refresh
+- Context keys (`gitnotate.hasPR`, `gitnotate.hasComments`) for `when` clauses
+- Error UX with action buttons ("Sign in to GitHub")
+- Output channel (`Gitnotate`) for debugging
 
 ### Phase 2: Full Sidecar Mode (persistent comments outside PRs) 🔮 PLANNED
 
