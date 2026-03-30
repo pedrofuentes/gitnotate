@@ -27,7 +27,7 @@ export async function detectCurrentPR(
     }
 
     const response = await fetch(
-      `https://api.github.com/repos/${remote.owner}/${remote.repo}/pulls?head=${remote.owner}:${branch}&state=open`,
+      `https://api.github.com/repos/${encodeURIComponent(remote.owner)}/${encodeURIComponent(remote.repo)}/pulls?head=${encodeURIComponent(remote.owner)}:${encodeURIComponent(branch)}&state=open`,
       {
         headers,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
