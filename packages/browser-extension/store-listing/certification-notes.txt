@@ -1,0 +1,27 @@
+Testing steps:
+
+1. Navigate to any public GitHub Pull Request with file changes, for example:
+   https://github.com/pedrofuentes/gitnotate/pull/2/files
+
+2. A floating banner will appear at the top asking "Enable sub-line commenting for pedrofuentes/gitnotate?" — click "Enable".
+
+3. Select any text within a diff line (highlight a word or phrase in the code diff).
+
+4. A ^gn metadata tag will be injected into the nearest open comment textarea. You can then submit the comment normally through GitHub.
+
+5. After submitting, the commented text will be highlighted in the diff with a colored underline.
+
+6. Click the Gitnotate icon in the browser toolbar to see the popup with repo settings and highlight style options.
+
+No accounts or credentials needed. The extension works on any public GitHub repository without authentication. It only reads and modifies the DOM of the GitHub page — it makes zero network requests and requires no API keys or tokens.
+
+Key behaviors:
+- The extension only activates on github.com pages
+- It requires user opt-in per repository (the "Enable" banner)
+- All data (repo preferences, highlight style) is stored locally via chrome.storage.local
+- No data is transmitted to any server
+
+Permissions justification:
+- activeTab: needed to read and modify GitHub PR diff pages for text selection and highlighting
+- storage: needed to persist per-repo enable/disable preferences and highlight style
+- host_permissions (github.com): the extension only operates on GitHub pages
