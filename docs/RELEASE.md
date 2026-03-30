@@ -107,12 +107,12 @@ For subsequent releases, go to the Developer Dashboard → select Gitnotate →
 
 ### First-Time Setup
 
-1. Register at [Microsoft Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/overview)
+1. Register at [Microsoft Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/public/login?ref=dd)
    (free, requires a Microsoft account)
 
 ### Submission Steps
 
-1. Go to the [Microsoft Partner Center — Edge Add-ons](https://partner.microsoft.com/dashboard/microsoftedge/overview)
+1. Go to the [Microsoft Partner Center — Edge Add-ons](https://partner.microsoft.com/dashboard/microsoftedge/public/login?ref=dd)
 2. Click **"Create new extension"** (first release) or select the existing item
 3. **Upload the same `.zip`** used for Chrome (Manifest V3 is compatible with Edge)
 4. Fill in the **Listing** details:
