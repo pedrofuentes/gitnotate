@@ -1,28 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-
-// Mock child_process
-vi.mock('child_process', () => ({
-  exec: vi.fn(),
-}));
+import { detectCurrentPR } from '../src/pr-detector';
+import { GitService } from '../src/git-service';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-import { exec } from 'child_process';
-import { detectCurrentPR } from '../src/pr-detector';
-
-const mockExec = vi.mocked(exec);
-
-function simulateExec(stdout: string, stderr = '') {
-  return (_cmd: string, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-    callback(null, { stdout, stderr });
-  };
-}
-
-function simulateExecError(error: Error) {
-  return (_cmd: string, callback: (err: Error | null, result: { stdout: string; stderr: string }) => void) => {
-    callback(error, { stdout: '', stderr: '' });
-  };
+function createMockGitService(overrides: Partial<GitService> = {}): GitService {
+  return {
+    isAvailable: () => true,
+    getCurrentBranch: () => 'feature/my-branch',
+    getRemoteUrl: () => 'https://github.com/octocat/hello-world.git',
+    getHeadCommit: () => 'abc123',
+    parseGitHubOwnerRepo: (url: string) => {
+      const match = url.match(/github\.com[/:]([^/]+)\/([^/.]+?)(?:\.git)?$/);
+      return match ? { owner: match[1], repo: match[2] } : null;
+    },
+    isDefaultBranch: () => false,
+    ...overrides,
+  } as GitService;
 }
 
 describe('detectCurrentPR', () => {
@@ -35,12 +30,7 @@ describe('detectCurrentPR', () => {
   });
 
   it('should return PR info when branch has an associated PR', async () => {
-    // First call: get current branch name
-    mockExec.mockImplementationOnce(simulateExec('feature/my-branch\n') as any);
-    // Second call: get remote URL
-    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
-
-    // GitHub API call to search for PRs
+    const git = createMockGitService();
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -55,7 +45,7 @@ describe('detectCurrentPR', () => {
       ],
     });
 
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
 
     expect(result).toEqual({
       owner: 'octocat',
@@ -65,33 +55,62 @@ describe('detectCurrentPR', () => {
     });
   });
 
-  it('should return null when on main branch', async () => {
-    mockExec.mockImplementationOnce(simulateExec('main\n') as any);
+  it('should return null when on default branch', async () => {
+    const git = createMockGitService({
+      getCurrentBranch: () => 'main',
+      isDefaultBranch: () => true,
+    });
 
-    const result = await detectCurrentPR();
-
-    expect(result).toBeNull();
-  });
-
-  it('should return null when on master branch', async () => {
-    mockExec.mockImplementationOnce(simulateExec('master\n') as any);
-
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
 
     expect(result).toBeNull();
   });
 
-  it('should return null when git command fails', async () => {
-    mockExec.mockImplementationOnce(simulateExecError(new Error('not a git repo')) as any);
+  it('should return null when git is not available', async () => {
+    const git = createMockGitService({
+      isAvailable: () => false,
+    });
 
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when branch is undefined', async () => {
+    const git = createMockGitService({
+      getCurrentBranch: () => undefined as unknown as string,
+    });
+
+    const result = await detectCurrentPR(git);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when remote URL is undefined', async () => {
+    const git = createMockGitService({
+      getRemoteUrl: () => undefined as unknown as string,
+    });
+
+    const result = await detectCurrentPR(git);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when remote URL is not a GitHub URL', async () => {
+    const git = createMockGitService({
+      getRemoteUrl: () => 'https://gitlab.com/octocat/hello-world.git',
+      parseGitHubOwnerRepo: () => null,
+    });
+
+    const result = await detectCurrentPR(git);
 
     expect(result).toBeNull();
   });
 
   it('should return null when no PR is found for branch', async () => {
-    mockExec.mockImplementationOnce(simulateExec('feature/no-pr\n') as any);
-    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+    const git = createMockGitService({
+      getCurrentBranch: () => 'feature/no-pr',
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -99,14 +118,16 @@ describe('detectCurrentPR', () => {
       json: async () => [],
     });
 
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
 
     expect(result).toBeNull();
   });
 
   it('should parse SSH remote URLs', async () => {
-    mockExec.mockImplementationOnce(simulateExec('feature/ssh-test\n') as any);
-    mockExec.mockImplementationOnce(simulateExec('git@github.com:octocat/hello-world.git\n') as any);
+    const git = createMockGitService({
+      getCurrentBranch: () => 'feature/ssh-test',
+      getRemoteUrl: () => 'git@github.com:octocat/hello-world.git',
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -119,7 +140,7 @@ describe('detectCurrentPR', () => {
       ],
     });
 
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
 
     expect(result).toEqual({
       owner: 'octocat',
@@ -130,8 +151,9 @@ describe('detectCurrentPR', () => {
   });
 
   it('should handle API errors gracefully', async () => {
-    mockExec.mockImplementationOnce(simulateExec('feature/api-error\n') as any);
-    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+    const git = createMockGitService({
+      getCurrentBranch: () => 'feature/api-error',
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: false,
@@ -139,17 +161,20 @@ describe('detectCurrentPR', () => {
       json: async () => ({ message: 'Internal Server Error' }),
     });
 
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
 
     expect(result).toBeNull();
   });
 
-  it('should log error to console.error when git command fails (I-1)', async () => {
+  it('should log error to console.error when fetch throws', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const error = new Error('not a git repo');
-    mockExec.mockImplementationOnce(simulateExecError(error) as any);
+    const error = new Error('Network failure');
+    const git = createMockGitService({
+      getCurrentBranch: () => 'feature/net-err',
+    });
+    mockFetch.mockRejectedValueOnce(error);
 
-    await detectCurrentPR();
+    await detectCurrentPR(git);
 
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[Gitnotate]'),
@@ -158,28 +183,49 @@ describe('detectCurrentPR', () => {
     consoleSpy.mockRestore();
   });
 
-  it('should log error to console.error when fetch throws (I-1)', async () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const error = new Error('Network failure');
-    mockExec.mockImplementationOnce(simulateExec('feature/net-err\n') as any);
-    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
-    mockFetch.mockRejectedValueOnce(error);
+  it('should include Authorization header when token provided', async () => {
+    const git = createMockGitService();
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    });
 
-    await detectCurrentPR();
+    await detectCurrentPR(git, 'ghp_test_token_123');
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[Gitnotate]'),
-      error
-    );
-    consoleSpy.mockRestore();
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers.Authorization).toBe('Bearer ghp_test_token_123');
+  });
+
+  it('should not include Authorization header when no token', async () => {
+    const git = createMockGitService();
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    });
+
+    await detectCurrentPR(git);
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.headers.Authorization).toBeUndefined();
   });
 });
 
 describe('detectCurrentPR — rate limit handling (I-14)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should return null and warn on 403 rate limit response', async () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mockExec.mockImplementationOnce(simulateExec('feature/rate-limited\n') as any);
-    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+    const git = createMockGitService({
+      getCurrentBranch: () => 'feature/rate-limited',
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: false,
@@ -191,7 +237,7 @@ describe('detectCurrentPR — rate limit handling (I-14)', () => {
       json: async () => ({ message: 'API rate limit exceeded' }),
     });
 
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
 
     expect(result).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -202,8 +248,9 @@ describe('detectCurrentPR — rate limit handling (I-14)', () => {
 
   it('should return null and warn on 429 Too Many Requests response', async () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mockExec.mockImplementationOnce(simulateExec('feature/rate-limited-429\n') as any);
-    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+    const git = createMockGitService({
+      getCurrentBranch: () => 'feature/rate-limited-429',
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: false,
@@ -214,7 +261,7 @@ describe('detectCurrentPR — rate limit handling (I-14)', () => {
       json: async () => ({ message: 'Too Many Requests' }),
     });
 
-    const result = await detectCurrentPR();
+    const result = await detectCurrentPR(git);
 
     expect(result).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -224,8 +271,9 @@ describe('detectCurrentPR — rate limit handling (I-14)', () => {
   });
 
   it('should include a timeout signal on the fetch call', async () => {
-    mockExec.mockImplementationOnce(simulateExec('feature/timeout-test\n') as any);
-    mockExec.mockImplementationOnce(simulateExec('https://github.com/octocat/hello-world.git\n') as any);
+    const git = createMockGitService({
+      getCurrentBranch: () => 'feature/timeout-test',
+    });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -233,7 +281,7 @@ describe('detectCurrentPR — rate limit handling (I-14)', () => {
       json: async () => [],
     });
 
-    await detectCurrentPR();
+    await detectCurrentPR(git);
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init.signal).toBeDefined();

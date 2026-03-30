@@ -4,12 +4,16 @@ import { DecorationManager } from './decoration-manager';
 import { addCommentCommand } from './comment-command';
 import { addFileCommentCommand } from './file-comment-command';
 import { detectCurrentPR } from './pr-detector';
+import { GitService } from './git-service';
+import { getGitHubToken } from './auth';
 
 let decorationManager: DecorationManager | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
 
 async function updatePRStatusBar(): Promise<void> {
-  const pr = await detectCurrentPR();
+  const gitService = new GitService();
+  const token = await getGitHubToken();
+  const pr = await detectCurrentPR(gitService, token);
 
   if (!statusBarItem) {
     statusBarItem = vscode.window.createStatusBarItem(
@@ -23,16 +27,6 @@ async function updatePRStatusBar(): Promise<void> {
     statusBarItem.show();
   } else {
     statusBarItem.hide();
-  }
-}
-
-function checkGitHubToken(): void {
-  const config = vscode.workspace.getConfiguration('gitnotate');
-  const token = config.get<string>('githubToken');
-  if (!token) {
-    vscode.window.showWarningMessage(
-      'Gitnotate: No GitHub token configured. Set gitnotate.githubToken in settings to enable PR commenting.'
-    );
   }
 }
 
@@ -58,7 +52,6 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // Listen for active editor changes to apply ^gn decorations
   const editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
     (_editor) => {
       // TODO: fetch PR comments, parse ^gn metadata, apply decorations
@@ -67,10 +60,6 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(editorChangeDisposable);
 
-  // Check for token on activation
-  checkGitHubToken();
-
-  // Show PR status bar
   updatePRStatusBar();
 }
 
