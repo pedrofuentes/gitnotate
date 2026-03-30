@@ -65,7 +65,7 @@ Enable Gitnotate only on the repositories where you want it. The extension shows
 The `^gn` metadata format is compact and human-readable:
 
 ```
-^gn:42:10:25
+^gn:42:R:10:25
 ```
 
 This means: line 42, character offsets 10 to 25 — the exact sub-line range you selected.

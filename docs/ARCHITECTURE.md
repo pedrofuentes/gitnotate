@@ -75,7 +75,7 @@ gitnotate/
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Monorepo strategy | pnpm workspaces | Shared core library across packages |
-| `^gn` metadata format | `^gn:LINE:START:END` in PR comment text | Zero infrastructure, purely DOM-based, graceful degradation without extension |
+| `^gn` metadata format | `^gn:LINE:SIDE:START:END` in PR comment text | Zero infrastructure, purely DOM-based, graceful degradation without extension |
 | Operation model | DOM manipulation only — zero network requests | No auth needed, no API keys, no permissions beyond content script |
 | Build tool | Vite (browser extension) | Fast builds, good TypeScript support, tree-shaking |
 | TypeScript config | Strict mode, ES2022 target, ESNext modules, bundler resolution | Maximum type safety, modern output |
@@ -91,11 +91,11 @@ gitnotate/
 
 ### PR Diff Sub-Line Comment Flow (Phase 1 — DOM-based)
 1. User selects text within a PR diff line → `selection.ts` captures the selection range (line number, start/end offsets)
-2. `textarea-target.ts` finds the closest GitHub comment textarea and injects `^gn:LINE:START:END` metadata into the comment text
+2. `textarea-target.ts` finds the closest GitHub comment textarea and injects `^gn:LINE:SIDE:START:END` metadata into the comment text
 3. User submits the comment normally through GitHub's own UI — the extension makes no API calls
 4. On page load / diff expansion, `comment-scanner.ts` scans rendered comments for `^gn` metadata tags
 5. `highlighter.ts` renders highlight spans over the exact text ranges in the diff
-6. `metadata-hider.ts` hides the raw `^gn:LINE:START:END` text in rendered comments so it doesn't clutter the view
+6. `metadata-hider.ts` hides the raw `^gn:LINE:SIDE:START:END` text in rendered comments so it doesn't clutter the view
 7. `thread-colorizer.ts` colors comment thread markers to match their corresponding highlights
 8. `diff-observer.ts` watches for dynamically loaded diff content and re-triggers scanning/highlighting
 
@@ -109,7 +109,7 @@ gitnotate/
 
 | File | Purpose |
 |------|---------|
-| `packages/core/src/parser.ts` | Parses `^gn:LINE:START:END` metadata from comment text |
+| `packages/core/src/parser.ts` | Parses `^gn:LINE:SIDE:START:END` metadata from comment text |
 | `packages/browser-extension/manifest.json` | Extension manifest (permissions, content scripts) |
 | `packages/browser-extension/src/content/index.ts` | Content script orchestration entry point |
 | `packages/browser-extension/src/content/detector.ts` | Detects GitHub page type (PR diff, file view, etc.) |
