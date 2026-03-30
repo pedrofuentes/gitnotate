@@ -166,6 +166,96 @@
       gap: 1rem;
     }
 
+    .install-section {
+      margin-top: 3rem;
+      background: var(--bg-surface);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      border: 1px solid var(--bg-hover);
+    }
+
+    .install-section h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .install-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--bg-hover);
+      padding-bottom: 0.5rem;
+    }
+
+    .install-tab {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .install-tab:hover {
+      color: var(--text);
+      background: var(--bg-hover);
+    }
+
+    .install-tab.active {
+      color: var(--accent);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .install-panel {
+      display: none;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+
+    .install-panel.active {
+      display: block;
+    }
+
+    .install-panel ol {
+      padding-left: 1.25rem;
+      margin: 0;
+    }
+
+    .install-panel li {
+      margin-bottom: 0.375rem;
+    }
+
+    .install-panel code {
+      background: var(--bg-hover);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 0.8em;
+      color: var(--accent);
+    }
+
+    .install-panel a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .install-panel a:hover {
+      text-decoration: underline;
+    }
+
+    .install-note {
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      opacity: 0.8;
+    }
+      gap: 1rem;
+    }
+
     .feature {
       background: var(--bg-surface);
       border-radius: var(--radius);
@@ -283,6 +373,37 @@
         <p>Install, enable a repo, and start reviewing. No tokens, no setup, no accounts. Works on any repository with pull requests.</p>
       </div>
     </section>
+
+    <!-- Install Section -->
+    <div class="install-section">
+      <h2>📦 Install</h2>
+      <div class="install-tabs">
+        <button class="install-tab active" data-tab="release">From GitHub Release</button>
+        <button class="install-tab" data-tab="source">From Source</button>
+      </div>
+      <div id="panel-release" class="install-panel active">
+        <ol>
+          <li>Download <code>gitnotate-v0.1.0.zip</code> from the <a href="https://github.com/pedrofuentes/gitnotate/releases/latest">latest release</a></li>
+          <li>Extract the zip to a folder on your computer</li>
+          <li>Open <code>chrome://extensions</code> or <code>edge://extensions</code></li>
+          <li>Enable <strong>Developer mode</strong> (toggle in the top-right)</li>
+          <li>Click <strong>Load unpacked</strong> → select the extracted folder</li>
+          <li>The Gitnotate icon appears in your toolbar — you're ready!</li>
+        </ol>
+        <p class="install-note">To update: download the new zip, extract to the same folder, then click the reload ↻ button on the extension card.</p>
+      </div>
+      <div id="panel-source" class="install-panel">
+        <ol>
+          <li>Clone the repo: <code>git clone https://github.com/pedrofuentes/gitnotate.git</code></li>
+          <li>Install dependencies: <code>pnpm install</code></li>
+          <li>Build: <code>pnpm build</code></li>
+          <li>Open <code>chrome://extensions</code> or <code>edge://extensions</code></li>
+          <li>Enable <strong>Developer mode</strong></li>
+          <li>Click <strong>Load unpacked</strong> → select <code>packages/browser-extension/dist/</code></li>
+        </ol>
+      </div>
+    </div>
+
   </main>
 
   <footer>
@@ -293,5 +414,15 @@
     </nav>
     <p>Gitnotate is open source under the MIT License.</p>
   </footer>
+  <script>
+    document.querySelectorAll('.install-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.install-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.install-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
 </body>
 </html>

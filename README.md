@@ -25,10 +25,22 @@ See [ROADMAP.md](./ROADMAP.md) for the full architecture, research, and implemen
 ## Installation
 
 ### Chrome Web Store
-Coming soon — [install from source](#install-from-source) in the meantime.
+Coming soon — [install from release](#install-from-github-release) in the meantime.
 
 ### Edge Add-ons
 Coming soon — same extension works on both browsers (Manifest V3).
+
+### Install from GitHub Release
+1. Download `gitnotate-v0.1.0.zip` from the [latest release](https://github.com/pedrofuentes/gitnotate/releases/latest)
+2. Extract the zip to a folder on your computer
+3. Open `chrome://extensions` (or `edge://extensions`)
+4. Enable **"Developer mode"** (toggle in the top-right corner)
+5. Click **"Load unpacked"** → select the extracted folder
+6. The Gitnotate icon should appear in your toolbar
+
+> **Note:** Manually installed extensions show a "Developer mode" warning on browser startup. Installing from the store removes this.
+
+To update: download the new zip, extract to the same folder, then click the reload ↻ button on the extension card.
 
 ### Install from Source
 1. Clone the repo: `git clone https://github.com/pedrofuentes/gitnotate.git`
