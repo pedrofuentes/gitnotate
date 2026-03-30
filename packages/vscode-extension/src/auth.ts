@@ -10,7 +10,8 @@ export async function getGitHubToken(): Promise<string | undefined> {
       SCOPES
     );
     return session?.accessToken;
-  } catch {
+  } catch (err) {
+    console.warn('[Gitnotate] getGitHubToken failed:', err);
     return undefined;
   }
 }

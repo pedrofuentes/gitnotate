@@ -11,6 +11,14 @@ vi.mock('../src/pr-detector', () => ({
   detectCurrentPR: vi.fn(),
 }));
 
+vi.mock('../src/git-service', () => ({
+  GitService: vi.fn().mockImplementation(() => ({})),
+}));
+
+vi.mock('../src/auth', () => ({
+  getGitHubToken: vi.fn(),
+}));
+
 vi.mock('@gitnotate/core', () => ({
   buildGnComment: vi.fn(),
 }));
@@ -20,16 +28,17 @@ import {
   Position,
   Range,
   __setActiveTextEditor,
-  __setGithubToken,
   __reset,
 } from '../__mocks__/vscode';
 import { addCommentCommand } from '../src/comment-command';
 import { GitHubApiClient } from '../src/github-api';
 import { detectCurrentPR } from '../src/pr-detector';
 import { buildGnComment } from '@gitnotate/core';
+import { getGitHubToken } from '../src/auth';
 
 const mockDetectCurrentPR = vi.mocked(detectCurrentPR);
 const mockBuildGnComment = vi.mocked(buildGnComment);
+const mockGetGitHubToken = vi.mocked(getGitHubToken);
 
 describe('addCommentCommand', () => {
   const mockContext = {
@@ -84,7 +93,7 @@ describe('addCommentCommand', () => {
         fileName: '/project/src/file.ts',
       },
     });
-    __setGithubToken('ghp_test_token');
+    mockGetGitHubToken.mockResolvedValue('ghp_test_token');
     mockDetectCurrentPR.mockResolvedValue(null);
 
     await addCommentCommand(mockContext);
@@ -104,12 +113,12 @@ describe('addCommentCommand', () => {
         fileName: '/project/src/file.ts',
       },
     });
-    __setGithubToken(undefined);
+    mockGetGitHubToken.mockResolvedValue(undefined);
 
     await addCommentCommand(mockContext);
 
     expect(window.showErrorMessage).toHaveBeenCalledWith(
-      expect.stringContaining('GitHub token')
+      expect.stringContaining('GitHub authentication')
     );
   });
 
@@ -123,7 +132,7 @@ describe('addCommentCommand', () => {
         fileName: '/project/src/file.ts',
       },
     });
-    __setGithubToken('ghp_test_token');
+    mockGetGitHubToken.mockResolvedValue('ghp_test_token');
     mockDetectCurrentPR.mockResolvedValue({
       owner: 'octocat',
       repo: 'hello-world',
@@ -151,7 +160,7 @@ describe('addCommentCommand', () => {
         fileName: '/project/src/file.ts',
       },
     });
-    __setGithubToken('ghp_test_token');
+    mockGetGitHubToken.mockResolvedValue('ghp_test_token');
     mockDetectCurrentPR.mockResolvedValue({
       owner: 'octocat',
       repo: 'hello-world',
@@ -178,7 +187,7 @@ describe('addCommentCommand', () => {
       },
     };
     __setActiveTextEditor(mockEditor);
-    __setGithubToken('ghp_test_token');
+    mockGetGitHubToken.mockResolvedValue('ghp_test_token');
 
     mockDetectCurrentPR.mockResolvedValue({
       owner: 'octocat',
@@ -216,7 +225,7 @@ describe('addCommentCommand', () => {
         fileName: '/project/src/file.ts',
       },
     });
-    __setGithubToken('ghp_test_token');
+    mockGetGitHubToken.mockResolvedValue('ghp_test_token');
 
     const prInfo = {
       owner: 'octocat',
@@ -254,7 +263,7 @@ describe('addCommentCommand', () => {
         fileName: '/project/src/file.ts',
       },
     });
-    __setGithubToken('ghp_test_token');
+    mockGetGitHubToken.mockResolvedValue('ghp_test_token');
     mockDetectCurrentPR.mockResolvedValue({
       owner: 'octocat',
       repo: 'hello-world',
@@ -285,7 +294,7 @@ describe('addCommentCommand', () => {
         fileName: '/project/src/file.ts',
       },
     });
-    __setGithubToken('ghp_test_token');
+    mockGetGitHubToken.mockResolvedValue('ghp_test_token');
     mockDetectCurrentPR.mockResolvedValue({
       owner: 'octocat',
       repo: 'hello-world',
