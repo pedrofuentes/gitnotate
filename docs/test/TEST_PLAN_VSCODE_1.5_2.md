@@ -21,7 +21,7 @@
 
 ## Prerequisites
 
-Same as Increment 1 (see `TEST_PLAN_VSCODE.md`), plus:
+Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 
 - **A PR with `^gn` comments**: You need at least one PR review comment containing `^gn:LINE:SIDE:START:END` metadata. The easiest way:
   1. Open a PR on GitHub in a browser with the Gitnotate browser extension installed
@@ -40,10 +40,10 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 9.1 | `^gn` comments render as threads | Sign in to GitHub. Open a repo on a PR branch. Open a markdown file that has `^gn` review comments on the PR. | After ~300ms, comment threads appear in the editor gutter. Each `^gn` comment shows as a native VSCode comment thread with the author name and comment body. Debug Console: `[Gitnotate] Auth token: present` then PR detection logs. | |
+| 9.1 | `^gn` comments render as threads | Sign in to GitHub. Open a repo on a PR branch. Open a markdown file that has `^gn` review comments on the PR. | After ~300ms, comment threads appear in the editor gutter. Debug Console: `[Gitnotate] Comment sync: syncing docs/readme.md (PR #N)` then `[Gitnotate] Thread sync: fetching comments for owner/repo#N` then `[Gitnotate] Thread sync: N comments for docs/readme.md` then `[Gitnotate] Thread sync: created N threads, skipped M non-^gn comments`. | |
 | 9.2 | Sub-line range highlighting | Open a file with a `^gn:10:R:5:20` comment (chars 5–20 on line 10). | The comment thread marker appears at line 10. When expanded, the thread highlights characters 5–20 (not the full line). The range corresponds to `^gn` metadata `start:end`. | |
 | 9.3 | Comment body displayed | Expand a `^gn` comment thread. | Shows the comment text. The `^gn:...` metadata tag is NOT visible in the body. The `> 📌 "quoted text"` blockquote IS visible (human-readable fallback). Author name shows the GitHub username. | |
-| 9.4 | No threads on non-`^gn` comments | Have regular line-level PR comments (without `^gn` metadata) on the same file. | Gitnotate does NOT create threads for plain line comments. Those are handled by the GH PR extension (if installed). Debug Console should not show parsing activity for non-`^gn` comments. | |
+| 9.4 | No threads on non-`^gn` comments | Have regular line-level PR comments (without `^gn` metadata) on the same file. | Gitnotate does NOT create threads for plain line comments. Debug Console: `[Gitnotate] Thread sync: created 0 threads, skipped N non-^gn comments`. | |
 | 9.5 | No threads on other files | Open a markdown file that has NO `^gn` comments on the PR. | No comment threads appear. No errors. | |
 | 9.6 | Multiple threads on same file | Have 2+ `^gn` comments on different lines of the same file. | Each comment renders as a separate thread at the correct line and character range. | |
 | 9.7 | Unknown author fallback | Post a `^gn` comment via a bot or deleted account (rare). | Thread shows author as "unknown" instead of crashing. | ⏭️ Covered by unit test |
@@ -75,10 +75,10 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE.md`), plus:
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 12.1 | Sync on editor switch | Have `^gn` comments on `file-a.md` and `file-b.md`. Open `file-a.md` → see threads. Switch to `file-b.md`. | After ~300ms, `file-a.md` threads disappear from the Comments panel. `file-b.md` threads appear. | |
-| 12.2 | Rapid switching debounced | Quickly switch between 3+ tabs within 300ms. | Only the final tab triggers a sync. No duplicate threads, no errors. Debug Console should show only one sync call (not multiple). | |
+| 12.2 | Rapid switching debounced | Quickly switch between 3+ tabs within 300ms. | Only the final tab triggers a sync. Debug Console shows only one `[Gitnotate] Comment sync: syncing ...` entry (not multiple). | |
 | 12.3 | Non-markdown editor ignored | Switch from a markdown file to a `.ts` file. | No sync triggered for the `.ts` file. Existing threads from the markdown file are not affected. | |
-| 12.4 | No auth — silent skip | Sign out of GitHub. Switch to a markdown file on a PR branch. | No threads appear. No error message. Debug Console: `[Gitnotate] Auth token: absent`. | |
-| 12.5 | No PR — silent skip | Open a repo on `main` (no PR). Switch to a markdown file. | No threads appear. No error. | |
+| 12.4 | No auth — silent skip | Sign out of GitHub. Switch to a markdown file on a PR branch. | No threads appear. No error message. Debug Console: `[Gitnotate] Comment sync: no auth token — skipping`. | |
+| 12.5 | No PR — silent skip | Open a repo on `main` (no PR). Switch to a markdown file. | No threads appear. No error. Debug Console: `[Gitnotate] Comment sync: no PR found — skipping`. | |
 
 ---
 
@@ -95,7 +95,7 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 14.1 | Extended fields in API call | Open a file with `^gn` comments. Check Debug Console. | API call to `GET /repos/.../pulls/.../comments?per_page=100&page=1` is logged. Response processing includes `id`, `side`, `userLogin` fields. | |
+| 14.1 | Extended fields in API call | Open a file with `^gn` comments. Check Debug Console. | Debug Console: `[Gitnotate] GET https://api.github.com/repos/.../pulls/.../comments?per_page=100&page=1`. Thread sync logs show comments parsed with author names. | |
 | 14.2 | Pagination with many comments | Have a PR with 100+ review comments. Open a file. | Debug Console shows page 1 AND page 2 fetch calls. All comments load correctly. | ⏭️ Difficult to set up manually — covered by unit test |
 
 ---
