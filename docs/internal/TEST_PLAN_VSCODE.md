@@ -150,10 +150,12 @@ All debug messages are prefixed with `[Gitnotate]`.
 
 ## Test Suite 7: Enable/Disable Workspace
 
+> **Known issue**: Enable/disable settings are stored correctly but not enforced — `addComment` and PR detection work regardless of the setting. Enforcement will be added in Increment 5 (context keys + `when` clauses).
+
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 7.1 | Enable workspace | Run "Gitnotate: Enable for Workspace" | Debug Console: `[Gitnotate] Settings: enabled workspace /path/to/repo`. Shows: "Gitnotate enabled for this workspace". | ⬜ |
-| 7.2 | Disable workspace | Run "Gitnotate: Disable for Workspace" | Debug Console: `[Gitnotate] Settings: disabled workspace /path/to/repo`. Shows: "Gitnotate disabled for this workspace". | ⬜ |
+| 7.1 | Enable workspace | Run "Gitnotate: Enable for Workspace" | Debug Console: `[Gitnotate] Settings: enabled workspace /path/to/repo`. Shows: "Gitnotate enabled for this workspace". | ✅ |
+| 7.2 | Disable workspace | Run "Gitnotate: Disable for Workspace" | Debug Console: `[Gitnotate] Settings: disabled workspace /path/to/repo`. Shows: "Gitnotate disabled for this workspace". **Note**: commands still work after disable (known issue — see above). | ✅ |
 
 ---
 
