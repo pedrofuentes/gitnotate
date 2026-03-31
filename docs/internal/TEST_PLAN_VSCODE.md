@@ -20,11 +20,16 @@ pnpm build
 
 1. Open the **gitnotate monorepo root** folder in VSCode (`S:\Pedro\Projects\gitnotate`)
 2. Go to **Run and Debug** panel (Ctrl+Shift+D)
-3. Select **"Launch Gitnotate Extension"** from the dropdown at the top
+3. Select a launch config from the dropdown at the top:
+   - **"Launch Gitnotate Extension"** — disables other extensions (faster, no noise from unrelated extensions)
+   - **"Launch Gitnotate (with other extensions)"** — keeps all extensions enabled (use for Test Suite 8: GH PR coexistence)
 4. Press **F5** (or click the green play button)
-5. VSCode builds the extension automatically (pre-launch task), then opens a new **Extension Development Host** window with Gitnotate loaded
+5. VSCode builds core + extension automatically (pre-launch task), then opens a new **Extension Development Host** window with Gitnotate loaded
 
-> **Troubleshooting**: If F5 shows "Select a debugger" instead of launching, make sure you have the monorepo root open (not a subfolder). The `.vscode/launch.json` at the root configures the `extensionHost` debugger.
+> **Troubleshooting**:
+> - **"Select a debugger" prompt**: Make sure you have the monorepo root open (not a subfolder). The `.vscode/launch.json` at the root configures the `extensionHost` debugger.
+> - **"Extension host did not start in 10 seconds"**: The launch config has a 30s timeout. If it still times out, run `pnpm build` manually in the terminal first, then try F5 again.
+> - **Errors from other extensions** (e.g., Edge DevTools): Use the default "Launch Gitnotate Extension" config which disables other extensions via `--disable-extensions`.
 
 #### In the Extension Development Host window
 

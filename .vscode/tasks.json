@@ -4,12 +4,16 @@
     {
       "label": "build-vscode-extension",
       "type": "shell",
-      "command": "pnpm build",
+      "command": "pnpm --filter @gitnotate/core build && pnpm --filter @gitnotate/vscode-extension build",
       "options": {
         "cwd": "${workspaceFolder}"
       },
       "group": "build",
-      "problemMatcher": ["$tsc"]
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
     },
     {
       "label": "watch-vscode-extension",
