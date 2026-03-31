@@ -20,6 +20,7 @@ vi.mock('../src/git-service', () => ({
 
 vi.mock('../src/auth', () => ({
   getGitHubToken: vi.fn().mockResolvedValue(undefined),
+  ensureAuthenticated: vi.fn().mockResolvedValue('mock-token'),
 }));
 
 import { activate, deactivate } from '../src/extension';

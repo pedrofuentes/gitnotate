@@ -5,11 +5,27 @@ import { addCommentCommand } from './comment-command';
 import { addFileCommentCommand } from './file-comment-command';
 import { detectCurrentPR } from './pr-detector';
 import { GitService } from './git-service';
-import { getGitHubToken } from './auth';
+import { getGitHubToken, ensureAuthenticated } from './auth';
 import { initLogger, debug } from './logger';
 
 let decorationManager: DecorationManager | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
+
+async function promptSignIn(): Promise<void> {
+  const action = await vscode.window.showInformationMessage(
+    'Gitnotate: Sign in to GitHub to enable sub-line commenting on this PR.',
+    'Sign In'
+  );
+  if (action === 'Sign In') {
+    try {
+      await ensureAuthenticated();
+      debug('User signed in — refreshing PR status bar');
+      await updatePRStatusBar();
+    } catch {
+      debug('User declined sign-in');
+    }
+  }
+}
 
 async function updatePRStatusBar(): Promise<void> {
   debug('Updating PR status bar...');
@@ -29,6 +45,10 @@ async function updatePRStatusBar(): Promise<void> {
     statusBarItem.text = `$(git-pull-request) Gitnotate: PR #${pr.number}`;
     statusBarItem.tooltip = `${pr.owner}/${pr.repo}#${pr.number}`;
     statusBarItem.show();
+
+    if (!token) {
+      promptSignIn();
+    }
   } else {
     debug('No PR detected — status bar hidden');
     statusBarItem.hide();
