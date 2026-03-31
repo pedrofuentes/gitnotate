@@ -8,6 +8,29 @@ let mockActiveTextEditor: unknown = undefined;
 let mockAuthSession: { accessToken: string; id: string; scopes: string[] } | undefined = undefined;
 let mockGitRepository: unknown = undefined;
 
+// Comments API tracking
+interface MockCommentThread {
+  uri: unknown;
+  range: unknown;
+  comments: unknown[];
+  label: string;
+  canReply: boolean;
+  contextValue: string;
+  collapsibleState: number;
+  dispose: ReturnType<typeof vi.fn>;
+}
+
+interface MockCommentController {
+  id: string;
+  label: string;
+  dispose: ReturnType<typeof vi.fn>;
+  commentingRangeProvider: unknown;
+  createCommentThread: ReturnType<typeof vi.fn>;
+  threads: MockCommentThread[];
+}
+
+let mockCommentControllers: MockCommentController[] = [];
+
 export const ConfigurationTarget = {
   Global: 1,
   Workspace: 2,
@@ -144,11 +167,31 @@ export enum ExtensionMode {
 }
 
 export const comments = {
-  createCommentController: vi.fn((_id: string, _label: string) => ({
-    dispose: vi.fn(),
-    commentingRangeProvider: undefined,
-    createCommentThread: vi.fn(),
-  })),
+  createCommentController: vi.fn((id: string, label: string) => {
+    const controller: MockCommentController = {
+      id,
+      label,
+      dispose: vi.fn(),
+      commentingRangeProvider: undefined as unknown,
+      threads: [],
+      createCommentThread: vi.fn((uri: unknown, range: unknown, commentsArr: unknown[]) => {
+        const thread: MockCommentThread = {
+          uri,
+          range,
+          comments: commentsArr,
+          label: '',
+          canReply: true,
+          contextValue: '',
+          collapsibleState: 0,
+          dispose: vi.fn(),
+        };
+        controller.threads.push(thread);
+        return thread;
+      }),
+    };
+    mockCommentControllers.push(controller);
+    return controller;
+  }),
 };
 
 export const MarkdownString = vi.fn().mockImplementation((value?: string) => ({
@@ -211,6 +254,14 @@ export function __setGitRepository(repo: unknown) {
   });
 }
 
+export function __getCommentControllers(): MockCommentController[] {
+  return mockCommentControllers;
+}
+
+export function __getCommentThreads(): MockCommentThread[] {
+  return mockCommentControllers.flatMap((c) => c.threads);
+}
+
 export function __reset() {
   mockEnabledRepos = [];
   mockWorkspaceFolders = undefined;
@@ -218,6 +269,7 @@ export function __reset() {
   mockActiveTextEditor = undefined;
   mockAuthSession = undefined;
   mockGitRepository = undefined;
+  mockCommentControllers = [];
   vi.clearAllMocks();
   authentication.getSession.mockImplementation(async () => undefined);
   authentication.onDidChangeSessions.mockImplementation((_listener: unknown) => ({
