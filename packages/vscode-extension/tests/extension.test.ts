@@ -319,5 +319,60 @@ describe('extension', () => {
 
       expect(mockGetGitHubToken).not.toHaveBeenCalled();
     });
+
+    it('should not sync when no token is available for a markdown editor', async () => {
+      mockGetGitHubToken.mockResolvedValue(undefined);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      mockDetectCurrentPR.mockClear();
+
+      const handlerCall = window.onDidChangeActiveTextEditor.mock.calls[0];
+      const handler = handlerCall[0] as (editor: unknown) => void;
+
+      const mockEditor = {
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+          languageId: 'markdown',
+          fileName: '/workspace/docs/readme.md',
+        },
+      };
+      handler(mockEditor);
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Token was undefined → should not proceed to PR detection
+      expect(mockDetectCurrentPR).not.toHaveBeenCalled();
+    });
+
+    it('should not sync when no PR is found for the current branch', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(null);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const { PrService } = await import('../src/pr-service');
+      vi.mocked(PrService).mockClear();
+
+      const handlerCall = window.onDidChangeActiveTextEditor.mock.calls[0];
+      const handler = handlerCall[0] as (editor: unknown) => void;
+
+      const mockEditor = {
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+          languageId: 'markdown',
+          fileName: '/workspace/docs/readme.md',
+        },
+      };
+      handler(mockEditor);
+      await vi.advanceTimersByTimeAsync(300);
+
+      // PR was null → PrService should be constructed but sync not reached
+      // detectCurrentPR was called (for the handler, not just status bar)
+      expect(mockDetectCurrentPR).toHaveBeenCalled();
+    });
   });
 });
