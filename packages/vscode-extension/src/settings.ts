@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { debug } from './logger';
 
 const SECTION = 'gitnotate';
 const ENABLED_REPOS_KEY = 'enabledRepos';
@@ -21,7 +22,10 @@ export function isWorkspaceEnabled(): boolean {
 
 export async function enableWorkspace(): Promise<void> {
   const workspacePath = getWorkspacePath();
-  if (!workspacePath) return;
+  if (!workspacePath) {
+    debug('Settings: no workspace folder — cannot enable');
+    return;
+  }
 
   const config = getConfig();
   const enabledRepos = config.get<string[]>(ENABLED_REPOS_KEY, []);
@@ -32,12 +36,18 @@ export async function enableWorkspace(): Promise<void> {
       [...enabledRepos, workspacePath],
       vscode.ConfigurationTarget.Global
     );
+    debug('Settings: enabled workspace', workspacePath);
+  } else {
+    debug('Settings: workspace already enabled', workspacePath);
   }
 }
 
 export async function disableWorkspace(): Promise<void> {
   const workspacePath = getWorkspacePath();
-  if (!workspacePath) return;
+  if (!workspacePath) {
+    debug('Settings: no workspace folder — cannot disable');
+    return;
+  }
 
   const config = getConfig();
   const enabledRepos = config.get<string[]>(ENABLED_REPOS_KEY, []);
@@ -47,4 +57,5 @@ export async function disableWorkspace(): Promise<void> {
     enabledRepos.filter((r) => r !== workspacePath),
     vscode.ConfigurationTarget.Global
   );
+  debug('Settings: disabled workspace', workspacePath);
 }

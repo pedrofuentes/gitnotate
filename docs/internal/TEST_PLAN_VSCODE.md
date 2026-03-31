@@ -131,12 +131,12 @@ All debug messages are prefixed with `[Gitnotate]`.
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 5.1 | No selection | Run "Gitnotate: Add Comment" with no text selected. | Shows info message: "Select text first" | ⬜ |
-| 5.2 | Not authenticated | Sign out of GitHub. Select text. Run "Gitnotate: Add Comment". | Shows error: "GitHub authentication required. Please sign in to GitHub." | ⬜ |
+| 5.1 | No selection | Run "Gitnotate: Add Comment" with no text selected. | Shows info message: "Select text first" | ✅ |
+| 5.2 | Not authenticated | Command Palette → `GitHub: Sign Out`. Select text. Run "Gitnotate: Add Comment". | Shows error: "GitHub authentication required. Please sign in to GitHub." | ⬜ |
 | 5.3 | No PR on branch | Sign in to GitHub. Open repo on `main`. Select text. Run "Gitnotate: Add Comment". | Shows warning: "No pull request found for the current branch." | ⬜ |
-| 5.4 | Full comment flow | Sign in to GitHub. Open repo on a PR branch. Select text in a file. Run "Gitnotate: Add Comment". Enter comment text. | Input box appears → type comment → "Comment posted successfully!" message. Comment appears on the PR on GitHub with `^gn` metadata. | ⬜ |
-| 5.5 | Cancel input | Select text, run "Add Comment", press Escape on input box. | No comment posted. No error. | ⬜ |
-| 5.6 | API failure | Select text, run "Add Comment" on a repo where you don't have write access. | Shows error: "Failed to post comment. Check your token and permissions." | ⬜ |
+| 5.4 | Full comment flow | Sign in to GitHub. Open repo on a PR branch. Select text in a file. Run "Gitnotate: Add Comment". Enter comment text. | Debug Console: `[Gitnotate] Add Comment: { file: "...", line: N, ... }` then `[Gitnotate] POST https://api.github.com/...` then `[Gitnotate] createReviewComment succeeded: 201`. Shows "Comment posted successfully!" | ⬜ |
+| 5.5 | Cancel input | Select text, run "Add Comment", press Escape on input box. | No comment posted. No error. No debug output after input prompt. | ⬜ |
+| 5.6 | API failure | Select text, run "Add Comment" on a repo where you don't have write access. | Debug Console: `[Gitnotate] createReviewComment failed: 422 Unprocessable Entity` with response body. Shows error: "Failed to post comment. Check the Debug Console for details." | ⬜ |
 
 ---
 
@@ -144,8 +144,8 @@ All debug messages are prefixed with `[Gitnotate]`.
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 6.1 | Create sidecar comment | Select text in a `.md` file. Run "Gitnotate: Add File Comment". Enter comment. | Success message. A `.comments/filename.md.json` file is created next to the file with the annotation. | ⬜ |
-| 6.2 | Append to existing sidecar | Run "Add File Comment" again on the same file with different selected text. | The existing `.comments/filename.md.json` now has 2 annotations. | ⬜ |
+| 6.1 | Create sidecar comment | Select text in a `.md` file. Run "Gitnotate: Add File Comment". Enter comment. | Debug Console: `[Gitnotate] File comment: creating new sidecar for ...` then `[Gitnotate] File comment: selector = {...}` then `[Gitnotate] File comment: written to ...`. A `.comments/filename.md.json` file is created. | ⬜ |
+| 6.2 | Append to existing sidecar | Run "Add File Comment" again on the same file with different selected text. | Debug Console: `[Gitnotate] File comment: appending to existing sidecar, 1 existing annotations`. The `.comments/filename.md.json` now has 2 annotations. | ⬜ |
 
 ---
 
@@ -153,8 +153,8 @@ All debug messages are prefixed with `[Gitnotate]`.
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 7.1 | Enable workspace | Run "Gitnotate: Enable for Workspace" | Shows: "Gitnotate enabled for this workspace". Check settings: `gitnotate.enabledRepos` includes the workspace path. | ⬜ |
-| 7.2 | Disable workspace | Run "Gitnotate: Disable for Workspace" | Shows: "Gitnotate disabled for this workspace". The workspace path is removed from `gitnotate.enabledRepos`. | ⬜ |
+| 7.1 | Enable workspace | Run "Gitnotate: Enable for Workspace" | Debug Console: `[Gitnotate] Settings: enabled workspace /path/to/repo`. Shows: "Gitnotate enabled for this workspace". | ⬜ |
+| 7.2 | Disable workspace | Run "Gitnotate: Disable for Workspace" | Debug Console: `[Gitnotate] Settings: disabled workspace /path/to/repo`. Shows: "Gitnotate disabled for this workspace". | ⬜ |
 
 ---
 
