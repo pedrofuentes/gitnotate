@@ -5,10 +5,19 @@ export interface ThreadComment {
   author: string;
 }
 
+const HIGHLIGHT_COLORS = [
+  '#f9a825', // yellow
+  '#1e88e5', // blue
+  '#8e24aa', // purple
+  '#ef6c00', // orange
+  '#00897b', // teal
+  '#c2185b', // pink
+];
+
 export class CommentController {
   private controller: vscode.CommentController;
   private threads: Map<string, vscode.CommentThread[]> = new Map();
-  private underlineDecorationType: vscode.TextEditorDecorationType;
+  private decorationTypes: vscode.TextEditorDecorationType[];
 
   constructor() {
     this.controller = vscode.comments.createCommentController(
@@ -16,11 +25,13 @@ export class CommentController {
       'Gitnotate Sub-line Comments'
     );
 
-    this.underlineDecorationType = vscode.window.createTextEditorDecorationType({
-      textDecoration: 'underline wavy #7c6fe1cc',
-      overviewRulerColor: '#7c6fe1',
-      overviewRulerLane: vscode.OverviewRulerLane?.Center,
-    });
+    this.decorationTypes = HIGHLIGHT_COLORS.map((color) =>
+      vscode.window.createTextEditorDecorationType({
+        textDecoration: `underline wavy ${color}`,
+        overviewRulerColor: color,
+        overviewRulerLane: vscode.OverviewRulerLane?.Center,
+      })
+    );
 
     this.controller.commentingRangeProvider = {
       provideCommentingRanges(document: vscode.TextDocument): vscode.Range[] {
@@ -38,18 +49,41 @@ export class CommentController {
     };
   }
 
+  getColorIndex(rangeIndex: number): number {
+    return rangeIndex % HIGHLIGHT_COLORS.length;
+  }
+
+  getColorHex(rangeIndex: number): string {
+    return HIGHLIGHT_COLORS[this.getColorIndex(rangeIndex)];
+  }
+
   createThread(
     uri: vscode.Uri,
     range: vscode.Range,
-    comments: ThreadComment[]
+    comments: ThreadComment[],
+    colorIndex?: number
   ): vscode.CommentThread {
-    const vscodeComments: vscode.Comment[] = comments.map((c) => ({
-      body: c.body,
-      mode: vscode.CommentMode.Preview,
-      author: { name: c.author },
-    }));
+    const color = colorIndex !== undefined ? HIGHLIGHT_COLORS[colorIndex % HIGHLIGHT_COLORS.length] : undefined;
+
+    const vscodeComments: vscode.Comment[] = comments.map((c) => {
+      const authorLabel = color
+        ? new vscode.MarkdownString(`<span style="color:${color};">${c.author}</span>`)
+        : c.author;
+      if (authorLabel instanceof vscode.MarkdownString) {
+        authorLabel.supportHtml = true;
+      }
+      return {
+        body: c.body,
+        mode: vscode.CommentMode.Preview,
+        author: { name: typeof authorLabel === 'string' ? authorLabel : c.author, iconPath: undefined },
+        label: color ? `● ${c.author}` : undefined,
+      };
+    });
 
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
+    if (color) {
+      thread.label = `📌 Gitnotate`;
+    }
 
     const key = uri.fsPath;
     const existing = this.threads.get(key) ?? [];
@@ -60,11 +94,28 @@ export class CommentController {
   }
 
   applyHighlights(editor: vscode.TextEditor, ranges: vscode.Range[]): void {
-    editor.setDecorations(this.underlineDecorationType, ranges);
+    // Group ranges by color index
+    const colorBuckets: Map<number, vscode.Range[]> = new Map();
+    for (let i = 0; i < ranges.length; i++) {
+      const colorIdx = this.getColorIndex(i);
+      const bucket = colorBuckets.get(colorIdx) ?? [];
+      bucket.push(ranges[i]);
+      colorBuckets.set(colorIdx, bucket);
+    }
+
+    // Apply each color's ranges to its decoration type
+    for (let i = 0; i < this.decorationTypes.length; i++) {
+      const bucket = colorBuckets.get(i);
+      if (bucket) {
+        editor.setDecorations(this.decorationTypes[i], bucket);
+      }
+    }
   }
 
   clearHighlights(editor: vscode.TextEditor): void {
-    editor.setDecorations(this.underlineDecorationType, []);
+    for (const decorationType of this.decorationTypes) {
+      editor.setDecorations(decorationType, []);
+    }
   }
 
   clearThreads(uri?: vscode.Uri): void {
@@ -89,7 +140,9 @@ export class CommentController {
 
   dispose(): void {
     this.clearThreads();
-    this.underlineDecorationType.dispose();
+    for (const decorationType of this.decorationTypes) {
+      decorationType.dispose();
+    }
     this.controller.dispose();
   }
 }

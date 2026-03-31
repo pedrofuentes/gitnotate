@@ -68,7 +68,7 @@ export class CommentThreadSync {
         });
       }
 
-      this.commentController.createThread(uri, range, threadComments);
+      this.commentController.createThread(uri, range, threadComments, threadsCreated);
       highlightRanges.push(range);
       threadsCreated++;
     }
