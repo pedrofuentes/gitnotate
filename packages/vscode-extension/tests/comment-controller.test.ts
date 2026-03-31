@@ -197,70 +197,135 @@ describe('CommentController', () => {
       expect(controllers[0].dispose).toHaveBeenCalled();
     });
 
-    it('should dispose the underline decoration type', () => {
+    it('should dispose the underline decoration types', () => {
       const controller = new CommentController();
       controller.dispose();
 
-      // The decoration type created in the constructor should be disposed
-      expect(window.createTextEditorDecorationType).toHaveBeenCalledTimes(1);
-      const decorationType = window.createTextEditorDecorationType.mock.results[0].value;
-      expect(decorationType.dispose).toHaveBeenCalled();
+      // All 6 color decoration types should be disposed
+      expect(window.createTextEditorDecorationType).toHaveBeenCalledTimes(6);
+      for (let i = 0; i < 6; i++) {
+        const decorationType = window.createTextEditorDecorationType.mock.results[i].value;
+        expect(decorationType.dispose).toHaveBeenCalled();
+      }
     });
   });
 
   describe('underline decorations', () => {
-    it('should create a wavy underline decoration type on construction', () => {
+    it('should create 6 wavy underline decoration types (one per color)', () => {
       const controller = new CommentController();
 
-      expect(window.createTextEditorDecorationType).toHaveBeenCalledTimes(1);
-      const options = window.createTextEditorDecorationType.mock.calls[0][0];
-      expect(options.textDecoration).toContain('underline');
-      expect(options.textDecoration).toContain('wavy');
+      expect(window.createTextEditorDecorationType).toHaveBeenCalledTimes(6);
+      for (let i = 0; i < 6; i++) {
+        const options = window.createTextEditorDecorationType.mock.calls[i][0];
+        expect(options.textDecoration).toContain('underline');
+        expect(options.textDecoration).toContain('wavy');
+      }
 
       controller.dispose();
     });
 
-    it('should apply underline decorations when applyHighlights is called', () => {
+    it('should use distinct colors for each decoration type', () => {
+      const controller = new CommentController();
+
+      const colors = new Set<string>();
+      for (let i = 0; i < 6; i++) {
+        const options = window.createTextEditorDecorationType.mock.calls[i][0];
+        colors.add(options.textDecoration);
+      }
+      expect(colors.size).toBe(6);
+
+      controller.dispose();
+    });
+
+    it('should assign different colors to ranges via applyHighlights', () => {
       const controller = new CommentController();
       const mockEditor = {
         setDecorations: vi.fn(),
-        document: {
-          uri: Uri.file('/workspace/docs/readme.md'),
-        },
+        document: { uri: Uri.file('/workspace/docs/readme.md') },
       };
 
       const ranges = [
         new Range(5, 10, 5, 25),
+        new Range(5, 30, 5, 45),
         new Range(10, 0, 10, 15),
       ];
 
       controller.applyHighlights(mockEditor as any, ranges);
 
-      expect(mockEditor.setDecorations).toHaveBeenCalledTimes(1);
-      const [decorationType, appliedRanges] = mockEditor.setDecorations.mock.calls[0];
-      expect(decorationType).toBeDefined();
-      expect(appliedRanges).toHaveLength(2);
-      expect(appliedRanges[0]).toBe(ranges[0]);
-      expect(appliedRanges[1]).toBe(ranges[1]);
+      // setDecorations called once per color that has ranges
+      // 3 ranges = 3 different colors = 3 calls
+      expect(mockEditor.setDecorations).toHaveBeenCalledTimes(3);
 
       controller.dispose();
     });
 
-    it('should clear highlights when clearHighlights is called', () => {
+    it('should cycle colors when more ranges than palette size', () => {
       const controller = new CommentController();
       const mockEditor = {
         setDecorations: vi.fn(),
-        document: {
-          uri: Uri.file('/workspace/docs/readme.md'),
-        },
+        document: { uri: Uri.file('/workspace/docs/readme.md') },
+      };
+
+      // 7 ranges — should cycle back to color 0
+      const ranges = Array.from({ length: 7 }, (_, i) =>
+        new Range(i, 0, i, 10)
+      );
+
+      controller.applyHighlights(mockEditor as any, ranges);
+
+      // Color 0 gets 2 ranges (index 0 and 6), others get 1
+      // So 6 calls to setDecorations (one per color)
+      expect(mockEditor.setDecorations).toHaveBeenCalledTimes(6);
+
+      controller.dispose();
+    });
+
+    it('should clear all highlight colors when clearHighlights is called', () => {
+      const controller = new CommentController();
+      const mockEditor = {
+        setDecorations: vi.fn(),
+        document: { uri: Uri.file('/workspace/docs/readme.md') },
       };
 
       controller.clearHighlights(mockEditor as any);
 
-      expect(mockEditor.setDecorations).toHaveBeenCalledWith(
-        expect.anything(),
-        []
-      );
+      // Should clear all 6 decoration types
+      expect(mockEditor.setDecorations).toHaveBeenCalledTimes(6);
+      for (const call of mockEditor.setDecorations.mock.calls) {
+        expect(call[1]).toEqual([]);
+      }
+
+      controller.dispose();
+    });
+
+    it('should dispose all decoration types on dispose', () => {
+      const controller = new CommentController();
+      controller.dispose();
+
+      expect(window.createTextEditorDecorationType).toHaveBeenCalledTimes(6);
+      for (let i = 0; i < 6; i++) {
+        const decorationType = window.createTextEditorDecorationType.mock.results[i].value;
+        expect(decorationType.dispose).toHaveBeenCalled();
+      }
+    });
+
+    it('should return the color index for a range via getColorIndex', () => {
+      const controller = new CommentController();
+
+      // First 6 ranges get colors 0-5, 7th wraps to 0
+      expect(controller.getColorIndex(0)).toBe(0);
+      expect(controller.getColorIndex(1)).toBe(1);
+      expect(controller.getColorIndex(5)).toBe(5);
+      expect(controller.getColorIndex(6)).toBe(0);
+
+      controller.dispose();
+    });
+
+    it('should return the hex color for an index via getColorHex', () => {
+      const controller = new CommentController();
+
+      const hex = controller.getColorHex(0);
+      expect(hex).toMatch(/^#[0-9a-fA-F]{6}$/);
 
       controller.dispose();
     });
