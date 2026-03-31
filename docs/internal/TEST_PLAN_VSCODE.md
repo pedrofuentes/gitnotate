@@ -135,7 +135,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 | 5.2 | Not authenticated | Accounts icon → Sign Out. Select text. Run "Gitnotate: Add Comment". | Shows error: "GitHub authentication required. Please sign in to GitHub." | ✅ |
 | 5.3 | No PR on branch | Sign in to GitHub. Open repo on a branch with no open PR. Select text. Run "Gitnotate: Add Comment". | Shows warning: "No pull request found for the current branch." Debug Console: `[Gitnotate] PR detection: no open PRs for branch ...` | ✅ |
 | 5.4 | Full comment flow | Sign in to GitHub. Open repo on a PR branch. Select text in a file. Run "Gitnotate: Add Comment". Enter comment text. | Debug Console: `[Gitnotate] Add Comment: { file: "...", line: N, ... }` then `[Gitnotate] POST https://api.github.com/...` then `[Gitnotate] createReviewComment succeeded: 201`. Shows "Comment posted successfully!" | ✅ |
-| 5.5 | Cancel input | Select text, run "Add Comment", press Escape on input box. | No comment posted. No error. No debug output after input prompt. | ⬜ |
+| 5.5 | Cancel input | Select text, run "Add Comment", press Escape on input box. | No comment posted. No error. No debug output after input prompt. | ✅ |
 | 5.6 | API failure | Select text, run "Add Comment" on a repo where you don't have write access. | Debug Console: `[Gitnotate] createReviewComment failed: 422 Unprocessable Entity` with response body. Shows actionable error message (e.g., "You have a pending PR review..."). | ✅ |
 
 ---
