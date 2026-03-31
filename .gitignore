@@ -9,3 +9,9 @@ coverage/
 *.pem
 *.zip
 docs/internal/
+
+# Git worktrees
+.worktrees/
+
+# Agent backups
+.agent-backup/
