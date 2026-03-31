@@ -96,7 +96,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 2.1 | OAuth shared session (GH PR ext installed) | Have the GitHub Pull Requests & Issues extension installed and signed in. Activate Gitnotate. Use **"Launch Gitnotate (with other extensions)"** config. | Debug Console: `[Gitnotate] Auth: requesting GitHub session (silent)...` then `[Gitnotate] Auth: session found, account: <your-username>`. Status bar shows PR info if on a PR branch. | ✅ |
-| 2.2 | OAuth prompt (no existing session) | Accounts icon (bottom-left) → Sign Out of GitHub. Run "Gitnotate: Add Comment" on selected text. | Shows error: "GitHub authentication required. Please sign in to GitHub." | ⬜ |
+| 2.2 | OAuth prompt (no existing session) | Accounts icon (bottom-left) → Sign Out of GitHub. Run "Gitnotate: Add Comment" on selected text. | Shows error: "GitHub authentication required. Please sign in to GitHub." | ✅ |
 | 2.3 | Token retrieval silent on non-PR branch | Open a repo on `main` branch, activate extension | Debug Console: `[Gitnotate] Auth: no existing session` (if signed out) or `Auth: session found` (if signed in), then `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection`. Status bar hidden. | ✅ |
 | 2.4 | Auth failure logged | Open DevTools Console tab. Simulate auth failure by disabling network. | Console shows `[Gitnotate] getGitHubToken failed:` with error details | ⬜ |
 | 2.5 | Sign-in prompt on PR without auth | Open a repo on a PR branch while signed out. | Info message: "Sign in to GitHub to enable sub-line commenting on this PR." with "Sign In" button. Click → OAuth flow → `[Gitnotate] Auth: authenticated as <username>` → status bar refreshes with `(authenticated)`. | ✅ |
@@ -132,7 +132,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 5.1 | No selection | Run "Gitnotate: Add Comment" with no text selected. | Shows info message: "Select text first" | ✅ |
-| 5.2 | Not authenticated | Command Palette → `GitHub: Sign Out`. Select text. Run "Gitnotate: Add Comment". | Shows error: "GitHub authentication required. Please sign in to GitHub." | ⬜ |
+| 5.2 | Not authenticated | Accounts icon → Sign Out. Select text. Run "Gitnotate: Add Comment". | Shows error: "GitHub authentication required. Please sign in to GitHub." | ✅ |
 | 5.3 | No PR on branch | Sign in to GitHub. Open repo on `main`. Select text. Run "Gitnotate: Add Comment". | Shows warning: "No pull request found for the current branch." | ⬜ |
 | 5.4 | Full comment flow | Sign in to GitHub. Open repo on a PR branch. Select text in a file. Run "Gitnotate: Add Comment". Enter comment text. | Debug Console: `[Gitnotate] Add Comment: { file: "...", line: N, ... }` then `[Gitnotate] POST https://api.github.com/...` then `[Gitnotate] createReviewComment succeeded: 201`. Shows "Comment posted successfully!" | ✅ |
 | 5.5 | Cancel input | Select text, run "Add Comment", press Escape on input box. | No comment posted. No error. No debug output after input prompt. | ⬜ |
