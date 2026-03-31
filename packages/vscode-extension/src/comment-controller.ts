@@ -8,12 +8,19 @@ export interface ThreadComment {
 export class CommentController {
   private controller: vscode.CommentController;
   private threads: Map<string, vscode.CommentThread[]> = new Map();
+  private underlineDecorationType: vscode.TextEditorDecorationType;
 
   constructor() {
     this.controller = vscode.comments.createCommentController(
       'gitnotate',
       'Gitnotate Sub-line Comments'
     );
+
+    this.underlineDecorationType = vscode.window.createTextEditorDecorationType({
+      textDecoration: 'underline wavy #7c6fe1cc',
+      overviewRulerColor: '#7c6fe1',
+      overviewRulerLane: vscode.OverviewRulerLane?.Center,
+    });
 
     this.controller.commentingRangeProvider = {
       provideCommentingRanges(document: vscode.TextDocument): vscode.Range[] {
@@ -52,6 +59,14 @@ export class CommentController {
     return thread;
   }
 
+  applyHighlights(editor: vscode.TextEditor, ranges: vscode.Range[]): void {
+    editor.setDecorations(this.underlineDecorationType, ranges);
+  }
+
+  clearHighlights(editor: vscode.TextEditor): void {
+    editor.setDecorations(this.underlineDecorationType, []);
+  }
+
   clearThreads(uri?: vscode.Uri): void {
     if (uri) {
       const key = uri.fsPath;
@@ -74,6 +89,7 @@ export class CommentController {
 
   dispose(): void {
     this.clearThreads();
+    this.underlineDecorationType.dispose();
     this.controller.dispose();
   }
 }

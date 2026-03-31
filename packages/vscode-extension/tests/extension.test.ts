@@ -265,6 +265,7 @@ describe('extension', () => {
 
       // Simulate editor change
       const mockEditor = {
+        setDecorations: vi.fn(),
         document: {
           uri: Uri.file('/workspace/docs/readme.md'),
           languageId: 'markdown',
@@ -291,6 +292,7 @@ describe('extension', () => {
       const handler = handlerCall[0] as (editor: unknown) => void;
 
       const mockEditor = {
+        setDecorations: vi.fn(),
         document: {
           uri: Uri.file('/workspace/src/index.ts'),
           languageId: 'typescript',
@@ -333,6 +335,7 @@ describe('extension', () => {
       const handler = handlerCall[0] as (editor: unknown) => void;
 
       const mockEditor = {
+        setDecorations: vi.fn(),
         document: {
           uri: Uri.file('/workspace/docs/readme.md'),
           languageId: 'markdown',
@@ -361,6 +364,7 @@ describe('extension', () => {
       const handler = handlerCall[0] as (editor: unknown) => void;
 
       const mockEditor = {
+        setDecorations: vi.fn(),
         document: {
           uri: Uri.file('/workspace/docs/readme.md'),
           languageId: 'markdown',

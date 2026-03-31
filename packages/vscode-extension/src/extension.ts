@@ -99,11 +99,17 @@ export function activate(context: vscode.ExtensionContext) {
     const sync = new CommentThreadSync(prService, commentCtrl);
     const relativePath = getRelativePath(editor.document.fileName);
     debug('Comment sync: syncing', relativePath, `(PR #${pr.number})`);
-    await sync.syncForDocument(editor.document.uri, relativePath, pr);
+    const highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
+    if (highlightRanges.length > 0) {
+      commentCtrl.applyHighlights(editor, highlightRanges);
+    } else {
+      commentCtrl.clearHighlights(editor);
+    }
   }, 300);
 
   const editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
     (editor) => {
+      debug('Editor changed:', editor ? editor.document.fileName : '(none)');
       if (editor) {
         debouncedSync(editor);
       }

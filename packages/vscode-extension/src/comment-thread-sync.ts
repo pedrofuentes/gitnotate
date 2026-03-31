@@ -16,7 +16,7 @@ export class CommentThreadSync {
     uri: vscode.Uri,
     relativePath: string,
     pr: PullRequestInfo
-  ): Promise<void> {
+  ): Promise<vscode.Range[]> {
     this.commentController.clearThreads(uri);
 
     const comments = await this.getComments(pr);
@@ -39,6 +39,7 @@ export class CommentThreadSync {
 
     let threadsCreated = 0;
     let skippedNonGn = 0;
+    const highlightRanges: vscode.Range[] = [];
 
     for (const root of rootComments) {
       const parsed = parseGnComment(root.body);
@@ -68,10 +69,12 @@ export class CommentThreadSync {
       }
 
       this.commentController.createThread(uri, range, threadComments);
+      highlightRanges.push(range);
       threadsCreated++;
     }
 
     debug('Thread sync: created', threadsCreated, 'threads, skipped', skippedNonGn, 'non-^gn comments');
+    return highlightRanges;
   }
 
   invalidateCache(): void {
