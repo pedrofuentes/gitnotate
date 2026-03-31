@@ -24,11 +24,16 @@ vi.mock('../src/auth', () => ({
 }));
 
 import { activate, deactivate } from '../src/extension';
-import { commands, ExtensionMode } from '../__mocks__/vscode';
+import {
+  commands,
+  ExtensionMode,
+  __getCommentControllers,
+  __reset,
+} from '../__mocks__/vscode';
 
 describe('extension', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    __reset();
   });
 
   it('should register all commands on activate', () => {
@@ -37,7 +42,6 @@ describe('extension', () => {
       extensionMode: ExtensionMode.Test,
     };
 
-    // The registerCommand mock returns undefined, which gets pushed to subscriptions
     activate(context as any);
 
     expect(commands.registerCommand).toHaveBeenCalledWith(
@@ -55,7 +59,30 @@ describe('extension', () => {
     expect(commands.registerCommand).toHaveBeenCalledTimes(3);
   });
 
-  it('deactivate should be a no-op function', () => {
-    expect(() => deactivate()).not.toThrow();
+  it('should create a CommentController on activation', () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose(): void }>,
+      extensionMode: ExtensionMode.Test,
+    };
+
+    activate(context as any);
+
+    const controllers = __getCommentControllers();
+    expect(controllers).toHaveLength(1);
+    expect(controllers[0].id).toBe('gitnotate');
+  });
+
+  it('deactivate should dispose the CommentController', () => {
+    const context = {
+      subscriptions: [] as Array<{ dispose(): void }>,
+      extensionMode: ExtensionMode.Test,
+    };
+
+    activate(context as any);
+
+    const controllers = __getCommentControllers();
+    deactivate();
+
+    expect(controllers[0].dispose).toHaveBeenCalled();
   });
 });
