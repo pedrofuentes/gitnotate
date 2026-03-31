@@ -19,6 +19,11 @@
 
 <!-- Add new learnings below this line, most recent first -->
 
+### [2026-03-31] Hoist long-lived service instances above debounced callbacks
+**Context**: Sentinel review (SENTINEL-2025-0715-CTS-001) of `feature/comment-controller-thread-sync` found that `PrService` and `CommentThreadSync` were instantiated inside the debounced `onDidChangeActiveTextEditor` callback, making `CommentThreadSync`'s in-memory cache useless — a new instance (with an empty cache) is created on every editor change.
+**Learning**: When a class provides caching or state persistence, hoist its instantiation to the activation scope so the cache survives across invocations. Instantiate per-callback only when statelessness is intentional.
+**Impact**: Follow-up PR needed to hoist `PrService` and `CommentThreadSync` to `activate()` scope with invalidation on token/PR changes. Also add a `MAX_PAGES` safety bound to the pagination loop in `PrService.listReviewComments`.
+
 ### [2026-03-29] Use `refactor` commit type when production behavior is unchanged
 **Context**: Sentinel review of `fix/test-reliability` (SENTINEL-002-20250712) flagged commit `96479b5 fix(github-action): export run promise for deterministic test awaiting` because the `fix` label implies a behavioral change requiring TDD choreography, but the production behavior was unchanged — only export visibility was modified for test infrastructure.
 **Learning**: Use `refactor(scope)` instead of `fix(scope)` when a change does not alter production behavior, even if the motivation is to fix tests. The `refactor` type is TDD-exempt, avoiding unnecessary choreography overhead. Reserve `fix` for commits that change observable behavior.
