@@ -7,5 +7,5 @@ export function buildGnComment(metadata: GnMetadata, userComment: string): strin
     return tag;
   }
 
-  return `${userComment}\n${tag}`;
+  return `${tag}\n${userComment}`;
 }

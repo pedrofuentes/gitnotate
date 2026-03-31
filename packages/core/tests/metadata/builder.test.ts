@@ -14,7 +14,7 @@ describe('buildGnComment', () => {
     };
     const result = buildGnComment(metadata, 'Can we add the exact percentage?');
 
-    expect(result).toBe('Can we add the exact percentage?\n^gn:5:R:12:47');
+    expect(result).toBe('^gn:5:R:12:47\nCan we add the exact percentage?');
   });
 
   it('should return just the tag for empty user comment', () => {
@@ -30,7 +30,7 @@ describe('buildGnComment', () => {
 
     const result = buildGnComment(metadata, 'First line.\n\nSecond paragraph.');
 
-    expect(result).toBe('First line.\n\nSecond paragraph.\n^gn:10:R:0:3');
+    expect(result).toBe('^gn:10:R:0:3\nFirst line.\n\nSecond paragraph.');
   });
 
   it('should produce output that parser can round-trip', () => {
@@ -66,7 +66,7 @@ describe('buildGnComment', () => {
 
     const result = buildGnComment(metadata, 'Comment');
 
-    expect(result).toBe('Comment\n^gn:500:R:1000:2000');
+    expect(result).toBe('^gn:500:R:1000:2000\nComment');
   });
 
   it('should build L-side comment with ^gn tag', () => {
@@ -79,7 +79,7 @@ describe('buildGnComment', () => {
     };
     const result = buildGnComment(metadata, 'This was removed — good riddance');
 
-    expect(result).toBe('This was removed — good riddance\n^gn:12:L:4:22');
+    expect(result).toBe('^gn:12:L:4:22\nThis was removed — good riddance');
   });
 
   it('should return just the L-side tag for empty user comment', () => {
