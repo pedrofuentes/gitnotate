@@ -57,8 +57,9 @@ describe('CommentThreadSync', () => {
       // ^gn:10:R:5:15 → line 9 (0-indexed), chars 5-15
       expect(threads[0].range).toEqual(new Range(9, 5, 9, 15));
       expect(threads[0].comments).toHaveLength(1);
+      // userComment includes blockquote (human-readable fallback)
       expect(threads[0].comments[0]).toMatchObject({
-        body: 'Looks good',
+        body: '> 📌 **"some text"** (chars 5–15)\n\nLooks good',
         author: { name: 'octocat' },
       });
     });
@@ -120,7 +121,7 @@ describe('CommentThreadSync', () => {
       expect(threads).toHaveLength(1);
       expect(threads[0].comments).toHaveLength(2);
       expect(threads[0].comments[0]).toMatchObject({
-        body: 'Is this correct?',
+        body: '> 📌 **"heading"** (chars 0–10)\n\nIs this correct?',
         author: { name: 'alice' },
       });
       expect(threads[0].comments[1]).toMatchObject({
