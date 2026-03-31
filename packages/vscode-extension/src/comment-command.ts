@@ -5,6 +5,7 @@ import { detectCurrentPR } from './pr-detector';
 import { getRelativePath } from './utils';
 import { GitService } from './git-service';
 import { getGitHubToken } from './auth';
+import { debug } from './logger';
 import type { GnMetadata } from '@gitnotate/core';
 
 export async function addCommentCommand(
@@ -60,7 +61,10 @@ export async function addCommentCommand(
   // Submit via GitHub API
   const client = new GitHubApiClient(token);
   const filePath = getRelativePath(editor.document.fileName);
-  const line = editor.selection.start.line + 1; // VSCode is 0-indexed, GitHub API is 1-indexed
+  const line = editor.selection.start.line + 1;
+
+  debug('Add Comment:', { file: filePath, line, side: 'RIGHT', pr: `${pr.owner}/${pr.repo}#${pr.number}`, headSha: pr.headSha });
+  debug('Comment body:', commentBody);
 
   const success = await client.createReviewComment(
     pr,
@@ -73,6 +77,6 @@ export async function addCommentCommand(
   if (success) {
     vscode.window.showInformationMessage('Comment posted successfully!');
   } else {
-    vscode.window.showErrorMessage('Failed to post comment. Check your token and permissions.');
+    vscode.window.showErrorMessage('Failed to post comment. Check the Debug Console for details.');
   }
 }
