@@ -205,6 +205,7 @@ Core pipeline — fetch PR comments, parse `^gn` metadata, display as native com
 - Wire `onDidChangeActiveTextEditor` handler (currently a TODO) with 300ms debounce
 - Remove `decoration-manager.ts` and `comment-decoration.ts` (replaced by Comments API)
 - `CommentingRangeProvider` enables gutter `+` on markdown files
+- Detect diff context (left/right side) when commenting from VSCode diff views — currently hardcoded to RIGHT
 
 #### Increment 3: Comment Lifecycle & Refresh 🔮 PLANNED
 
