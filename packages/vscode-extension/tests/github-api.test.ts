@@ -41,7 +41,7 @@ describe('GitHubApiClient', () => {
         '<!-- ^gn {"exact":"hello","start":0,"end":5} -->\n> 📌 **"hello"** (chars 0–5)\n\nLooks good!'
       );
 
-      expect(result).toBe(true);
+      expect(result.ok).toBe(true);
       expect(mockFetch).toHaveBeenCalledTimes(1);
 
       const [url, options] = mockFetch.mock.calls[0];
@@ -75,7 +75,8 @@ describe('GitHubApiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 422,
-        json: async () => ({ message: 'Validation Failed' }),
+        statusText: 'Unprocessable Entity',
+        text: async () => JSON.stringify({ message: 'Validation Failed', errors: [] }),
       });
 
       const result = await client.createReviewComment(
@@ -86,7 +87,7 @@ describe('GitHubApiClient', () => {
         'comment'
       );
 
-      expect(result).toBe(false);
+      expect(result.ok).toBe(false);
     });
 
     it('should handle network errors gracefully', async () => {
@@ -100,7 +101,7 @@ describe('GitHubApiClient', () => {
         'comment'
       );
 
-      expect(result).toBe(false);
+      expect(result.ok).toBe(false);
     });
 
     it('should log error to console.error on network failure (I-1)', async () => {

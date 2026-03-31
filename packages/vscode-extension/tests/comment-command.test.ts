@@ -199,7 +199,7 @@ describe('addCommentCommand', () => {
     mockBuildGnComment.mockReturnValue('<!-- ^gn {} -->\n> quote\n\nGreat code!');
 
     const mockApiInstance = {
-      createReviewComment: vi.fn().mockResolvedValue(true),
+      createReviewComment: vi.fn().mockResolvedValue({ ok: true }),
     };
     vi.mocked(GitHubApiClient).mockImplementation(() => mockApiInstance as any);
 
@@ -237,7 +237,7 @@ describe('addCommentCommand', () => {
     window.showInputBox.mockResolvedValue('Nice!');
     mockBuildGnComment.mockReturnValue('formatted comment body');
 
-    const mockCreateReviewComment = vi.fn().mockResolvedValue(true);
+    const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
     vi.mocked(GitHubApiClient).mockImplementation(
       () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
     );
@@ -274,7 +274,7 @@ describe('addCommentCommand', () => {
     mockBuildGnComment.mockReturnValue('comment body');
 
     vi.mocked(GitHubApiClient).mockImplementation(
-      () => ({ createReviewComment: vi.fn().mockResolvedValue(true), listReviewComments: vi.fn() } as any)
+      () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
     );
 
     await addCommentCommand(mockContext);
@@ -305,13 +305,13 @@ describe('addCommentCommand', () => {
     mockBuildGnComment.mockReturnValue('comment body');
 
     vi.mocked(GitHubApiClient).mockImplementation(
-      () => ({ createReviewComment: vi.fn().mockResolvedValue(false), listReviewComments: vi.fn() } as any)
+      () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: false, userMessage: 'Permission denied.' }), listReviewComments: vi.fn() } as any)
     );
 
     await addCommentCommand(mockContext);
 
     expect(window.showErrorMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Failed')
+      expect.stringContaining('Permission denied')
     );
   });
 });

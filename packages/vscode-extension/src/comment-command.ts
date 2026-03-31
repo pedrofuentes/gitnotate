@@ -66,7 +66,7 @@ export async function addCommentCommand(
   debug('Add Comment:', { file: filePath, line, side: 'RIGHT', pr: `${pr.owner}/${pr.repo}#${pr.number}`, headSha: pr.headSha });
   debug('Comment body:', commentBody);
 
-  const success = await client.createReviewComment(
+  const result = await client.createReviewComment(
     pr,
     filePath,
     line,
@@ -74,9 +74,9 @@ export async function addCommentCommand(
     commentBody
   );
 
-  if (success) {
+  if (result.ok) {
     vscode.window.showInformationMessage('Comment posted successfully!');
   } else {
-    vscode.window.showErrorMessage('Failed to post comment. Check the Debug Console for details.');
+    vscode.window.showErrorMessage(`Gitnotate: ${result.userMessage ?? 'Failed to post comment.'}`);
   }
 }
