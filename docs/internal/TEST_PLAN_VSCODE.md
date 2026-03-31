@@ -95,7 +95,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 2.1 | OAuth shared session (GH PR ext installed) | Have the GitHub Pull Requests & Issues extension installed and signed in. Activate Gitnotate. Use **"Launch Gitnotate (with other extensions)"** config. | Debug Console: `[Gitnotate] Auth: requesting GitHub session (silent)...` then `[Gitnotate] Auth: session found, account: <your-username>`. Status bar shows PR info if on a PR branch. | ✅ |
+| 2.1 | OAuth shared session (GH PR ext installed) | Have the [GitHub Pull Requests](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github) extension installed and signed in. Activate Gitnotate. Use **"Launch Gitnotate (with other extensions)"** config. | Debug Console: `[Gitnotate] Auth: requesting GitHub session (silent)...` then `[Gitnotate] Auth: session found, account: <your-username>`. Status bar shows PR info if on a PR branch. | ✅ |
 | 2.2 | OAuth prompt (no existing session) | Accounts icon (bottom-left) → Sign Out of GitHub. Run "Gitnotate: Add Comment" on selected text. | Shows error: "GitHub authentication required. Please sign in to GitHub." | ✅ |
 | 2.3 | Token retrieval silent on non-PR branch | Open a repo on `main` branch, activate extension | Debug Console: `[Gitnotate] Auth: no existing session` (if signed out) or `Auth: session found` (if signed in), then `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection`. Status bar hidden. | ✅ |
 | 2.4 | Auth failure logged | Hard to reproduce manually — requires network failure during auth only. | Console shows `[Gitnotate] getGitHubToken failed:` with error details | ⏭️ Covered by unit test (auth.test.ts) |
@@ -159,11 +159,11 @@ All debug messages are prefixed with `[Gitnotate]`.
 
 ---
 
-## Test Suite 8: Coexistence with GitHub PR & Issues Extension
+## Test Suite 8: Coexistence with GitHub Pull Requests Extension
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 8.1 | Both extensions active | Install both Gitnotate and GitHub Pull Requests & Issues. Open a repo on a PR branch. | Both extensions activate without conflicts. Gitnotate shows its status bar. GH PR shows its sidebar. | ⬜ |
+| 8.1 | Both extensions active | Install both Gitnotate and [GitHub Pull Requests](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github). Open a repo on a PR branch. | Both extensions activate without conflicts. Gitnotate shows its status bar. GH PR shows its sidebar. | ⬜ |
 | 8.2 | Shared auth session | Sign in via GH PR extension. Check if Gitnotate can detect the PR. | Gitnotate uses the same OAuth session — no second sign-in needed. | ⬜ |
 | 8.3 | No GH PR extension | Uninstall/disable GH PR extension. Activate Gitnotate. | Gitnotate works standalone — handles its own auth, git detection, and PR detection. | ⬜ |
 

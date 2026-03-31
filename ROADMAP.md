@@ -182,7 +182,7 @@ my-repo/
 - **`vscode.authentication`** for GitHub OAuth — shared session with GH PR extension, no PAT management
 - **VSCode Comments API** (`createCommentController`) for native comment threading — replaces custom decorations
 - **VSCode Git API** (`vscode.git`) for branch/remote detection — replaces `child_process` shell calls
-- **Companion extension** — works standalone, complements GitHub PR & Issues extension when installed
+- **Companion extension** — works standalone, complements GitHub Pull Requests extension when installed
 
 #### Increment 1: Auth + Git Service Foundation ✅ COMPLETE
 
