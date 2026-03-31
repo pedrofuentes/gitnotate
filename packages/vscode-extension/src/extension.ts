@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { enableWorkspace, disableWorkspace } from './settings';
 import { DecorationManager } from './decoration-manager';
 import { addCommentCommand } from './comment-command';
-import { addFileCommentCommand } from './file-comment-command';
 import { detectCurrentPR } from './pr-detector';
 import { GitService } from './git-service';
 import { getGitHubToken, ensureAuthenticated } from './auth';
@@ -72,13 +71,10 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand('gitnotate.addComment', () =>
       addCommentCommand(context)
-    ),
-    vscode.commands.registerCommand('gitnotate.addFileComment', () =>
-      addFileCommentCommand()
     )
   );
 
-  const editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
+  const editorChangeDisposable= vscode.window.onDidChangeActiveTextEditor(
     (_editor) => {
       // TODO: fetch PR comments, parse ^gn metadata, apply decorations
     }
@@ -86,7 +82,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(editorChangeDisposable);
 
-  debug('Commands registered: enable, disable, addComment, addFileComment');
+  debug('Commands registered: enable, disable, addComment');
   updatePRStatusBar();
 }
 

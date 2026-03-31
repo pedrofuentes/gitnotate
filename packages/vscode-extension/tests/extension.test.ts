@@ -52,11 +52,7 @@ describe('extension', () => {
       'gitnotate.addComment',
       expect.any(Function)
     );
-    expect(commands.registerCommand).toHaveBeenCalledWith(
-      'gitnotate.addFileComment',
-      expect.any(Function)
-    );
-    expect(commands.registerCommand).toHaveBeenCalledTimes(4);
+    expect(commands.registerCommand).toHaveBeenCalledTimes(3);
   });
 
   it('deactivate should be a no-op function', () => {
