@@ -35,7 +35,7 @@ pnpm build
 
 6. Open a **local clone of a GitHub repo** that has an open PR on the current branch
    - Use **File → Open Folder** and select the cloned repo
-   - The repo must be on a feature branch (not `main`/`master`) with an open PR
+   - The repo must be on a feature branch (not `main`/`master`) with an open PR — Gitnotate skips default branches since PRs are opened *from* feature branches
 
 > **Note**: The Extension Development Host is a separate VSCode window. Your original window stays open for debugging — you can set breakpoints, view the Debug Console, and inspect variables there.
 
