@@ -142,10 +142,9 @@ All debug messages are prefixed with `[Gitnotate]`.
 
 ## Test Suite 6: Add File Comment Command (Local Sidecar)
 
-| # | Test | Steps | Expected | Status |
-|---|------|-------|----------|--------|
-| 6.1 | Create sidecar comment | Select text in a `.md` file. Run "Gitnotate: Add File Comment". Enter comment. | Debug Console: `[Gitnotate] File comment: creating new sidecar for ...` then `[Gitnotate] File comment: selector = {...}` then `[Gitnotate] File comment: written to ...`. A `.comments/filename.md.json` file is created. | ⬜ |
-| 6.2 | Append to existing sidecar | Run "Add File Comment" again on the same file with different selected text. | Debug Console: `[Gitnotate] File comment: appending to existing sidecar, 1 existing annotations`. The `.comments/filename.md.json` now has 2 annotations. | ⬜ |
+> **Disabled** — sidecar write command removed until Phase 2 adds rendering.
+> The code exists in `file-comment-command.ts` and `sidecar-provider.ts` but
+> is not registered as a command. Re-enable when Phase 2 sidecar UI is ready.
 
 ---
 
