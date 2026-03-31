@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { createSelector, createSidecarFile, addAnnotation } from '@gitnotate/core';
 import { readLocalSidecar, writeLocalSidecar } from './sidecar-provider';
 import { getRelativePath } from './utils';
+import { debug } from './logger';
 
 export async function addFileCommentCommand(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
@@ -20,16 +21,23 @@ export async function addFileCommentCommand(): Promise<void> {
   });
 
   if (commentText === undefined) {
+    debug('File comment: user cancelled input');
     return;
   }
 
+  const relativePath = getRelativePath(editor.document.fileName);
+  debug('File comment: file =', relativePath, 'offsets =', startOffset, '-', endOffset);
+
   let sidecar = await readLocalSidecar(editor.document.fileName);
   if (!sidecar) {
-    const relativePath = getRelativePath(editor.document.fileName);
+    debug('File comment: creating new sidecar for', relativePath);
     sidecar = createSidecarFile(relativePath);
+  } else {
+    debug('File comment: appending to existing sidecar,', sidecar.annotations.length, 'existing annotations');
   }
 
   const selector = createSelector(documentText, startOffset, endOffset);
+  debug('File comment: selector =', JSON.stringify(selector));
 
   const updatedSidecar = addAnnotation(sidecar, {
     target: selector,
@@ -38,5 +46,6 @@ export async function addFileCommentCommand(): Promise<void> {
   });
 
   await writeLocalSidecar(editor.document.fileName, updatedSidecar);
+  debug('File comment: written to', editor.document.fileName);
   vscode.window.showInformationMessage('File comment added!');
 }
