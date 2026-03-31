@@ -6,6 +6,7 @@ import {
   CommentMode,
   Uri,
   Range,
+  window,
 } from '../__mocks__/vscode';
 import { CommentController } from '../src/comment-controller';
 
@@ -194,6 +195,74 @@ describe('CommentController', () => {
 
       const controllers = __getCommentControllers();
       expect(controllers[0].dispose).toHaveBeenCalled();
+    });
+
+    it('should dispose the underline decoration type', () => {
+      const controller = new CommentController();
+      controller.dispose();
+
+      // The decoration type created in the constructor should be disposed
+      expect(window.createTextEditorDecorationType).toHaveBeenCalledTimes(1);
+      const decorationType = window.createTextEditorDecorationType.mock.results[0].value;
+      expect(decorationType.dispose).toHaveBeenCalled();
+    });
+  });
+
+  describe('underline decorations', () => {
+    it('should create a wavy underline decoration type on construction', () => {
+      const controller = new CommentController();
+
+      expect(window.createTextEditorDecorationType).toHaveBeenCalledTimes(1);
+      const options = window.createTextEditorDecorationType.mock.calls[0][0];
+      expect(options.textDecoration).toContain('underline');
+      expect(options.textDecoration).toContain('wavy');
+
+      controller.dispose();
+    });
+
+    it('should apply underline decorations when applyHighlights is called', () => {
+      const controller = new CommentController();
+      const mockEditor = {
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+        },
+      };
+
+      const ranges = [
+        new Range(5, 10, 5, 25),
+        new Range(10, 0, 10, 15),
+      ];
+
+      controller.applyHighlights(mockEditor as any, ranges);
+
+      expect(mockEditor.setDecorations).toHaveBeenCalledTimes(1);
+      const [decorationType, appliedRanges] = mockEditor.setDecorations.mock.calls[0];
+      expect(decorationType).toBeDefined();
+      expect(appliedRanges).toHaveLength(2);
+      expect(appliedRanges[0]).toBe(ranges[0]);
+      expect(appliedRanges[1]).toBe(ranges[1]);
+
+      controller.dispose();
+    });
+
+    it('should clear highlights when clearHighlights is called', () => {
+      const controller = new CommentController();
+      const mockEditor = {
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+        },
+      };
+
+      controller.clearHighlights(mockEditor as any);
+
+      expect(mockEditor.setDecorations).toHaveBeenCalledWith(
+        expect.anything(),
+        []
+      );
+
+      controller.dispose();
     });
   });
 });
