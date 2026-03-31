@@ -109,6 +109,7 @@ export class PrService {
     try {
       while (true) {
         const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=${PER_PAGE}&page=${page}`;
+        console.log('[Gitnotate] GET', url);
         const response = await fetch(url, {
           method: 'GET',
           headers: this.headers(),

@@ -82,16 +82,23 @@ export function activate(context: vscode.ExtensionContext) {
     if (editor.document.languageId !== 'markdown') return;
 
     const token = await getGitHubToken();
-    if (!token) return;
+    if (!token) {
+      debug('Comment sync: no auth token — skipping');
+      return;
+    }
 
     const gitService = new GitService();
     const pr = await detectCurrentPR(gitService, token);
-    if (!pr) return;
+    if (!pr) {
+      debug('Comment sync: no PR found — skipping');
+      return;
+    }
 
     const prService = new PrService(token);
     if (!commentCtrl) return;
     const sync = new CommentThreadSync(prService, commentCtrl);
     const relativePath = getRelativePath(editor.document.fileName);
+    debug('Comment sync: syncing', relativePath, `(PR #${pr.number})`);
     await sync.syncForDocument(editor.document.uri, relativePath, pr);
   }, 300);
 

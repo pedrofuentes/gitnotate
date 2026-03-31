@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { parseGnComment } from '@gitnotate/core';
 import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
+import { debug } from './logger';
 
 export class CommentThreadSync {
   private cache: Map<string, ReviewComment[]> = new Map();
@@ -20,6 +21,7 @@ export class CommentThreadSync {
 
     const comments = await this.getComments(pr);
     const fileComments = comments.filter((c) => c.path === relativePath);
+    debug('Thread sync:', fileComments.length, 'comments for', relativePath);
 
     // Separate root comments (with ^gn metadata) from replies
     const rootComments: ReviewComment[] = [];
@@ -35,9 +37,15 @@ export class CommentThreadSync {
       }
     }
 
+    let threadsCreated = 0;
+    let skippedNonGn = 0;
+
     for (const root of rootComments) {
       const parsed = parseGnComment(root.body);
-      if (!parsed) continue;
+      if (!parsed) {
+        skippedNonGn++;
+        continue;
+      }
 
       const { metadata, userComment } = parsed;
       // GitHub uses 1-indexed lines; VSCode uses 0-indexed
@@ -60,7 +68,10 @@ export class CommentThreadSync {
       }
 
       this.commentController.createThread(uri, range, threadComments);
+      threadsCreated++;
     }
+
+    debug('Thread sync: created', threadsCreated, 'threads, skipped', skippedNonGn, 'non-^gn comments');
   }
 
   invalidateCache(): void {
@@ -70,8 +81,12 @@ export class CommentThreadSync {
   private async getComments(pr: PullRequestInfo): Promise<ReviewComment[]> {
     const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
     const cached = this.cache.get(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      debug('Thread sync: using cached comments for', cacheKey);
+      return cached;
+    }
 
+    debug('Thread sync: fetching comments for', cacheKey);
     const comments = await this.prService.listReviewComments(pr);
     this.cache.set(cacheKey, comments);
     return comments;
