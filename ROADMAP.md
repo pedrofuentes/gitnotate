@@ -230,6 +230,7 @@ Full round-trip polish and GH PR extension coexistence.
 
 - Post-comment → refresh decorations + sidebar
 - Reply/resolve handlers on comment threads
+- Use "create a review" API endpoint to avoid `pending review` conflict (GitHub API quirk: single-comment endpoint fails when a pending review exists; the reviews endpoint handles this correctly)
 - Status bar: "Gitnotate: PR #N" with auto-refresh
 - Context keys (`gitnotate.hasPR`, `gitnotate.hasComments`) for `when` clauses
 - Right-click context menu: "Gitnotate: Add Comment" on text selection
