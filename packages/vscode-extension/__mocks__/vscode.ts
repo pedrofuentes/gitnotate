@@ -98,6 +98,9 @@ export class Uri {
   static file(path: string): Uri {
     return new Uri(path);
   }
+  static parse(value: string): Uri {
+    return new Uri(value);
+  }
 }
 
 const mockStatusBarItem = {
@@ -166,6 +169,13 @@ export enum ExtensionMode {
   Test = 3,
 }
 
+export enum OverviewRulerLane {
+  Left = 1,
+  Center = 2,
+  Right = 4,
+  Full = 7,
+}
+
 export const comments = {
   createCommentController: vi.fn((id: string, label: string) => {
     const controller: MockCommentController = {
@@ -194,11 +204,23 @@ export const comments = {
   }),
 };
 
-export const MarkdownString = vi.fn().mockImplementation((value?: string) => ({
-  value: value ?? '',
-  isTrusted: false,
-  supportThemeIcons: false,
-}));
+export const MarkdownString = vi.fn().mockImplementation((value?: string) => {
+  const md = {
+    value: value ?? '',
+    isTrusted: false,
+    supportHtml: false,
+    supportThemeIcons: false,
+    appendMarkdown(val: string) {
+      md.value += val;
+      return md;
+    },
+    appendText(val: string) {
+      md.value += val;
+      return md;
+    },
+  };
+  return md;
+});
 
 // Test helpers — not part of the real vscode API
 export function __setWorkspaceFolders(

@@ -14,6 +14,20 @@ const HIGHLIGHT_COLORS = [
   '#c2185b', // pink
 ];
 
+const COLOR_EMOJIS = [
+  '🟡', // yellow
+  '🔵', // blue
+  '🟣', // purple
+  '🟠', // orange
+  '🟢', // teal (closest)
+  '🔴', // pink (closest)
+];
+
+function makeColoredCircleIcon(color: string): vscode.Uri {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="8" cy="8" r="7" fill="${color}"/></svg>`;
+  return vscode.Uri.parse(`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
+}
+
 export class CommentController {
   private controller: vscode.CommentController;
   private threads: Map<string, vscode.CommentThread[]> = new Map();
@@ -64,15 +78,17 @@ export class CommentController {
     colorIndex?: number
   ): vscode.CommentThread {
     const color = colorIndex !== undefined ? HIGHLIGHT_COLORS[colorIndex % HIGHLIGHT_COLORS.length] : undefined;
+    const colorEmoji = colorIndex !== undefined ? COLOR_EMOJIS[colorIndex % COLOR_EMOJIS.length] : undefined;
+    const iconPath = color ? makeColoredCircleIcon(color) : undefined;
 
-    const vscodeComments: vscode.Comment[] = comments.map((c, i) => {
-      const isFirst = i === 0;
+    const vscodeComments: vscode.Comment[] = comments.map((c) => {
       let body: string | vscode.MarkdownString;
       if (color) {
-        const md = new vscode.MarkdownString(
-          `<span style="color:${color};font-weight:bold;">● ${c.author}</span>\n\n${c.body}`
-        );
+        const md = new vscode.MarkdownString();
         md.supportHtml = true;
+        md.isTrusted = true;
+        md.appendMarkdown(`<span style="color:${color};font-weight:bold;">⬤ ${c.author}</span>\n\n`);
+        md.appendMarkdown(c.body);
         body = md;
       } else {
         body = c.body;
@@ -80,8 +96,8 @@ export class CommentController {
       return {
         body,
         mode: vscode.CommentMode.Preview,
-        author: { name: c.author },
-        label: isFirst && color ? '📌' : undefined,
+        author: { name: c.author, iconPath },
+        label: colorEmoji,
       };
     });
 
