@@ -137,6 +137,12 @@ export enum CommentMode {
   Editing = 1,
 }
 
+export enum ExtensionMode {
+  Production = 1,
+  Development = 2,
+  Test = 3,
+}
+
 export const comments = {
   createCommentController: vi.fn((_id: string, _label: string) => ({
     dispose: vi.fn(),

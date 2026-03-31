@@ -6,13 +6,16 @@ import { addFileCommentCommand } from './file-comment-command';
 import { detectCurrentPR } from './pr-detector';
 import { GitService } from './git-service';
 import { getGitHubToken } from './auth';
+import { initLogger, debug } from './logger';
 
 let decorationManager: DecorationManager | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
 
 async function updatePRStatusBar(): Promise<void> {
+  debug('Updating PR status bar...');
   const gitService = new GitService();
   const token = await getGitHubToken();
+  debug('Auth token:', token ? 'present' : 'absent');
   const pr = await detectCurrentPR(gitService, token);
 
   if (!statusBarItem) {
@@ -22,16 +25,19 @@ async function updatePRStatusBar(): Promise<void> {
   }
 
   if (pr) {
+    debug('PR detected:', `${pr.owner}/${pr.repo}#${pr.number}`);
     statusBarItem.text = `$(git-pull-request) Gitnotate: PR #${pr.number}`;
     statusBarItem.tooltip = `${pr.owner}/${pr.repo}#${pr.number}`;
     statusBarItem.show();
   } else {
+    debug('No PR detected — status bar hidden');
     statusBarItem.hide();
   }
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Gitnotate extension activated');
+  initLogger(context);
+  debug('Extension activating...');
 
   decorationManager = new DecorationManager(context);
 
@@ -60,10 +66,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(editorChangeDisposable);
 
+  debug('Commands registered: enable, disable, addComment, addFileComment');
   updatePRStatusBar();
 }
 
 export function deactivate() {
+  debug('Extension deactivating...');
   if (decorationManager) {
     decorationManager.dispose();
     decorationManager = undefined;

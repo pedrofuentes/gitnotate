@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { debug } from './logger';
 
 interface GitRepository {
   state: {
@@ -25,6 +26,9 @@ export class GitService {
       vscode.extensions.getExtension<GitExtensionExports>('vscode.git');
     if (gitExtension?.isActive) {
       this.api = gitExtension.exports.getAPI(1);
+      debug('GitService: vscode.git API loaded,', this.api.repositories.length, 'repo(s)');
+    } else {
+      debug('GitService: vscode.git extension not available');
     }
   }
 
@@ -33,13 +37,17 @@ export class GitService {
   }
 
   getCurrentBranch(): string | undefined {
-    return this.getRepo()?.state.HEAD?.name;
+    const branch = this.getRepo()?.state.HEAD?.name;
+    debug('GitService.getCurrentBranch:', branch ?? '(none)');
+    return branch;
   }
 
   getRemoteUrl(remoteName = 'origin'): string | undefined {
     const repo = this.getRepo();
     if (!repo) return undefined;
-    return repo.state.remotes.find((r) => r.name === remoteName)?.fetchUrl;
+    const url = repo.state.remotes.find((r) => r.name === remoteName)?.fetchUrl;
+    debug('GitService.getRemoteUrl:', remoteName, '→', url ?? '(not found)');
+    return url;
   }
 
   getHeadCommit(): string | undefined {
@@ -53,15 +61,22 @@ export class GitService {
       /github\.com[/:]([^/]+)\/([^/.]+?)(?:\.git)?$/
     );
     if (match) {
-      return { owner: match[1], repo: match[2] };
+      const result = { owner: match[1], repo: match[2] };
+      debug('GitService.parseGitHubOwnerRepo:', remoteUrl, '→', `${result.owner}/${result.repo}`);
+      return result;
     }
+    debug('GitService.parseGitHubOwnerRepo:', remoteUrl, '→ not a GitHub URL');
     return null;
   }
 
   isDefaultBranch(): boolean {
     const branch = this.getCurrentBranch();
     if (!branch) return false;
-    return DEFAULT_BRANCHES.includes(branch);
+    const isDefault = DEFAULT_BRANCHES.includes(branch);
+    if (isDefault) {
+      debug('GitService.isDefaultBranch:', branch, '— skipping PR detection');
+    }
+    return isDefault;
   }
 
   isAvailable(): boolean {

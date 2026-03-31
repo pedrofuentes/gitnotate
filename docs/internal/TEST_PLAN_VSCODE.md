@@ -66,12 +66,25 @@ git checkout feature/some-branch   # branch with an open PR
 
 ---
 
+## Viewing Debug Output
+
+Debug logs are **only emitted in the Extension Development Host** (when launched via F5). They are suppressed in production.
+
+To view debug output:
+1. In the **Extension Development Host** window, open DevTools: **Help → Toggle Developer Tools**
+2. Go to the **Console** tab
+3. Filter by `[Gitnotate]` to see only Gitnotate logs
+
+All debug messages are prefixed with `[Gitnotate]`.
+
+---
+
 ## Test Suite 1: Extension Activation
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 1.1 | Extension activates on markdown | Open any `.md` file in the Extension Development Host | Output Channel shows `Gitnotate extension activated` | ⬜ |
-| 1.2 | Commands registered | Open Command Palette (Ctrl+Shift+P), type "Gitnotate" | Shows 4 commands: Enable, Disable, Add Comment, Add File Comment | ⬜ |
+| 1.1 | Extension activates on markdown | Open any `.md` file in the Extension Development Host | Debug Console: `[Gitnotate] Debug logging enabled (Extension Development Host)` then `[Gitnotate] Extension activating...` | ⬜ |
+| 1.2 | Commands registered | Open Command Palette (Ctrl+Shift+P), type "Gitnotate" | Shows 4 commands: Enable, Disable, Add Comment, Add File Comment. Debug Console: `[Gitnotate] Commands registered: enable, disable, addComment, addFileComment` | ⬜ |
 | 1.3 | No PAT warning | Activate the extension | No warning about "GitHub token not configured" (old PAT flow removed) | ⬜ |
 
 ---
@@ -80,10 +93,10 @@ git checkout feature/some-branch   # branch with an open PR
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 2.1 | OAuth shared session (GH PR ext installed) | Have the GitHub Pull Requests & Issues extension installed and signed in. Activate Gitnotate. | Gitnotate uses the existing GitHub session — no sign-in prompt. Status bar shows PR info if on a PR branch. | ⬜ |
+| 2.1 | OAuth shared session (GH PR ext installed) | Have the GitHub Pull Requests & Issues extension installed and signed in. Activate Gitnotate. Use **"Launch Gitnotate (with other extensions)"** config. | Debug Console: `[Gitnotate] Auth: requesting GitHub session (silent)...` then `[Gitnotate] Auth: session found, account: <your-username>`. Status bar shows PR info if on a PR branch. | ⬜ |
 | 2.2 | OAuth prompt (no existing session) | Sign out of GitHub in VSCode (Accounts menu → sign out). Run "Gitnotate: Add Comment" on selected text. | Shows error: "GitHub authentication required. Please sign in to GitHub." | ⬜ |
-| 2.3 | Token retrieval silent on non-PR branch | Open a repo on `main` branch, activate extension | No auth prompt appears. Status bar hidden (no PR detected). Extension activates silently. | ⬜ |
-| 2.4 | Auth failure logged | Open DevTools (Help → Toggle Developer Tools), check Console tab. Simulate auth failure by disabling network. | Console shows `[Gitnotate] getGitHubToken failed:` with error details | ⬜ |
+| 2.3 | Token retrieval silent on non-PR branch | Open a repo on `main` branch, activate extension | Debug Console: `[Gitnotate] Auth: no existing session` (if signed out) or `Auth: session found` (if signed in), then `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection`. Status bar hidden. | ⬜ |
+| 2.4 | Auth failure logged | Open DevTools Console tab. Simulate auth failure by disabling network. | Console shows `[Gitnotate] getGitHubToken failed:` with error details | ⬜ |
 
 ---
 
@@ -91,11 +104,11 @@ git checkout feature/some-branch   # branch with an open PR
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 3.1 | Branch detection | Open a repo on a feature branch. Check Output / status bar. | Extension detects the branch name via VSCode Git API (no shell `git` calls in process list) | ⬜ |
-| 3.2 | Remote URL detection | Open a repo with `origin` pointing to GitHub. | Extension correctly parses owner/repo from the remote URL | ⬜ |
-| 3.3 | Default branch skipped | Open a repo on `main` or `master`. | Status bar hidden — no PR detection attempted for default branches | ⬜ |
-| 3.4 | No git repo | Open a folder that is NOT a git repo. | Extension activates but no PR detected, no errors. Status bar hidden. | ⬜ |
-| 3.5 | SSH remote URL | Open a repo where `origin` uses SSH format (`git@github.com:owner/repo.git`). | Owner/repo parsed correctly — PR detection works | ⬜ |
+| 3.1 | Branch detection | Open a repo on a feature branch. Check DevTools Console. | Debug Console: `[Gitnotate] GitService: vscode.git API loaded, 1 repo(s)` then `[Gitnotate] GitService.getCurrentBranch: feature/your-branch` | ⬜ |
+| 3.2 | Remote URL detection | Open a repo with `origin` pointing to GitHub. Check DevTools Console. | Debug Console: `[Gitnotate] GitService.getRemoteUrl: origin → https://github.com/owner/repo.git` then `[Gitnotate] GitService.parseGitHubOwnerRepo: ... → owner/repo` | ⬜ |
+| 3.3 | Default branch skipped | Open a repo on `main` or `master`. Check DevTools Console. | Debug Console: `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection` then `[Gitnotate] No PR detected — status bar hidden` | ⬜ |
+| 3.4 | No git repo | Open a folder that is NOT a git repo. Check DevTools Console. | Debug Console: `[Gitnotate] GitService: vscode.git extension not available` or `[Gitnotate] PR detection: git not available`. No errors. | ⬜ |
+| 3.5 | SSH remote URL | Open a repo where `origin` uses SSH format (`git@github.com:owner/repo.git`). | Debug Console: `[Gitnotate] GitService.getRemoteUrl: origin → git@github.com:owner/repo.git` then `GitService.parseGitHubOwnerRepo: ... → owner/repo` | ⬜ |
 
 ---
 
@@ -103,10 +116,10 @@ git checkout feature/some-branch   # branch with an open PR
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 4.1 | PR detected — status bar shows | Open a repo on a branch with an open PR. Be signed into GitHub. | Status bar shows `$(git-pull-request) Gitnotate: PR #N`. Tooltip shows `owner/repo#N`. | ⬜ |
-| 4.2 | No PR — status bar hidden | Open a repo on a branch with no open PR. | Status bar item is hidden (not shown). | ⬜ |
-| 4.3 | Authenticated request | Open DevTools Network tab, then activate extension on a PR branch while signed into GitHub. | GitHub API request to `/repos/.../pulls?...` includes `Authorization: Bearer ...` header | ⬜ |
-| 4.4 | Unauthenticated fallback | Sign out of GitHub, then activate extension on a PR branch. | GitHub API request has no Authorization header. PR may still be detected (unauthenticated, 60 req/hr limit). | ⬜ |
+| 4.1 | PR detected — status bar shows | Open a repo on a branch with an open PR. Be signed into GitHub. | Debug Console: `[Gitnotate] PR detection: fetching https://api.github.com/... (authenticated)` then `[Gitnotate] PR detection: found PR #N (owner/repo)` then `[Gitnotate] PR detected: owner/repo#N`. Status bar shows `Gitnotate: PR #N`. | ⬜ |
+| 4.2 | No PR — status bar hidden | Open a repo on a branch with no open PR. | Debug Console: `[Gitnotate] PR detection: no open PRs for branch feature/...` then `[Gitnotate] No PR detected — status bar hidden` | ⬜ |
+| 4.3 | Authenticated request | Check DevTools Console on a PR branch while signed in. | Debug Console: `[Gitnotate] Auth token: present` and `PR detection: fetching ... (authenticated)` | ⬜ |
+| 4.4 | Unauthenticated fallback | Sign out of GitHub, then activate on a PR branch. | Debug Console: `[Gitnotate] Auth token: absent` and `PR detection: fetching ... (unauthenticated)` | ⬜ |
 | 4.5 | Rate limit handling | Exhaust GitHub API rate limit (or mock 403 response). | Console warns `[Gitnotate] GitHub API rate limit exceeded`. Status bar hidden. No crash. | ⬜ |
 
 ---

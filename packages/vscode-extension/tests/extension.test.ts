@@ -23,7 +23,7 @@ vi.mock('../src/auth', () => ({
 }));
 
 import { activate, deactivate } from '../src/extension';
-import { commands } from '../__mocks__/vscode';
+import { commands, ExtensionMode } from '../__mocks__/vscode';
 
 describe('extension', () => {
   beforeEach(() => {
@@ -33,6 +33,7 @@ describe('extension', () => {
   it('should register all commands on activate', () => {
     const context = {
       subscriptions: [] as Array<{ dispose(): void }>,
+      extensionMode: ExtensionMode.Test,
     };
 
     // The registerCommand mock returns undefined, which gets pushed to subscriptions
