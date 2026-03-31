@@ -99,6 +99,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 | 2.2 | OAuth prompt (no existing session) | Command Palette → `GitHub: Sign Out`. Run "Gitnotate: Add Comment" on selected text. | Shows error: "GitHub authentication required. Please sign in to GitHub." | ⬜ |
 | 2.3 | Token retrieval silent on non-PR branch | Open a repo on `main` branch, activate extension | Debug Console: `[Gitnotate] Auth: no existing session` (if signed out) or `Auth: session found` (if signed in), then `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection`. Status bar hidden. | ⬜ |
 | 2.4 | Auth failure logged | Open DevTools Console tab. Simulate auth failure by disabling network. | Console shows `[Gitnotate] getGitHubToken failed:` with error details | ⬜ |
+| 2.5 | Sign-in prompt on PR without auth | Open a repo on a PR branch while signed out. | Info message: "Sign in to GitHub to enable sub-line commenting on this PR." with "Sign In" button. Click → OAuth flow → `[Gitnotate] Auth: authenticated as <username>` → status bar refreshes with `(authenticated)`. | ✅ |
 
 ---
 
@@ -120,7 +121,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 |---|------|-------|----------|--------|
 | 4.1 | PR detected — status bar shows | Open a repo on a branch with an open PR. Be signed into GitHub. | Debug Console: `[Gitnotate] PR detection: fetching https://api.github.com/... (authenticated)` then `[Gitnotate] PR detection: found PR #N (owner/repo)` then `[Gitnotate] PR detected: owner/repo#N`. Status bar shows `Gitnotate: PR #N`. | ✅ |
 | 4.2 | No PR — status bar hidden | Open a repo on a branch with no open PR. | Debug Console: `[Gitnotate] PR detection: no open PRs for branch feature/...` then `[Gitnotate] No PR detected — status bar hidden` | ⬜ |
-| 4.3 | Authenticated request | Check DevTools Console on a PR branch while signed in. | Debug Console: `[Gitnotate] Auth token: present` and `PR detection: fetching ... (authenticated)` | ⬜ |
+| 4.3 | Authenticated request | Check DevTools Console on a PR branch while signed in. | Debug Console: `[Gitnotate] Auth token: present` and `PR detection: fetching ... (authenticated)` | ✅ |
 | 4.4 | Unauthenticated fallback | Sign out of GitHub, then activate on a PR branch. | Debug Console: `[Gitnotate] Auth token: absent` and `PR detection: fetching ... (unauthenticated)` | ✅ |
 | 4.5 | Rate limit handling | Exhaust GitHub API rate limit (or mock 403 response). | Console warns `[Gitnotate] GitHub API rate limit exceeded`. Status bar hidden. No crash. | ⬜ |
 
