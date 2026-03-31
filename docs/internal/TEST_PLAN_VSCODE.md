@@ -1,7 +1,7 @@
 # Gitnotate VSCode Extension — Manual Test Plan
 
 > **Scope**: Phase 1.5, Increment 1 (Auth + Git Service Foundation)
-> **Updated**: 2026-03-30
+> **Updated**: 2026-03-31
 > **Test repo**: https://github.com/pedrofuentes/gitnotate (or any repo with an open PR)
 
 ---
@@ -16,10 +16,35 @@ pnpm install
 pnpm build
 ```
 
-Load in VSCode:
-1. Open the `gitnotate` folder in VSCode
-2. Press **F5** to launch the Extension Development Host
-3. In the new window, open a GitHub repo folder that has an open PR on the current branch
+#### Launch the Extension Development Host
+
+1. Open the **gitnotate monorepo root** folder in VSCode (`S:\Pedro\Projects\gitnotate`)
+2. Go to **Run and Debug** panel (Ctrl+Shift+D)
+3. Select **"Launch Gitnotate Extension"** from the dropdown at the top
+4. Press **F5** (or click the green play button)
+5. VSCode builds the extension automatically (pre-launch task), then opens a new **Extension Development Host** window with Gitnotate loaded
+
+> **Troubleshooting**: If F5 shows "Select a debugger" instead of launching, make sure you have the monorepo root open (not a subfolder). The `.vscode/launch.json` at the root configures the `extensionHost` debugger.
+
+#### In the Extension Development Host window
+
+6. Open a **local clone of a GitHub repo** that has an open PR on the current branch
+   - Use **File → Open Folder** and select the cloned repo
+   - The repo must be on a feature branch (not `main`/`master`) with an open PR
+
+> **Note**: The Extension Development Host is a separate VSCode window. Your original window stays open for debugging — you can set breakpoints, view the Debug Console, and inspect variables there.
+
+#### Watch mode (optional, for iterating)
+
+If you're making changes to the extension and want automatic rebuilds:
+
+```bash
+# In a terminal, start the esbuild watcher
+cd packages/vscode-extension
+pnpm watch
+```
+
+Then press **Ctrl+Shift+F5** in the Extension Development Host to reload the extension after each rebuild.
 
 ### Test Repo Setup
 
