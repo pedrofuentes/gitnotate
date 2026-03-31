@@ -190,7 +190,7 @@ describe('PrService', () => {
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toBe(
-        'https://api.github.com/repos/octocat/hello-world/pulls/42/comments?per_page=100'
+        'https://api.github.com/repos/octocat/hello-world/pulls/42/comments?per_page=100&page=1'
       );
       expect(options.method).toBe('GET');
     });

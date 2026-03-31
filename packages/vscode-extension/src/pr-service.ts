@@ -5,7 +5,20 @@ export interface PullRequestInfo {
   headSha: string;
 }
 
+export interface ReviewComment {
+  id: number;
+  body: string;
+  path: string;
+  line: number;
+  side: string;
+  inReplyToId: number | undefined;
+  userLogin: string | undefined;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const BASE_URL = 'https://api.github.com';
+const PER_PAGE = 100;
 
 export class PrService {
   constructor(private token: string) {}
@@ -89,29 +102,54 @@ export class PrService {
 
   async listReviewComments(
     pr: PullRequestInfo
-  ): Promise<Array<{ body: string; path: string; line: number }>> {
+  ): Promise<ReviewComment[]> {
+    const allComments: ReviewComment[] = [];
+    let page = 1;
+
     try {
-      const response = await fetch(
-        `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments`,
-        {
+      while (true) {
+        const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=${PER_PAGE}&page=${page}`;
+        const response = await fetch(url, {
           method: 'GET',
           headers: this.headers(),
-        }
-      );
+        });
 
-      if (!response.ok) {
-        console.error('[Gitnotate] listReviewComments failed:', response.status, response.statusText);
-        return [];
+        if (!response.ok) {
+          console.error('[Gitnotate] listReviewComments failed:', response.status, response.statusText);
+          return allComments;
+        }
+
+        const data = (await response.json()) as Array<{
+          id: number;
+          body: string;
+          path: string;
+          line: number;
+          side: string;
+          in_reply_to_id?: number;
+          user?: { login: string } | null;
+          created_at: string;
+          updated_at: string;
+        }>;
+
+        for (const c of data) {
+          allComments.push({
+            id: c.id,
+            body: c.body,
+            path: c.path,
+            line: c.line,
+            side: c.side,
+            inReplyToId: c.in_reply_to_id,
+            userLogin: c.user?.login,
+            createdAt: c.created_at,
+            updatedAt: c.updated_at,
+          });
+        }
+
+        if (data.length < PER_PAGE) break;
+        page++;
       }
 
-      const data = await response.json();
-      return (data as Array<{ body: string; path: string; line: number }>).map(
-        (c) => ({
-          body: c.body,
-          path: c.path,
-          line: c.line,
-        })
-      );
+      return allComments;
     } catch (err) {
       console.error('[Gitnotate] listReviewComments failed:', err);
       return [];
