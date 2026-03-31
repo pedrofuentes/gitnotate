@@ -7,13 +7,30 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode-extension",
+        "--disable-extensions"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/packages/vscode-extension/dist/**/*.js"
+      ],
+      "preLaunchTask": "build-vscode-extension",
+      "sourceMaps": true,
+      "timeout": 30000
+    },
+    {
+      "name": "Launch Gitnotate (with other extensions)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode-extension"
       ],
       "outFiles": [
         "${workspaceFolder}/packages/vscode-extension/dist/**/*.js"
       ],
       "preLaunchTask": "build-vscode-extension",
-      "sourceMaps": true
+      "sourceMaps": true,
+      "timeout": 30000
     }
   ]
 }
