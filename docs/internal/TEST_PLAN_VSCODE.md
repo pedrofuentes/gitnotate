@@ -120,10 +120,10 @@ All debug messages are prefixed with `[Gitnotate]`.
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 4.1 | PR detected — status bar shows | Open a repo on a branch with an open PR. Be signed into GitHub. | Debug Console: `[Gitnotate] PR detection: fetching https://api.github.com/... (authenticated)` then `[Gitnotate] PR detection: found PR #N (owner/repo)` then `[Gitnotate] PR detected: owner/repo#N`. Status bar shows `Gitnotate: PR #N`. | ✅ |
-| 4.2 | No PR — status bar hidden | Open a repo on a branch with no open PR. | Debug Console: `[Gitnotate] PR detection: no open PRs for branch feature/...` then `[Gitnotate] No PR detected — status bar hidden` | ⬜ |
+| 4.2 | No PR — status bar hidden | Open a repo on a branch with no open PR. | Debug Console: `[Gitnotate] PR detection: no open PRs for branch feature/...` then `[Gitnotate] No PR detected — status bar hidden` | ✅ |
 | 4.3 | Authenticated request | Check DevTools Console on a PR branch while signed in. | Debug Console: `[Gitnotate] Auth token: present` and `PR detection: fetching ... (authenticated)` | ✅ |
 | 4.4 | Unauthenticated fallback | Sign out of GitHub, then activate on a PR branch. | Debug Console: `[Gitnotate] Auth token: absent` and `PR detection: fetching ... (unauthenticated)` | ✅ |
-| 4.5 | Rate limit handling | Exhaust GitHub API rate limit (or mock 403 response). | Console warns `[Gitnotate] GitHub API rate limit exceeded`. Status bar hidden. No crash. | ⬜ |
+| 4.5 | Rate limit handling | Exhaust GitHub API rate limit (or mock 403 response). | Console warns `[Gitnotate] GitHub API rate limit exceeded`. Status bar hidden. No crash. | ⏭️ Covered by unit test (pr-detector.test.ts) |
 
 ---
 
