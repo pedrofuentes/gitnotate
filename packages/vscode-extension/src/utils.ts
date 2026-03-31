@@ -8,12 +8,14 @@ export function getRelativePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
 }
 
-export interface DebouncedFunction<T extends (...args: unknown[]) => void> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface DebouncedFunction<T extends (...args: any[]) => any> {
   (...args: Parameters<T>): void;
   dispose(): void;
 }
 
-export function debounce<T extends (...args: unknown[]) => void>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function debounce<T extends (...args: any[]) => any>(
   fn: T,
   delayMs: number
 ): DebouncedFunction<T> {

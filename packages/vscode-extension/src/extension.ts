@@ -1,13 +1,16 @@
 import * as vscode from 'vscode';
 import { enableWorkspace, disableWorkspace } from './settings';
-import { DecorationManager } from './decoration-manager';
 import { addCommentCommand } from './comment-command';
 import { detectCurrentPR } from './pr-detector';
 import { GitService } from './git-service';
 import { getGitHubToken, ensureAuthenticated } from './auth';
 import { initLogger, debug } from './logger';
+import { CommentController } from './comment-controller';
+import { CommentThreadSync } from './comment-thread-sync';
+import { PrService } from './pr-service';
+import { getRelativePath, debounce } from './utils';
 
-let decorationManager: DecorationManager | undefined;
+let commentCtrl: CommentController | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
 
 async function promptSignIn(): Promise<void> {
@@ -58,7 +61,8 @@ export function activate(context: vscode.ExtensionContext) {
   initLogger(context);
   debug('Extension activating...');
 
-  decorationManager = new DecorationManager(context);
+  commentCtrl = new CommentController();
+  context.subscriptions.push({ dispose: () => commentCtrl?.dispose() });
 
   context.subscriptions.push(
     vscode.commands.registerCommand('gitnotate.enable', async () => {
@@ -74,13 +78,33 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  const editorChangeDisposable= vscode.window.onDidChangeActiveTextEditor(
-    (_editor) => {
-      // TODO: fetch PR comments, parse ^gn metadata, apply decorations
+  const debouncedSync = debounce(async (editor: vscode.TextEditor) => {
+    if (editor.document.languageId !== 'markdown') return;
+
+    const token = await getGitHubToken();
+    if (!token) return;
+
+    const gitService = new GitService();
+    const pr = await detectCurrentPR(gitService, token);
+    if (!pr) return;
+
+    const prService = new PrService(token);
+    if (!commentCtrl) return;
+    const sync = new CommentThreadSync(prService, commentCtrl);
+    const relativePath = getRelativePath(editor.document.fileName);
+    await sync.syncForDocument(editor.document.uri, relativePath, pr);
+  }, 300);
+
+  const editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
+    (editor) => {
+      if (editor) {
+        debouncedSync(editor);
+      }
     }
   );
 
   context.subscriptions.push(editorChangeDisposable);
+  context.subscriptions.push({ dispose: () => debouncedSync.dispose() });
 
   debug('Commands registered: enable, disable, addComment');
   updatePRStatusBar();
@@ -88,9 +112,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   debug('Extension deactivating...');
-  if (decorationManager) {
-    decorationManager.dispose();
-    decorationManager = undefined;
+  if (commentCtrl) {
+    commentCtrl.dispose();
+    commentCtrl = undefined;
   }
   statusBarItem?.dispose();
 }
