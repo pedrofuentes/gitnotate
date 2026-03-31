@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Must mock modules before importing them
-vi.mock('../src/github-api', () => ({
-  GitHubApiClient: vi.fn().mockImplementation(() => ({
+vi.mock('../src/pr-service', () => ({
+  PrService: vi.fn().mockImplementation(() => ({
     createReviewComment: vi.fn(),
   })),
 }));
@@ -31,7 +31,7 @@ import {
   __reset,
 } from '../__mocks__/vscode';
 import { addCommentCommand } from '../src/comment-command';
-import { GitHubApiClient } from '../src/github-api';
+import { PrService } from '../src/pr-service';
 import { detectCurrentPR } from '../src/pr-detector';
 import { buildGnComment } from '@gitnotate/core';
 import { getGitHubToken } from '../src/auth';
@@ -201,7 +201,7 @@ describe('addCommentCommand', () => {
     const mockApiInstance = {
       createReviewComment: vi.fn().mockResolvedValue({ ok: true }),
     };
-    vi.mocked(GitHubApiClient).mockImplementation(() => mockApiInstance as any);
+    vi.mocked(PrService).mockImplementation(() => mockApiInstance as any);
 
     await addCommentCommand(mockContext);
 
@@ -238,7 +238,7 @@ describe('addCommentCommand', () => {
     mockBuildGnComment.mockReturnValue('formatted comment body');
 
     const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
-    vi.mocked(GitHubApiClient).mockImplementation(
+    vi.mocked(PrService).mockImplementation(
       () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
     );
 
@@ -273,7 +273,7 @@ describe('addCommentCommand', () => {
     window.showInputBox.mockResolvedValue('Nice!');
     mockBuildGnComment.mockReturnValue('comment body');
 
-    vi.mocked(GitHubApiClient).mockImplementation(
+    vi.mocked(PrService).mockImplementation(
       () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
     );
 
@@ -304,7 +304,7 @@ describe('addCommentCommand', () => {
     window.showInputBox.mockResolvedValue('Nice!');
     mockBuildGnComment.mockReturnValue('comment body');
 
-    vi.mocked(GitHubApiClient).mockImplementation(
+    vi.mocked(PrService).mockImplementation(
       () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: false, userMessage: 'Permission denied.' }), listReviewComments: vi.fn() } as any)
     );
 

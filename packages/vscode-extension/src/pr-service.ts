@@ -7,7 +7,7 @@ export interface PullRequestInfo {
 
 const BASE_URL = 'https://api.github.com';
 
-export class GitHubApiClient {
+export class PrService {
   constructor(private token: string) {}
 
   private headers(): Record<string, string> {

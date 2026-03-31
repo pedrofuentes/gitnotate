@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { GitHubApiClient } from '../src/github-api';
-import type { PullRequestInfo } from '../src/github-api';
+import { PrService } from '../src/pr-service';
+import type { PullRequestInfo } from '../src/pr-service';
 
 // Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-describe('GitHubApiClient', () => {
+describe('PrService', () => {
   const token = 'ghp_test_token_123';
-  let client: GitHubApiClient;
+  let client: PrService;
   const pr: PullRequestInfo = {
     owner: 'octocat',
     repo: 'hello-world',
@@ -18,7 +18,7 @@ describe('GitHubApiClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    client = new GitHubApiClient(token);
+    client = new PrService(token);
   });
 
   afterEach(() => {

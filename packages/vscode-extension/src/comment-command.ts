@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { buildGnComment } from '@gitnotate/core';
-import { GitHubApiClient } from './github-api';
+import { PrService } from './pr-service';
 import { detectCurrentPR } from './pr-detector';
 import { getRelativePath } from './utils';
 import { GitService } from './git-service';
@@ -59,7 +59,7 @@ export async function addCommentCommand(
   const commentBody = buildGnComment(metadata, userComment);
 
   // Submit via GitHub API
-  const client = new GitHubApiClient(token);
+  const client = new PrService(token);
   const filePath = getRelativePath(editor.document.fileName);
   const line = editor.selection.start.line + 1;
 
