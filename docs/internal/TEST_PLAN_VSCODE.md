@@ -97,7 +97,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 |---|------|-------|----------|--------|
 | 2.1 | OAuth shared session (GH PR ext installed) | Have the GitHub Pull Requests & Issues extension installed and signed in. Activate Gitnotate. Use **"Launch Gitnotate (with other extensions)"** config. | Debug Console: `[Gitnotate] Auth: requesting GitHub session (silent)...` then `[Gitnotate] Auth: session found, account: <your-username>`. Status bar shows PR info if on a PR branch. | ⬜ |
 | 2.2 | OAuth prompt (no existing session) | Command Palette → `GitHub: Sign Out`. Run "Gitnotate: Add Comment" on selected text. | Shows error: "GitHub authentication required. Please sign in to GitHub." | ⬜ |
-| 2.3 | Token retrieval silent on non-PR branch | Open a repo on `main` branch, activate extension | Debug Console: `[Gitnotate] Auth: no existing session` (if signed out) or `Auth: session found` (if signed in), then `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection`. Status bar hidden. | ⬜ |
+| 2.3 | Token retrieval silent on non-PR branch | Open a repo on `main` branch, activate extension | Debug Console: `[Gitnotate] Auth: no existing session` (if signed out) or `Auth: session found` (if signed in), then `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection`. Status bar hidden. | ✅ |
 | 2.4 | Auth failure logged | Open DevTools Console tab. Simulate auth failure by disabling network. | Console shows `[Gitnotate] getGitHubToken failed:` with error details | ⬜ |
 | 2.5 | Sign-in prompt on PR without auth | Open a repo on a PR branch while signed out. | Info message: "Sign in to GitHub to enable sub-line commenting on this PR." with "Sign In" button. Click → OAuth flow → `[Gitnotate] Auth: authenticated as <username>` → status bar refreshes with `(authenticated)`. | ✅ |
 
@@ -109,7 +109,7 @@ All debug messages are prefixed with `[Gitnotate]`.
 |---|------|-------|----------|--------|
 | 3.1 | Branch detection | Open a repo on a feature branch. Check DevTools Console. | Debug Console: `[Gitnotate] GitService: vscode.git API loaded, 1 repo(s)` then `[Gitnotate] GitService.getCurrentBranch: feature/your-branch` | ✅ |
 | 3.2 | Remote URL detection | Open a repo with `origin` pointing to GitHub. Check DevTools Console. | Debug Console: `[Gitnotate] GitService.getRemoteUrl: origin → https://github.com/owner/repo.git` then `[Gitnotate] GitService.parseGitHubOwnerRepo: ... → owner/repo` | ✅ |
-| 3.3 | Default branch skipped | Open a repo on `main` or `master`. Check DevTools Console. | Debug Console: `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection` then `[Gitnotate] No PR detected — status bar hidden` | ⬜ |
+| 3.3 | Default branch skipped | Open a repo on `main` or `master`. Check DevTools Console. | Debug Console: `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection` then `[Gitnotate] No PR detected — status bar hidden` | ✅ |
 | 3.4 | No git repo | Open a folder that is NOT a git repo. Check DevTools Console. | Debug Console: `[Gitnotate] GitService: vscode.git extension not available` or `[Gitnotate] PR detection: git not available`. No errors. | ⬜ |
 | 3.5 | SSH remote URL | Open a repo where `origin` uses SSH format (`git@github.com:owner/repo.git`). | Debug Console: `[Gitnotate] GitService.getRemoteUrl: origin → git@github.com:owner/repo.git` then `GitService.parseGitHubOwnerRepo: ... → owner/repo` | ⬜ |
 
