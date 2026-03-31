@@ -232,6 +232,7 @@ Full round-trip polish and GH PR extension coexistence.
 - Reply/resolve handlers on comment threads
 - Status bar: "Gitnotate: PR #N" with auto-refresh
 - Context keys (`gitnotate.hasPR`, `gitnotate.hasComments`) for `when` clauses
+- Right-click context menu: "Gitnotate: Add Comment" on text selection
 - Error UX with action buttons ("Sign in to GitHub")
 - Output channel (`Gitnotate`) for debugging
 
