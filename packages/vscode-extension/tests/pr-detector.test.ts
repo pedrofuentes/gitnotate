@@ -178,6 +178,7 @@ describe('detectCurrentPR', () => {
 
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[Gitnotate]'),
+      expect.stringContaining('detectCurrentPR failed'),
       error
     );
     consoleSpy.mockRestore();
@@ -241,6 +242,7 @@ describe('detectCurrentPR — rate limit handling (I-14)', () => {
 
     expect(result).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Gitnotate]'),
       expect.stringContaining('rate limit'),
     );
     consoleSpy.mockRestore();
@@ -265,6 +267,7 @@ describe('detectCurrentPR — rate limit handling (I-14)', () => {
 
     expect(result).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Gitnotate]'),
       expect.stringContaining('rate limit'),
     );
     consoleSpy.mockRestore();
