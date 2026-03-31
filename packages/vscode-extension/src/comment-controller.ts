@@ -65,25 +65,27 @@ export class CommentController {
   ): vscode.CommentThread {
     const color = colorIndex !== undefined ? HIGHLIGHT_COLORS[colorIndex % HIGHLIGHT_COLORS.length] : undefined;
 
-    const vscodeComments: vscode.Comment[] = comments.map((c) => {
-      const authorLabel = color
-        ? new vscode.MarkdownString(`<span style="color:${color};">${c.author}</span>`)
-        : c.author;
-      if (authorLabel instanceof vscode.MarkdownString) {
-        authorLabel.supportHtml = true;
+    const vscodeComments: vscode.Comment[] = comments.map((c, i) => {
+      const isFirst = i === 0;
+      let body: string | vscode.MarkdownString;
+      if (color) {
+        const md = new vscode.MarkdownString(
+          `<span style="color:${color};font-weight:bold;">● ${c.author}</span>\n\n${c.body}`
+        );
+        md.supportHtml = true;
+        body = md;
+      } else {
+        body = c.body;
       }
       return {
-        body: c.body,
+        body,
         mode: vscode.CommentMode.Preview,
-        author: { name: typeof authorLabel === 'string' ? authorLabel : c.author, iconPath: undefined },
-        label: color ? `● ${c.author}` : undefined,
+        author: { name: c.author },
+        label: isFirst && color ? '📌' : undefined,
       };
     });
 
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
-    if (color) {
-      thread.label = `📌 Gitnotate`;
-    }
 
     const key = uri.fsPath;
     const existing = this.threads.get(key) ?? [];
