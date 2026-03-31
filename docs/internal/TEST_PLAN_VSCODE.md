@@ -110,8 +110,8 @@ All debug messages are prefixed with `[Gitnotate]`.
 | 3.1 | Branch detection | Open a repo on a feature branch. Check DevTools Console. | Debug Console: `[Gitnotate] GitService: vscode.git API loaded, 1 repo(s)` then `[Gitnotate] GitService.getCurrentBranch: feature/your-branch` | ✅ |
 | 3.2 | Remote URL detection | Open a repo with `origin` pointing to GitHub. Check DevTools Console. | Debug Console: `[Gitnotate] GitService.getRemoteUrl: origin → https://github.com/owner/repo.git` then `[Gitnotate] GitService.parseGitHubOwnerRepo: ... → owner/repo` | ✅ |
 | 3.3 | Default branch skipped | Open a repo on `main` or `master`. Check DevTools Console. | Debug Console: `[Gitnotate] GitService.isDefaultBranch: main — skipping PR detection` then `[Gitnotate] No PR detected — status bar hidden` | ✅ |
-| 3.4 | No git repo | Open a folder that is NOT a git repo. Check DevTools Console. | Debug Console: `[Gitnotate] GitService: vscode.git extension not available` or `[Gitnotate] PR detection: git not available`. No errors. | ⬜ |
-| 3.5 | SSH remote URL | Open a repo where `origin` uses SSH format (`git@github.com:owner/repo.git`). | Debug Console: `[Gitnotate] GitService.getRemoteUrl: origin → git@github.com:owner/repo.git` then `GitService.parseGitHubOwnerRepo: ... → owner/repo` | ⬜ |
+| 3.4 | No git repo | Open a folder that is NOT a git repo. Check DevTools Console. | Debug Console: `[Gitnotate] GitService: vscode.git API loaded, 0 repo(s)` then `[Gitnotate] PR detection: git not available`. No errors. | ✅ |
+| 3.5 | SSH remote URL | Open a repo where `origin` uses SSH format (`git@github.com:owner/repo.git`). | Debug Console: `[Gitnotate] GitService.getRemoteUrl: origin → git@github.com:owner/repo.git` then `GitService.parseGitHubOwnerRepo: ... → owner/repo` | ⏭️ Covered by unit test (git-service.test.ts) |
 
 ---
 
