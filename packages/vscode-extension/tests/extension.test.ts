@@ -551,5 +551,132 @@ describe('extension', () => {
 
       expect(mockGetGitHubToken).toHaveBeenCalled();
     });
+
+    it('should not crash when auth changes with no active editor (20.3)', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      __setActiveTextEditor(undefined);
+
+      const authHandlerCall = authentication.onDidChangeSessions.mock.calls[0];
+      const authHandler = authHandlerCall[0] as (e: unknown) => void;
+
+      // Should not throw — triggerSync is a no-op when no editor
+      expect(() => authHandler({ provider: { id: 'github' } })).not.toThrow();
+      await vi.advanceTimersByTimeAsync(300);
+    });
+  });
+
+  describe('service hoisting & cache persistence (17.x)', () => {
+    it('should reuse PrService across multiple editor syncs (17.1/17.4)', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const { PrService } = await import('../src/pr-service');
+
+      // Trigger first sync
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      const mkEditor = (name: string) => ({
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file(`/workspace/docs/${name}`),
+          languageId: 'markdown',
+          fileName: `/workspace/docs/${name}`,
+        },
+      });
+
+      handler(mkEditor('file-a.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const prServiceCallCount1 = vi.mocked(PrService).mock.calls.length;
+
+      // Trigger second sync — PrService should NOT be reconstructed (same token)
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const prServiceCallCount2 = vi.mocked(PrService).mock.calls.length;
+      expect(prServiceCallCount2).toBe(prServiceCallCount1);
+    });
+
+    it('should recreate PrService when token changes (17.5)', async () => {
+      mockGetGitHubToken.mockResolvedValue('token-A');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const { PrService } = await import('../src/pr-service');
+
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      const mkEditor = (name: string) => ({
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file(`/workspace/docs/${name}`),
+          languageId: 'markdown',
+          fileName: `/workspace/docs/${name}`,
+        },
+      });
+
+      // First sync with token-A
+      handler(mkEditor('file-a.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const prServiceCallCount1 = vi.mocked(PrService).mock.calls.length;
+
+      // Change token
+      mockGetGitHubToken.mockResolvedValue('token-B');
+
+      // Second sync — PrService SHOULD be reconstructed (different token)
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const prServiceCallCount2 = vi.mocked(PrService).mock.calls.length;
+      expect(prServiceCallCount2).toBe(prServiceCallCount1 + 1);
+    });
+  });
+
+  describe('deactivation cleanup (22.1)', () => {
+    it('should clean up all hoisted references on deactivate', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      const controllers = __getCommentControllers();
+      expect(controllers).toHaveLength(1);
+
+      deactivate();
+
+      expect(controllers[0].dispose).toHaveBeenCalled();
+
+      // Reactivation should work cleanly — no stale state
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      const newControllers = __getCommentControllers();
+      expect(newControllers).toHaveLength(2); // new controller created
+    });
   });
 });
