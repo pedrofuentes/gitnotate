@@ -134,14 +134,35 @@ export function activate(context: vscode.ExtensionContext) {
   updatePRStatusBar();
 
   // Sync the already-open editor (onDidChangeActiveTextEditor doesn't fire for it).
-  // Use a delay because vscode.git extension may not be available yet at activation time.
-  const initialSyncDelay = setTimeout(() => {
-    if (vscode.window.activeTextEditor) {
-      debug('Initial sync: triggering for', vscode.window.activeTextEditor.document.fileName);
-      debouncedSync(vscode.window.activeTextEditor);
+  // The vscode.git extension loads asynchronously — repos may not be available yet.
+  // Retry with increasing delays until git is ready or we give up.
+  let retryCount = 0;
+  const maxRetries = 5;
+  const retryDelays = [1000, 2000, 3000, 4000, 5000];
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const tryInitialSync = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    const gitService = new GitService();
+    if (!gitService.isAvailable()) {
+      retryCount++;
+      if (retryCount <= maxRetries) {
+        debug('Initial sync: git not ready, retry', retryCount, 'of', maxRetries);
+        retryTimer = setTimeout(tryInitialSync, retryDelays[retryCount - 1]);
+      } else {
+        debug('Initial sync: git not available after', maxRetries, 'retries — giving up');
+      }
+      return;
     }
-  }, 1500);
-  context.subscriptions.push({ dispose: () => clearTimeout(initialSyncDelay) });
+
+    debug('Initial sync: triggering for', editor.document.fileName);
+    debouncedSync(editor);
+  };
+
+  retryTimer = setTimeout(tryInitialSync, 500);
+  context.subscriptions.push({ dispose: () => { if (retryTimer) clearTimeout(retryTimer); } });
 }
 
 export function deactivate() {
