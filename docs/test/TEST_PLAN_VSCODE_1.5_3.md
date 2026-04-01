@@ -34,8 +34,11 @@
 
 Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
-- **Two markdown files with PR comments**: You need at least two markdown files in the same PR, each with at least one `^gn` review comment, to test cache persistence across tab switches.
-- **Test repo**: `pedrofuentes/test` — create any files needed for testing directly there.
+- **Test repo**: `pedrofuentes/test`, **PR #6** (`feature/edge-case-updates` → `master`)
+- **Two markdown files with `^gn` comments on PR #6**:
+  - `edge-cases.md` — 5 `^gn` comments + 1 regular line comment with replies
+  - `notes.md` — 1 `^gn` comment on line 3, chars 20–57 (`"testing editor-switch sync behavior"`)
+- **Non-markdown file**: `sample.js` (also in PR #6, for negative tests)
 
 ---
 
@@ -43,10 +46,10 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 17.1 | Cache persists on tab switch | Open `file-a.md` (has `^gn` comments). Wait for threads to load. Open Debug Console. Switch to `file-b.md` (same PR, has `^gn` comments). Switch back to `file-a.md`. | On second visit to `file-a.md`, threads appear **instantly** (no API latency). Debug Console shows `[Gitnotate] Thread sync (cache-first): rendering from cache` instead of `[Gitnotate] Thread sync: fetching comments for ...`. | ✅ Unit + 🔍 Integration |
-| 17.2 | Cache-first then background refresh | Open `file-a.md`, wait for threads. Switch away and back. Check Debug Console. | Shows `Thread sync (cache-first): rendering from cache` followed by `Thread sync (cache-first): fetching fresh data`. If data hasn't changed: `Thread sync (cache-first): data unchanged — skipping re-render`. | ✅ Unit |
-| 17.3 | New comment appears after background refresh | While on `file-a.md` in VSCode, add a new `^gn` comment on the same file via the **GitHub web UI** (browser). Switch away from `file-a.md` and back. | Cached (stale) threads render instantly. After the background refresh completes (~1–2s), the new comment appears as an additional thread. Debug Console: `Thread sync (cache-first): data changed — re-rendering`. | ⬜ Manual |
-| 17.4 | Single API call per PR, not per file | Open `file-a.md` (PR has comments on both files). Check Debug Console for the API URL. | Only one `GET .../pulls/N/comments?per_page=100&page=1` call. Comments for `file-a.md` are filtered client-side from the full PR comment list. | ✅ Unit |
+| 17.1 | Cache persists on tab switch | Open `edge-cases.md` (has `^gn` comments). Wait for threads to load. Open Debug Console. Switch to `notes.md` (same PR, has 1 `^gn` comment). Switch back to `edge-cases.md`. | On second visit to `edge-cases.md`, threads appear **instantly** (no API latency). Debug Console shows `[Gitnotate] Thread sync (cache-first): rendering from cache` instead of `[Gitnotate] Thread sync: fetching comments for ...`. | ✅ Unit + 🔍 Integration |
+| 17.2 | Cache-first then background refresh | Open `edge-cases.md`, wait for threads. Switch away and back. Check Debug Console. | Shows `Thread sync (cache-first): rendering from cache` followed by `Thread sync (cache-first): fetching fresh data`. If data hasn't changed: `Thread sync (cache-first): data unchanged — skipping re-render`. | ✅ Unit |
+| 17.3 | New comment appears after background refresh | While on `edge-cases.md` in VSCode, add a new `^gn` comment on the same file via the **GitHub web UI** (browser). Switch away from `edge-cases.md` and back. | Cached (stale) threads render instantly. After the background refresh completes (~1–2s), the new comment appears as an additional thread. Debug Console: `Thread sync (cache-first): data changed — re-rendering`. | ⬜ Manual |
+| 17.4 | Single API call per PR, not per file | Open `edge-cases.md` (PR #6 has comments on both files). Check Debug Console for the API URL. | Only one `GET .../pulls/6/comments?per_page=100&page=1` call. Comments for `edge-cases.md` are filtered client-side from the full PR comment list. | ✅ Unit |
 | 17.5 | Service recreation on token change | Open a markdown file, let threads load. Run `getGitHubToken` returning a different token (simulate by signing out and back in). Switch tabs. | Debug Console shows `[Gitnotate] Comment sync: recreated PrService + CommentThreadSync (token changed)`. Fresh API call is made (cache was on the old service instance). | ✅ Unit |
 
 ---
@@ -55,9 +58,9 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 18.1 | Save markdown triggers re-sync | Open a markdown file with `^gn` comments. Edit the file (add a blank line). Save (`Ctrl+S`). | Debug Console shows `[Gitnotate] Document saved: <filename>` followed by a comment sync. Threads remain correct after the save. | ✅ Unit + 🔍 Integration |
+| 18.1 | Save markdown triggers re-sync | Open `edge-cases.md` (has `^gn` comments). Edit the file (add a blank line). Save (`Ctrl+S`). | Debug Console shows `[Gitnotate] Document saved: edge-cases.md` followed by a comment sync. Threads remain correct after the save. | ✅ Unit + 🔍 Integration |
 | 18.2 | Save non-markdown does NOT trigger sync | Open `sample.js`. Edit it. Save (`Ctrl+S`). Check Debug Console. | NO `[Gitnotate] Document saved:` log entry. No comment sync triggered. | ✅ Unit + 🔍 Integration |
-| 18.3 | Save refreshes after line shift | Open a markdown file with a `^gn:10:R:5:15` comment. Add 2 blank lines above line 10 (so the commented line moves to line 12). Save. On GitHub, the comment is still on the original line. | After save, the thread may appear on the wrong line (line 10 per metadata) — this is expected because `^gn` metadata is static. The re-sync confirms no crash occurs. | 🔍 Integration |
+| 18.3 | Save refreshes after line shift | Open `edge-cases.md` (has `^gn:7:R:23:112` comment on line 7). Add 2 blank lines above line 7. Save. | After save, the thread stays on line 7 per metadata (even though the text shifted to line 9) — this is expected because `^gn` metadata is static. The re-sync confirms no crash occurs. | 🔍 Integration |
 
 ---
 
@@ -65,9 +68,9 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 19.1 | Close markdown clears threads | Open `file-a.md` (has `^gn` comments, threads visible). Close the `file-a.md` tab. Open the Comments panel (View → Comments). | Threads from `file-a.md` are no longer listed. Debug Console shows `[Gitnotate] Document closed: <filename>`. | ✅ Unit + 🔍 Integration |
+| 19.1 | Close markdown clears threads | Open `edge-cases.md` (has `^gn` comments, threads visible). Close the `edge-cases.md` tab. Open the Comments panel (View → Comments). | Threads from `edge-cases.md` are no longer listed. Debug Console shows `[Gitnotate] Document closed: edge-cases.md`. | ✅ Unit + 🔍 Integration |
 | 19.2 | Close non-markdown does NOT clear threads | Open `sample.js`. Close its tab. Check Debug Console. | NO `[Gitnotate] Document closed:` log entry. Any open markdown threads are unaffected. | ✅ Unit |
-| 19.3 | Close does NOT invalidate PR cache | Open `file-a.md`, let threads load. Close `file-a.md`. Re-open `file-a.md`. | Threads appear instantly from cache (no API call). Debug Console: `Thread sync (cache-first): rendering from cache`. The PR-level cache is preserved even though the file's threads were cleared on close. | ✅ Unit + 🔍 Integration |
+| 19.3 | Close does NOT invalidate PR cache | Open `edge-cases.md`, let threads load. Close `edge-cases.md`. Re-open `edge-cases.md`. | Threads appear instantly from cache (no API call). Debug Console: `Thread sync (cache-first): rendering from cache`. The PR-level cache is preserved even though the file's threads were cleared on close. | ✅ Unit + 🔍 Integration |
 
 ---
 
@@ -105,8 +108,8 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | What to check |
 |---|------|---------------|
-| 17.3 | Background refresh picks up new comments | Add a `^gn` comment via GitHub web while file is open in VSCode. Switch tabs away and back. Verify new thread appears. Debug Console: `data changed — re-rendering` |
-| 20.1 | Sign out clears threads | Sign out of GitHub with threads visible. Verify Debug Console: `Auth session changed`. Threads should disappear. |
+| 17.3 | Background refresh picks up new comments | Open `edge-cases.md` in VSCode. Add a new `^gn` comment on `edge-cases.md` via GitHub web (PR #6). Switch to `notes.md` and back to `edge-cases.md`. Verify new thread appears. Debug Console: `data changed — re-rendering` |
+| 20.1 | Sign out clears threads | Open `edge-cases.md` with threads visible. Sign out of GitHub. Verify Debug Console: `Auth session changed`. Threads should disappear. |
 | 20.2 | Sign in triggers fresh sync | After sign-out, sign back in. Verify Debug Console: `recreated PrService + CommentThreadSync`. Threads reappear. |
 
 ### 🔍 Recommended spot-checks (one per category, first time only)
@@ -115,9 +118,9 @@ Integration smoke tests prove "no crash" but can't verify correct behavior. Spot
 
 | Category | Recommended test | What to verify in Debug Console |
 |----------|------------------|---------------------------------|
-| Cache/tab switch | 17.1 | Switch tabs away and back. Look for `Thread sync (cache-first): rendering from cache` |
-| Save | 18.1 | Edit + save a markdown file. Look for `Document saved: <filename>` |
-| Close/reopen | 19.3 | Close a markdown tab, reopen it. Verify threads reappear instantly from cache |
+| Cache/tab switch | 17.1 | Open `edge-cases.md`, switch to `notes.md`, switch back. Look for `Thread sync (cache-first): rendering from cache` |
+| Save | 18.1 | Edit + save `edge-cases.md`. Look for `Document saved: edge-cases.md` |
+| Close/reopen | 19.3 | Close `edge-cases.md` tab, reopen it. Verify threads reappear instantly from cache |
 
 **Once these 3 spot-checks pass**, the remaining integration smoke tests are trustworthy and don't need manual verification.
 
