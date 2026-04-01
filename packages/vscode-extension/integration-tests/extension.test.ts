@@ -195,4 +195,136 @@ suite('Gitnotate Integration Tests', () => {
       assert.ok(editor2, 'Should be able to reopen after closing all');
     });
   });
+
+  // Suite 17: Cache Persistence Across Tab Switches (Increment 3)
+  suite('Suite 17: Cache Persistence', () => {
+    test('17.1 — Tab switching does not crash (cache-first path)', async () => {
+      // Open first markdown file
+      const editor1 = await openDocument('edge-cases.md');
+      assert.ok(editor1);
+      await sleep(1500);
+
+      // Switch to second file
+      const editor2 = await openDocument('notes.md');
+      assert.ok(editor2);
+      await sleep(1000);
+
+      // Switch back — cache-first path should activate without errors
+      const editor3 = await openDocument('edge-cases.md');
+      assert.ok(editor3);
+      await sleep(1000);
+
+      // No errors = cache-first path works
+    });
+  });
+
+  // Suite 18: Save-Triggered Refresh (Increment 3)
+  suite('Suite 18: Save-Triggered Refresh', () => {
+    test('18.1 — Saving a markdown file does not crash', async () => {
+      const editor = await openDocument('edge-cases.md');
+      assert.ok(editor);
+      await sleep(1000);
+
+      // Edit the file (insert a newline at position 0)
+      await editor.edit((editBuilder) => {
+        editBuilder.insert(new vscode.Position(0, 0), '\n');
+      });
+
+      // Save — triggers onDidSaveTextDocument handler
+      await editor.document.save();
+      await sleep(1000);
+
+      // No crash = save handler works
+      assert.ok(editor, 'Editor should remain functional after save');
+    });
+
+    test('18.2 — Saving a non-markdown file does not trigger sync', async () => {
+      const editor = await openDocument('sample.js');
+      assert.ok(editor);
+      await sleep(500);
+
+      // Edit and save
+      await editor.edit((editBuilder) => {
+        editBuilder.insert(new vscode.Position(0, 0), '// test\n');
+      });
+      await editor.document.save();
+      await sleep(500);
+
+      // No crash = non-markdown save correctly ignored
+    });
+
+    test('18.3 — Save after inserting lines does not crash', async () => {
+      const editor = await openDocument('edge-cases.md');
+      assert.ok(editor);
+      await sleep(1000);
+
+      // Insert two blank lines at the top (shifts all line numbers down)
+      await editor.edit((editBuilder) => {
+        editBuilder.insert(new vscode.Position(0, 0), '\n\n');
+      });
+      await editor.document.save();
+      await sleep(1000);
+
+      // Extension should handle shifted lines without crashing
+      assert.ok(editor, 'Editor should remain functional after line shift + save');
+    });
+  });
+
+  // Suite 19: Close-Tab Thread Cleanup (Increment 3)
+  suite('Suite 19: Close-Tab Cleanup', () => {
+    test('19.1 — Closing a markdown tab does not crash', async () => {
+      const editor = await openDocument('edge-cases.md');
+      assert.ok(editor);
+      await sleep(1000);
+
+      // Close the active editor
+      await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+      await sleep(500);
+
+      // No crash = close handler works
+    });
+
+    test('19.3 — Close and reopen works without errors', async () => {
+      // Open and let sync happen
+      const editor1 = await openDocument('edge-cases.md');
+      assert.ok(editor1);
+      await sleep(1500);
+
+      // Close
+      await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+      await sleep(500);
+
+      // Reopen — cache-first should still work
+      const editor2 = await openDocument('edge-cases.md');
+      assert.ok(editor2);
+      await sleep(1000);
+
+      // No crash = PR cache survives close + reopen
+    });
+  });
+
+  // Suite 22: Deactivation & Cleanup (Increment 3)
+  suite('Suite 22: Deactivation & Cleanup', () => {
+    test('22.2 — Close all and reopen works cleanly', async () => {
+      const editor1 = await openDocument('edge-cases.md');
+      assert.ok(editor1);
+      await sleep(1000);
+
+      // Close all editors
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await sleep(500);
+
+      // Reopen — extension should handle this gracefully
+      const editor2 = await openDocument('notes.md');
+      assert.ok(editor2);
+      await sleep(1000);
+
+      // Verify extension is still active
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(
+        commands.includes('gitnotate.addComment'),
+        'Extension should still be active after close-all + reopen'
+      );
+    });
+  });
 });

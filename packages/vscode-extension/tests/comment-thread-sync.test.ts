@@ -272,6 +272,25 @@ describe('CommentThreadSync', () => {
 
       expect(sync.getCachedComments(pr)).toBeUndefined();
     });
+
+    it('should preserve PR cache when clearThreads is called (19.3)', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache via sync
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      expect(sync.getCachedComments(pr)).toHaveLength(1);
+
+      // Clear threads for the file (simulates close handler)
+      commentController.clearThreads(uri);
+
+      // PR-level cache should still exist
+      expect(sync.getCachedComments(pr)).toHaveLength(1);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('syncForDocumentCacheFirst', () => {
