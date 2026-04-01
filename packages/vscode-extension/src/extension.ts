@@ -98,7 +98,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (!commentCtrl) return;
     const relativePath = getRelativePath(editor.document.fileName);
     debug('Comment sync: syncing', relativePath, `(PR #${pr.number})`);
-    const highlightRanges = await threadSync.syncForDocument(editor.document.uri, relativePath, pr);
+    const highlightRanges = await threadSync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
     if (highlightRanges.length > 0) {
       commentCtrl.applyHighlights(editor, highlightRanges);
     } else {
