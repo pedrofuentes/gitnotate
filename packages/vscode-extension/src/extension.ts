@@ -158,6 +158,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Lifecycle: re-sync on auth session change
   const authDisposable = vscode.authentication.onDidChangeSessions(() => {
     debug('Auth session changed — invalidating cache and re-syncing');
+    commentCtrl?.clearThreads();
     cachedToken = undefined;
     threadSync = undefined;
     prService = undefined;

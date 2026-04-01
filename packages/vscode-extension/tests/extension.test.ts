@@ -34,6 +34,7 @@ import {
   authentication,
   ExtensionMode,
   __getCommentControllers,
+  __getCommentThreads,
   __getStatusBarItem,
   __setActiveTextEditor,
   __reset,
@@ -550,6 +551,35 @@ describe('extension', () => {
       await vi.advanceTimersByTimeAsync(300);
 
       expect(mockGetGitHubToken).toHaveBeenCalled();
+    });
+
+    it('should clear all threads immediately on auth change (20.1)', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Import CommentController to spy on clearThreads
+      const { CommentController } = await import('../src/comment-controller');
+      const clearThreadsSpy = vi.spyOn(CommentController.prototype, 'clearThreads');
+
+      // Sign out — token becomes undefined
+      mockGetGitHubToken.mockResolvedValue(undefined);
+
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      authHandler({ provider: { id: 'github' } });
+
+      // clearThreads() should be called immediately (before debounced sync)
+      expect(clearThreadsSpy).toHaveBeenCalledWith();
+
+      clearThreadsSpy.mockRestore();
     });
 
     it('should not crash when auth changes with no active editor (20.3)', async () => {
