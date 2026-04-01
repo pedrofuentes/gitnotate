@@ -12,6 +12,9 @@ import { getRelativePath, debounce } from './utils';
 
 let commentCtrl: CommentController | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
+let prService: PrService | undefined;
+let threadSync: CommentThreadSync | undefined;
+let cachedToken: string | undefined;
 
 async function promptSignIn(): Promise<void> {
   const action = await vscode.window.showInformationMessage(
@@ -77,6 +80,14 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
+    if (token !== cachedToken || !prService || !threadSync) {
+      cachedToken = token;
+      prService = new PrService(token);
+      if (!commentCtrl) return;
+      threadSync = new CommentThreadSync(prService, commentCtrl);
+      debug('Comment sync: recreated PrService + CommentThreadSync (token changed)');
+    }
+
     const gitService = new GitService();
     const pr = await detectCurrentPR(gitService, token);
     if (!pr) {
@@ -84,12 +95,10 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const prService = new PrService(token);
     if (!commentCtrl) return;
-    const sync = new CommentThreadSync(prService, commentCtrl);
     const relativePath = getRelativePath(editor.document.fileName);
     debug('Comment sync: syncing', relativePath, `(PR #${pr.number})`);
-    const highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
+    const highlightRanges = await threadSync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
     if (highlightRanges.length > 0) {
       commentCtrl.applyHighlights(editor, highlightRanges);
     } else {
@@ -129,6 +138,32 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(editorChangeDisposable);
   context.subscriptions.push({ dispose: () => debouncedSync.dispose() });
+
+  // Lifecycle: re-sync on save
+  const saveDisposable = vscode.workspace.onDidSaveTextDocument((doc) => {
+    if (doc.languageId !== 'markdown') return;
+    debug('Document saved:', doc.fileName);
+    triggerSync();
+  });
+  context.subscriptions.push(saveDisposable);
+
+  // Lifecycle: clear threads on close
+  const closeDisposable = vscode.workspace.onDidCloseTextDocument((doc) => {
+    if (doc.languageId !== 'markdown') return;
+    debug('Document closed:', doc.fileName);
+    commentCtrl?.clearThreads(doc.uri);
+  });
+  context.subscriptions.push(closeDisposable);
+
+  // Lifecycle: re-sync on auth session change
+  const authDisposable = vscode.authentication.onDidChangeSessions(() => {
+    debug('Auth session changed — invalidating cache and re-syncing');
+    cachedToken = undefined;
+    threadSync = undefined;
+    prService = undefined;
+    triggerSync();
+  });
+  context.subscriptions.push(authDisposable);
 
   debug('Commands registered: enable, disable, addComment');
   updatePRStatusBar();
@@ -171,5 +206,8 @@ export function deactivate() {
     commentCtrl.dispose();
     commentCtrl = undefined;
   }
+  prService = undefined;
+  threadSync = undefined;
+  cachedToken = undefined;
   statusBarItem?.dispose();
 }

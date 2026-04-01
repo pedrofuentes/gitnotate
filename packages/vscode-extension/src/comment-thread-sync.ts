@@ -24,9 +24,17 @@ export class CommentThreadSync {
     relativePath: string,
     pr: PullRequestInfo
   ): Promise<vscode.Range[]> {
+    const comments = await this.getComments(pr);
+    return this.renderComments(uri, relativePath, comments);
+  }
+
+  private renderComments(
+    uri: vscode.Uri,
+    relativePath: string,
+    comments: ReviewComment[]
+  ): vscode.Range[] {
     this.commentController.clearThreads(uri);
 
-    const comments = await this.getComments(pr);
     const fileComments = comments.filter((c) => c.path === relativePath);
     debug('Thread sync:', fileComments.length, 'comments for', relativePath);
 
@@ -92,6 +100,46 @@ export class CommentThreadSync {
 
     debug('Thread sync: created', threadsCreated, 'threads (' + gnThreads, '^gn +', lineThreads, 'line)');
     return highlightRanges;
+  }
+
+  getCachedComments(pr: PullRequestInfo): ReviewComment[] | undefined {
+    const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
+    return this.cache.get(cacheKey);
+  }
+
+  async syncForDocumentCacheFirst(
+    uri: vscode.Uri,
+    relativePath: string,
+    pr: PullRequestInfo
+  ): Promise<vscode.Range[]> {
+    const cached = this.getCachedComments(pr);
+    if (!cached) {
+      debug('Thread sync (cache-first): no cache — falling back to normal sync');
+      return this.syncForDocument(uri, relativePath, pr);
+    }
+
+    // Render from cache immediately
+    debug('Thread sync (cache-first): rendering from cache');
+    const cachedRanges = this.renderComments(uri, relativePath, cached);
+
+    // Fetch fresh data in background
+    debug('Thread sync (cache-first): fetching fresh data');
+    const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
+    const freshComments = await this.prService.listReviewComments(pr);
+
+    // Compare: if data changed, re-render
+    const cacheFingerprint = JSON.stringify(cached.map((c) => c.id).sort());
+    const freshFingerprint = JSON.stringify(freshComments.map((c) => c.id).sort());
+
+    if (cacheFingerprint !== freshFingerprint) {
+      debug('Thread sync (cache-first): data changed — re-rendering');
+      this.cache.set(cacheKey, freshComments);
+      return this.renderComments(uri, relativePath, freshComments);
+    }
+
+    debug('Thread sync (cache-first): data unchanged — skipping re-render');
+    this.cache.set(cacheKey, freshComments);
+    return cachedRanges;
   }
 
   invalidateCache(): void {

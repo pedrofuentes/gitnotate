@@ -58,6 +58,12 @@ export const workspace = {
   get workspaceFolders() {
     return mockWorkspaceFolders;
   },
+  onDidSaveTextDocument: vi.fn((_listener: unknown) => ({
+    dispose: vi.fn(),
+  })),
+  onDidCloseTextDocument: vi.fn((_listener: unknown) => ({
+    dispose: vi.fn(),
+  })),
 };
 
 export class Position {

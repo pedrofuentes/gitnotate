@@ -329,5 +329,95 @@ describe('PrService', () => {
       expect(comments).toHaveLength(1);
       expect(comments[0].userLogin).toBeUndefined();
     });
+
+    it('should stop paginating after MAX_PAGES (10) even if API returns full pages', async () => {
+      const fullPage = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 1,
+        body: `comment ${i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+
+      // Return full pages indefinitely
+      for (let i = 0; i < 15; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
+        });
+      }
+
+      const comments = await client.listReviewComments(pr);
+
+      expect(comments).toHaveLength(1000); // 10 pages × 100
+      expect(mockFetch).toHaveBeenCalledTimes(10);
+    });
+
+    it('should return all accumulated comments when MAX_PAGES is reached', async () => {
+      const fullPage = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 1,
+        body: `comment ${i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+
+      for (let i = 0; i < 10; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
+        });
+      }
+
+      const comments = await client.listReviewComments(pr);
+
+      // Verify we got comments from all 10 pages
+      expect(comments.length).toBe(1000);
+      // First comment from page 1
+      expect(comments[0].id).toBe(1);
+      // Last comment from page 10
+      expect(comments[999].id).toBe(1000);
+    });
+
+    it('should log a warning when MAX_PAGES is reached', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fullPage = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 1,
+        body: `comment ${i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+
+      for (let i = 0; i < 10; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
+        });
+      }
+
+      await client.listReviewComments(pr);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[Gitnotate]'),
+        expect.stringContaining('MAX_PAGES')
+      );
+      consoleSpy.mockRestore();
+    });
   });
 });

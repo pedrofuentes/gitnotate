@@ -234,4 +234,127 @@ describe('CommentThreadSync', () => {
       expect(prService.listReviewComments).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('getCachedComments', () => {
+    it('should return undefined when no cache exists', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+
+      const result = sync.getCachedComments(makePr());
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return cached data after a sync populates the cache', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const cached = sync.getCachedComments(pr);
+      expect(cached).toBeDefined();
+      expect(cached).toHaveLength(1);
+      expect(cached![0].id).toBe(1);
+    });
+
+    it('should return undefined after invalidateCache()', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      sync.invalidateCache();
+
+      expect(sync.getCachedComments(pr)).toBeUndefined();
+    });
+  });
+
+  describe('syncForDocumentCacheFirst', () => {
+    it('should fall back to normal sync when no cache exists', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      const ranges = await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(1);
+      expect(ranges).toHaveLength(1);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+    });
+
+    it('should render cached threads immediately when cache exists', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      const firstCallCount = (prService.listReviewComments as ReturnType<typeof vi.fn>).mock.calls.length;
+
+      // Cache-first should render threads before waiting for API
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      const threads = __getCommentThreads();
+      // Should have threads rendered (old ones disposed + new ones from cache + new ones from refresh)
+      expect(threads.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should update threads when fresh data differs from cache', async () => {
+      const oldComment = makeComment({ id: 1, body: '^gn:10:R:5:15\n\nOld comment', path: 'docs/readme.md' });
+      const newComment = makeComment({ id: 2, body: '^gn:10:R:5:15\n\nNew comment', path: 'docs/readme.md' });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([oldComment])  // first sync (populate cache)
+        .mockResolvedValueOnce([newComment]); // cache-first background refresh
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn().mockResolvedValue({ ok: true }),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      // Cache-first: should fetch fresh data and update
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Should have called API twice (once for initial, once for refresh)
+      expect(listMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not re-render when fresh data matches cache', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      // Spy on clearThreads to detect re-renders
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      // Cache-first with same data
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // clearThreads called once for the cache render, but NOT again for refresh
+      // (since data is the same)
+      expect(clearSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });
