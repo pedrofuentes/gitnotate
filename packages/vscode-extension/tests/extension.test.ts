@@ -26,6 +26,32 @@ vi.mock('../src/pr-service', () => ({
   })),
 }));
 
+vi.mock('../src/comments-tree-provider', () => {
+  const mockSetComments = vi.fn();
+  const mockSetState = vi.fn();
+  const mockClear = vi.fn();
+  const mockRefresh = vi.fn();
+  const mockDispose = vi.fn();
+  const mockOnDidChangeTreeData = vi.fn();
+
+  return {
+    CommentsTreeProvider: vi.fn().mockImplementation(() => ({
+      setComments: mockSetComments,
+      setState: mockSetState,
+      clear: mockClear,
+      refresh: mockRefresh,
+      dispose: mockDispose,
+      onDidChangeTreeData: mockOnDidChangeTreeData,
+      getChildren: vi.fn().mockResolvedValue([]),
+      getTreeItem: vi.fn((el: unknown) => el),
+    })),
+    __mockSetComments: mockSetComments,
+    __mockSetState: mockSetState,
+    __mockClear: mockClear,
+    __mockRefresh: mockRefresh,
+  };
+});
+
 import { activate, deactivate } from '../src/extension';
 import {
   commands,
@@ -36,12 +62,18 @@ import {
   __getCommentControllers,
   __getCommentThreads,
   __getStatusBarItem,
+  __getTreeViews,
   __setActiveTextEditor,
   __reset,
   Uri,
 } from '../__mocks__/vscode';
 import { getGitHubToken, ensureAuthenticated } from '../src/auth';
 import { detectCurrentPR } from '../src/pr-detector';
+import {
+  __mockSetComments,
+  __mockSetState,
+  __mockRefresh,
+} from '../src/comments-tree-provider';
 
 const mockGetGitHubToken = vi.mocked(getGitHubToken);
 const mockDetectCurrentPR = vi.mocked(detectCurrentPR);
@@ -82,7 +114,15 @@ describe('extension', () => {
       'gitnotate.addComment',
       expect.any(Function)
     );
-    expect(commands.registerCommand).toHaveBeenCalledTimes(3);
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.refreshComments',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.goToComment',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledTimes(5);
   });
 
   it('should call enableWorkspace when gitnotate.enable is invoked', async () => {
@@ -745,6 +785,142 @@ describe('extension', () => {
 
       const newControllers = __getCommentControllers();
       expect(newControllers).toHaveLength(2); // new controller created
+    });
+  });
+
+  describe('sidebar TreeView wiring', () => {
+    it('should create a TreeView with gitnotateComments view id on activate', async () => {
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      expect(window.createTreeView).toHaveBeenCalledWith(
+        'gitnotateComments',
+        expect.objectContaining({ treeDataProvider: expect.any(Object) })
+      );
+    });
+
+    it('should register refreshComments command', async () => {
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      expect(commands.registerCommand).toHaveBeenCalledWith(
+        'gitnotate.refreshComments',
+        expect.any(Function)
+      );
+    });
+
+    it('should register goToComment command', async () => {
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      expect(commands.registerCommand).toHaveBeenCalledWith(
+        'gitnotate.goToComment',
+        expect.any(Function)
+      );
+    });
+
+    it('should update tree provider with comments after successful sync', async () => {
+      const mockComments = [
+        { id: 1, body: 'test', path: 'docs/readme.md', line: 5, side: 'RIGHT', createdAt: '', updatedAt: '' },
+      ];
+
+      // Configure PrService mock to return comments BEFORE activation
+      const { PrService } = await import('../src/pr-service');
+      vi.mocked(PrService).mockImplementation(() => ({
+        listReviewComments: vi.fn().mockResolvedValue(mockComments),
+      }) as any);
+
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger sync via editor change
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      handler({
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+          languageId: 'markdown',
+          fileName: '/workspace/docs/readme.md',
+        },
+      });
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(__mockSetComments).toHaveBeenCalledWith(mockComments);
+    });
+
+    it('should set noAuth state on tree provider when no token', async () => {
+      mockGetGitHubToken.mockResolvedValue(undefined);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger sync — no token
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      handler({
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+          languageId: 'markdown',
+          fileName: '/workspace/docs/readme.md',
+        },
+      });
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(__mockSetState).toHaveBeenCalledWith('noAuth');
+    });
+
+    it('should set noPr state on tree provider when no PR found', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(null);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger sync
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      handler({
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+          languageId: 'markdown',
+          fileName: '/workspace/docs/readme.md',
+        },
+      });
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(__mockSetState).toHaveBeenCalledWith('noPr');
+    });
+
+    it('should set noAuth state on tree provider when auth session changes to signed out', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Sign out
+      mockGetGitHubToken.mockResolvedValue(undefined);
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      authHandler({ provider: { id: 'github' } });
+
+      expect(__mockSetState).toHaveBeenCalledWith('noAuth');
     });
   });
 });

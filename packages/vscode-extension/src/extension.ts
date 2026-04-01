@@ -9,12 +9,14 @@ import { CommentController } from './comment-controller';
 import { CommentThreadSync } from './comment-thread-sync';
 import { PrService } from './pr-service';
 import { getRelativePath, debounce } from './utils';
+import { CommentsTreeProvider } from './comments-tree-provider';
 
 let commentCtrl: CommentController | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
 let prService: PrService | undefined;
 let threadSync: CommentThreadSync | undefined;
 let cachedToken: string | undefined;
+let treeProvider: CommentsTreeProvider | undefined;
 
 async function promptSignIn(): Promise<void> {
   const action = await vscode.window.showInformationMessage(
@@ -67,6 +69,14 @@ export function activate(context: vscode.ExtensionContext) {
   commentCtrl = new CommentController();
   context.subscriptions.push({ dispose: () => commentCtrl?.dispose() });
 
+  treeProvider = new CommentsTreeProvider();
+  const treeView = vscode.window.createTreeView('gitnotateComments', {
+    treeDataProvider: treeProvider,
+    showCollapseAll: true,
+  });
+  context.subscriptions.push(treeView);
+  context.subscriptions.push({ dispose: () => treeProvider?.dispose() });
+
   const debouncedSync = debounce(async (editor: vscode.TextEditor) => {
     debug('Comment sync: editor changed →', editor.document.fileName, `(${editor.document.languageId})`);
     if (editor.document.languageId !== 'markdown') {
@@ -77,6 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
     const token = await getGitHubToken();
     if (!token) {
       debug('Comment sync: no auth token — skipping');
+      treeProvider?.setState('noAuth');
       return;
     }
 
@@ -92,6 +103,7 @@ export function activate(context: vscode.ExtensionContext) {
     const pr = await detectCurrentPR(gitService, token);
     if (!pr) {
       debug('Comment sync: no PR found — skipping');
+      treeProvider?.setState('noPr');
       return;
     }
 
@@ -103,6 +115,12 @@ export function activate(context: vscode.ExtensionContext) {
       commentCtrl.applyHighlights(editor, highlightRanges);
     } else {
       commentCtrl.clearHighlights(editor);
+    }
+
+    // Update sidebar tree with all comments from this PR
+    const cachedComments = threadSync.getCachedComments(pr);
+    if (cachedComments) {
+      treeProvider?.setComments(cachedComments);
     }
   }, 300);
 
@@ -124,6 +142,31 @@ export function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand('gitnotate.addComment', () =>
       addCommentCommand(context, triggerSync)
+    ),
+    vscode.commands.registerCommand('gitnotate.refreshComments', () => {
+      debug('Manual refresh triggered');
+      triggerSync();
+    }),
+    vscode.commands.registerCommand(
+      'gitnotate.goToComment',
+      async (filePath: string, line: number, start?: number, end?: number) => {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        if (!workspaceRoot) return;
+
+        const fullPath = `${workspaceRoot}/${filePath}`;
+        const uri = vscode.Uri.file(fullPath);
+        try {
+          const doc = await vscode.workspace.openTextDocument(uri);
+          const zeroLine = line - 1;
+          const range = new vscode.Range(
+            zeroLine, start ?? 0,
+            zeroLine, end ?? Number.MAX_SAFE_INTEGER
+          );
+          await vscode.window.showTextDocument(doc, { selection: range, preserveFocus: false });
+        } catch (err) {
+          debug('goToComment failed:', err);
+        }
+      }
     )
   );
 
@@ -163,6 +206,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (editor && commentCtrl) {
       commentCtrl.clearHighlights(editor);
     }
+    treeProvider?.setState('noAuth');
     cachedToken = undefined;
     threadSync = undefined;
     prService = undefined;
@@ -210,6 +254,10 @@ export function deactivate() {
   if (commentCtrl) {
     commentCtrl.dispose();
     commentCtrl = undefined;
+  }
+  if (treeProvider) {
+    treeProvider.dispose();
+    treeProvider = undefined;
   }
   prService = undefined;
   threadSync = undefined;

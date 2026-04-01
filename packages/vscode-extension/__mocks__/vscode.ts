@@ -31,6 +31,21 @@ interface MockCommentController {
 
 let mockCommentControllers: MockCommentController[] = [];
 
+// TreeView tracking
+interface MockTreeView {
+  viewId: string;
+  treeDataProvider: unknown;
+  options: Record<string, unknown>;
+  reveal: ReturnType<typeof vi.fn>;
+  dispose: ReturnType<typeof vi.fn>;
+  onDidChangeVisibility: ReturnType<typeof vi.fn>;
+}
+
+let mockTreeViews: MockTreeView[] = [];
+
+// Context key tracking
+const mockContextKeys: Map<string, unknown> = new Map();
+
 export const ConfigurationTarget = {
   Global: 1,
   Workspace: 2,
@@ -58,10 +73,14 @@ export const workspace = {
   get workspaceFolders() {
     return mockWorkspaceFolders;
   },
+  openTextDocument: vi.fn().mockResolvedValue({ uri: { fsPath: '/mock' } }),
   onDidSaveTextDocument: vi.fn((_listener: unknown) => ({
     dispose: vi.fn(),
   })),
   onDidCloseTextDocument: vi.fn((_listener: unknown) => ({
+    dispose: vi.fn(),
+  })),
+  onDidChangeTextDocument: vi.fn((_listener: unknown) => ({
     dispose: vi.fn(),
   })),
 };
@@ -122,6 +141,7 @@ export const window = {
   showErrorMessage: vi.fn(),
   showWarningMessage: vi.fn(),
   showInputBox: vi.fn(),
+  showTextDocument: vi.fn().mockResolvedValue(undefined),
   createTextEditorDecorationType: vi.fn((options: Record<string, unknown>) => ({
     _options: options,
     dispose: vi.fn(),
@@ -130,6 +150,18 @@ export const window = {
     dispose: vi.fn(),
   })),
   createStatusBarItem: vi.fn(() => mockStatusBarItem),
+  createTreeView: vi.fn((viewId: string, options: Record<string, unknown>) => {
+    const treeView: MockTreeView = {
+      viewId,
+      treeDataProvider: options.treeDataProvider,
+      options,
+      reveal: vi.fn(),
+      dispose: vi.fn(),
+      onDidChangeVisibility: vi.fn((_listener: unknown) => ({ dispose: vi.fn() })),
+    };
+    mockTreeViews.push(treeView);
+    return treeView;
+  }),
   get activeTextEditor() {
     return mockActiveTextEditor;
   },
@@ -137,6 +169,11 @@ export const window = {
 
 export const commands = {
   registerCommand: vi.fn(),
+  executeCommand: vi.fn(async (command: string, ...args: unknown[]) => {
+    if (command === 'setContext' && args.length >= 2) {
+      mockContextKeys.set(args[0] as string, args[1]);
+    }
+  }),
 };
 
 export const authentication = {
@@ -180,6 +217,53 @@ export enum OverviewRulerLane {
   Center = 2,
   Right = 4,
   Full = 7,
+}
+
+export enum TreeItemCollapsibleState {
+  None = 0,
+  Collapsed = 1,
+  Expanded = 2,
+}
+
+export class TreeItem {
+  label: string | { label: string };
+  collapsibleState?: TreeItemCollapsibleState;
+  description?: string;
+  tooltip?: string;
+  iconPath?: unknown;
+  command?: { command: string; title: string; arguments?: unknown[] };
+  contextValue?: string;
+
+  constructor(label: string | { label: string }, collapsibleState?: TreeItemCollapsibleState) {
+    this.label = label;
+    this.collapsibleState = collapsibleState;
+  }
+}
+
+export class ThemeIcon {
+  constructor(
+    public readonly id: string,
+    public readonly color?: unknown
+  ) {}
+}
+
+export class EventEmitter<T> {
+  private listeners: Array<(e: T) => void> = [];
+
+  event = (listener: (e: T) => void) => {
+    this.listeners.push(listener);
+    return { dispose: () => { this.listeners = this.listeners.filter(l => l !== listener); } };
+  };
+
+  fire(data: T): void {
+    for (const listener of this.listeners) {
+      listener(data);
+    }
+  }
+
+  dispose(): void {
+    this.listeners = [];
+  }
 }
 
 export const comments = {
@@ -290,6 +374,14 @@ export function __getCommentThreads(): MockCommentThread[] {
   return mockCommentControllers.flatMap((c) => c.threads);
 }
 
+export function __getTreeViews(): MockTreeView[] {
+  return mockTreeViews;
+}
+
+export function __getContextKeys(): Map<string, unknown> {
+  return new Map(mockContextKeys);
+}
+
 export function __reset() {
   mockEnabledRepos = [];
   mockWorkspaceFolders = undefined;
@@ -298,6 +390,8 @@ export function __reset() {
   mockAuthSession = undefined;
   mockGitRepository = undefined;
   mockCommentControllers = [];
+  mockTreeViews = [];
+  mockContextKeys.clear();
   vi.clearAllMocks();
   authentication.getSession.mockImplementation(async () => undefined);
   authentication.onDidChangeSessions.mockImplementation((_listener: unknown) => ({

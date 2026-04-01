@@ -29,6 +29,15 @@
       {
         "command": "gitnotate.addComment",
         "title": "Gitnotate: Add Comment"
+      },
+      {
+        "command": "gitnotate.refreshComments",
+        "title": "Refresh Comments",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitnotate.goToComment",
+        "title": "Go to Comment"
       }
     ],
     "configuration": {
@@ -58,6 +67,15 @@
         {
           "id": "gitnotateComments",
           "name": "Comments"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "gitnotate.refreshComments",
+          "when": "view == gitnotateComments",
+          "group": "navigation"
         }
       ]
     }
