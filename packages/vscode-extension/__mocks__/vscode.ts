@@ -73,10 +73,14 @@ export const workspace = {
   get workspaceFolders() {
     return mockWorkspaceFolders;
   },
+  openTextDocument: vi.fn().mockResolvedValue({ uri: { fsPath: '/mock' } }),
   onDidSaveTextDocument: vi.fn((_listener: unknown) => ({
     dispose: vi.fn(),
   })),
   onDidCloseTextDocument: vi.fn((_listener: unknown) => ({
+    dispose: vi.fn(),
+  })),
+  onDidChangeTextDocument: vi.fn((_listener: unknown) => ({
     dispose: vi.fn(),
   })),
 };
@@ -137,6 +141,7 @@ export const window = {
   showErrorMessage: vi.fn(),
   showWarningMessage: vi.fn(),
   showInputBox: vi.fn(),
+  showTextDocument: vi.fn().mockResolvedValue(undefined),
   createTextEditorDecorationType: vi.fn((options: Record<string, unknown>) => ({
     _options: options,
     dispose: vi.fn(),

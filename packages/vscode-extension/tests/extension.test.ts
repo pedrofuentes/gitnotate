@@ -823,6 +823,13 @@ describe('extension', () => {
       const mockComments = [
         { id: 1, body: 'test', path: 'docs/readme.md', line: 5, side: 'RIGHT', createdAt: '', updatedAt: '' },
       ];
+
+      // Configure PrService mock to return comments BEFORE activation
+      const { PrService } = await import('../src/pr-service');
+      vi.mocked(PrService).mockImplementation(() => ({
+        listReviewComments: vi.fn().mockResolvedValue(mockComments),
+      }) as any);
+
       mockGetGitHubToken.mockResolvedValue('test-token');
       mockDetectCurrentPR.mockResolvedValue({
         owner: 'octocat',
@@ -834,13 +841,6 @@ describe('extension', () => {
       const context = makeContext();
       activate(context as any);
       await vi.runAllTimersAsync();
-
-      // Configure PrService mock to return comments
-      const { PrService } = await import('../src/pr-service');
-      const mockPrServiceInstance = vi.mocked(PrService).mock.results[0]?.value;
-      if (mockPrServiceInstance) {
-        mockPrServiceInstance.listReviewComments.mockResolvedValue(mockComments);
-      }
 
       // Trigger sync via editor change
       const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;

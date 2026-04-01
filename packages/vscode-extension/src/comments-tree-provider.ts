@@ -178,18 +178,37 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
         label = stripBlockquoteFallback(userComment);
         lineDesc = `L${metadata.lineNumber}:${metadata.start}-${metadata.end}`;
         lineNumber = metadata.lineNumber;
+
+        const command: vscode.Command = {
+          command: 'gitnotate.goToComment',
+          title: 'Go to Comment',
+          arguments: [comment.path, metadata.lineNumber, metadata.start, metadata.end],
+        };
+
+        let description = `@${author} ${lineDesc}`;
+        if (replyCount > 0) {
+          description += ` · ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+        }
+
+        return new CommentItem(label, description, lineNumber, comment.id, command);
       } else {
         label = comment.body;
         lineDesc = `L${comment.line ?? 1}`;
         lineNumber = comment.line ?? 1;
-      }
 
-      let description = `@${author} ${lineDesc}`;
-      if (replyCount > 0) {
-        description += ` · ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-      }
+        const command: vscode.Command = {
+          command: 'gitnotate.goToComment',
+          title: 'Go to Comment',
+          arguments: [comment.path, lineNumber, undefined, undefined],
+        };
 
-      return new CommentItem(label, description, lineNumber, comment.id);
+        let description = `@${author} ${lineDesc}`;
+        if (replyCount > 0) {
+          description += ` · ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+        }
+
+        return new CommentItem(label, description, lineNumber, comment.id, command);
+      }
     });
   }
 
