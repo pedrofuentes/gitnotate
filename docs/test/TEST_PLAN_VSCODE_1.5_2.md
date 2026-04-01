@@ -73,7 +73,7 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 |---|------|-------|----------|--------|
 | 11.1 | Gutter `+` on markdown | Open a markdown file on a PR branch. Hover over the gutter (left of line numbers). | A `+` button appears on non-empty lines. Empty lines and whitespace-only lines do NOT show the `+` button. | ⬜ |
 | 11.2 | No gutter `+` on non-markdown | Open a `.ts`, `.js`, or `.json` file. Hover over the gutter. | No `+` button from Gitnotate appears (GH PR extension may show its own). | ⬜ |
-| 11.3 | Click gutter `+` | Click the `+` button on a markdown line. | A new comment thread input box opens at that line. (Note: posting from the gutter is not yet wired in Increment 2 — this verifies the range provider works.) | ⬜ |
+| 11.3 | Click gutter `+` | Click the `+` button on a markdown line. | A "Start discussion" input box opens at that line. No submit/cancel buttons appear (comment thread actions not yet wired — planned for Increment 5). | ⬜ |
 
 ---
 
