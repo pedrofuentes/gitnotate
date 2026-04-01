@@ -34,6 +34,7 @@ import {
   authentication,
   ExtensionMode,
   __getCommentControllers,
+  __getCommentThreads,
   __getStatusBarItem,
   __setActiveTextEditor,
   __reset,
@@ -550,6 +551,35 @@ describe('extension', () => {
       await vi.advanceTimersByTimeAsync(300);
 
       expect(mockGetGitHubToken).toHaveBeenCalled();
+    });
+
+    it('should clear all threads immediately on auth change (20.1)', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Get the underlying vscode comment controller mock
+      const controllers = __getCommentControllers();
+      expect(controllers).toHaveLength(1);
+
+      // Manually create a thread to simulate having visible threads
+      const mockUri = Uri.file('/workspace/docs/readme.md');
+      controllers[0].createCommentThread(mockUri, {}, [{ body: 'test' }]);
+      expect(__getCommentThreads().length).toBe(1);
+
+      // Sign out — token becomes undefined
+      mockGetGitHubToken.mockResolvedValue(undefined);
+
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+
+      // Snapshot existing thread
+      const threadBeforeAuth = __getCommentThreads()[0];
+
+      authHandler({ provider: { id: 'github' } });
+      await vi.advanceTimersByTimeAsync(300);
+
+      // The thread should have been disposed by clearThreads()
+      expect(threadBeforeAuth.dispose).toHaveBeenCalled();
     });
 
     it('should not crash when auth changes with no active editor (20.3)', async () => {
