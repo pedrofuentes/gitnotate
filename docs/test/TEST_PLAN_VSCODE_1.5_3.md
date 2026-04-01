@@ -1,9 +1,20 @@
-# Gitnotate VSCode Extension — Manual Test Plan
+# Gitnotate VSCode Extension — Test Plan
 
 > **Scope**: Phase 1.5, Increment 3 (Comment Lifecycle & Refresh)
 > **Created**: 2026-04-01
 > **Depends on**: Increment 2 test plan (`TEST_PLAN_VSCODE_1.5_2.md`) — suites 9–16 still apply
 > **Branch**: `feature/hoist-services` (merged to `main`)
+
+---
+
+## Trust Level Legend
+
+| Marker | Meaning | Manual check needed? |
+|--------|---------|----------------------|
+| ✅ Unit | Verified by unit test with meaningful assertions — **high trust** | No |
+| 🔍 Integration | Smoke test in real VSCode — proves no crash, not correct behavior | One spot-check per category recommended |
+| ⬜ Manual | Cannot be automated — requires real GitHub auth/API or visual UI | Yes, must verify |
+| ⏭️ Covered | Impractical to set up manually — fully covered by unit test | No |
 
 ---
 
@@ -32,7 +43,7 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 17.1 | Cache persists on tab switch | Open `file-a.md` (has `^gn` comments). Wait for threads to load. Open Debug Console. Switch to `file-b.md` (same PR, has `^gn` comments). Switch back to `file-a.md`. | On second visit to `file-a.md`, threads appear **instantly** (no API latency). Debug Console shows `[Gitnotate] Thread sync (cache-first): rendering from cache` instead of `[Gitnotate] Thread sync: fetching comments for ...`. | ✅ Unit + Integration |
+| 17.1 | Cache persists on tab switch | Open `file-a.md` (has `^gn` comments). Wait for threads to load. Open Debug Console. Switch to `file-b.md` (same PR, has `^gn` comments). Switch back to `file-a.md`. | On second visit to `file-a.md`, threads appear **instantly** (no API latency). Debug Console shows `[Gitnotate] Thread sync (cache-first): rendering from cache` instead of `[Gitnotate] Thread sync: fetching comments for ...`. | ✅ Unit + 🔍 Integration |
 | 17.2 | Cache-first then background refresh | Open `file-a.md`, wait for threads. Switch away and back. Check Debug Console. | Shows `Thread sync (cache-first): rendering from cache` followed by `Thread sync (cache-first): fetching fresh data`. If data hasn't changed: `Thread sync (cache-first): data unchanged — skipping re-render`. | ✅ Unit |
 | 17.3 | New comment appears after background refresh | While on `file-a.md` in VSCode, add a new `^gn` comment on the same file via the **GitHub web UI** (browser). Switch away from `file-a.md` and back. | Cached (stale) threads render instantly. After the background refresh completes (~1–2s), the new comment appears as an additional thread. Debug Console: `Thread sync (cache-first): data changed — re-rendering`. | ⬜ Manual |
 | 17.4 | Single API call per PR, not per file | Open `file-a.md` (PR has comments on both files). Check Debug Console for the API URL. | Only one `GET .../pulls/N/comments?per_page=100&page=1` call. Comments for `file-a.md` are filtered client-side from the full PR comment list. | ✅ Unit |
@@ -44,9 +55,9 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 18.1 | Save markdown triggers re-sync | Open a markdown file with `^gn` comments. Edit the file (add a blank line). Save (`Ctrl+S`). | Debug Console shows `[Gitnotate] Document saved: <filename>` followed by a comment sync. Threads remain correct after the save. | ✅ Unit + Integration |
-| 18.2 | Save non-markdown does NOT trigger sync | Open `sample.js`. Edit it. Save (`Ctrl+S`). Check Debug Console. | NO `[Gitnotate] Document saved:` log entry. No comment sync triggered. | ✅ Unit + Integration |
-| 18.3 | Save refreshes after line shift | Open a markdown file with a `^gn:10:R:5:15` comment. Add 2 blank lines above line 10 (so the commented line moves to line 12). Save. On GitHub, the comment is still on the original line. | After save, the thread may appear on the wrong line (line 10 per metadata) — this is expected because `^gn` metadata is static. The re-sync confirms no crash occurs. | ✅ Integration |
+| 18.1 | Save markdown triggers re-sync | Open a markdown file with `^gn` comments. Edit the file (add a blank line). Save (`Ctrl+S`). | Debug Console shows `[Gitnotate] Document saved: <filename>` followed by a comment sync. Threads remain correct after the save. | ✅ Unit + 🔍 Integration |
+| 18.2 | Save non-markdown does NOT trigger sync | Open `sample.js`. Edit it. Save (`Ctrl+S`). Check Debug Console. | NO `[Gitnotate] Document saved:` log entry. No comment sync triggered. | ✅ Unit + 🔍 Integration |
+| 18.3 | Save refreshes after line shift | Open a markdown file with a `^gn:10:R:5:15` comment. Add 2 blank lines above line 10 (so the commented line moves to line 12). Save. On GitHub, the comment is still on the original line. | After save, the thread may appear on the wrong line (line 10 per metadata) — this is expected because `^gn` metadata is static. The re-sync confirms no crash occurs. | 🔍 Integration |
 
 ---
 
@@ -54,9 +65,9 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 19.1 | Close markdown clears threads | Open `file-a.md` (has `^gn` comments, threads visible). Close the `file-a.md` tab. Open the Comments panel (View → Comments). | Threads from `file-a.md` are no longer listed. Debug Console shows `[Gitnotate] Document closed: <filename>`. | ✅ Unit + Integration |
+| 19.1 | Close markdown clears threads | Open `file-a.md` (has `^gn` comments, threads visible). Close the `file-a.md` tab. Open the Comments panel (View → Comments). | Threads from `file-a.md` are no longer listed. Debug Console shows `[Gitnotate] Document closed: <filename>`. | ✅ Unit + 🔍 Integration |
 | 19.2 | Close non-markdown does NOT clear threads | Open `sample.js`. Close its tab. Check Debug Console. | NO `[Gitnotate] Document closed:` log entry. Any open markdown threads are unaffected. | ✅ Unit |
-| 19.3 | Close does NOT invalidate PR cache | Open `file-a.md`, let threads load. Close `file-a.md`. Re-open `file-a.md`. | Threads appear instantly from cache (no API call). Debug Console: `Thread sync (cache-first): rendering from cache`. The PR-level cache is preserved even though the file's threads were cleared on close. | ✅ Unit + Integration |
+| 19.3 | Close does NOT invalidate PR cache | Open `file-a.md`, let threads load. Close `file-a.md`. Re-open `file-a.md`. | Threads appear instantly from cache (no API call). Debug Console: `Thread sync (cache-first): rendering from cache`. The PR-level cache is preserved even though the file's threads were cleared on close. | ✅ Unit + 🔍 Integration |
 
 ---
 
@@ -84,7 +95,41 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 22.1 | Clean deactivation with hoisted services | Load extension, let threads appear. Close the Extension Development Host window. | Debug Console: `[Gitnotate] Extension deactivating...`. No errors. All hoisted references (`prService`, `threadSync`, `cachedToken`, `commentCtrl`) are cleaned up. | ✅ Unit |
-| 22.2 | Reactivation after deactivation | Close and reopen the Extension Development Host (or reload window with `Developer: Reload Window`). Open a markdown file on a PR branch. | Extension reactivates. Threads load normally. No stale state from previous activation. | ✅ Unit + Integration |
+| 22.2 | Reactivation after deactivation | Close and reopen the Extension Development Host (or reload window with `Developer: Reload Window`). Open a markdown file on a PR branch. | Extension reactivates. Threads load normally. No stale state from previous activation. | ✅ Unit + 🔍 Integration |
+
+---
+
+## Your Manual Checklist
+
+### ⬜ Must verify (no automation possible)
+
+| # | Test | What to check |
+|---|------|---------------|
+| 17.3 | Background refresh picks up new comments | Add a `^gn` comment via GitHub web while file is open in VSCode. Switch tabs away and back. Verify new thread appears. Debug Console: `data changed — re-rendering` |
+| 20.1 | Sign out clears threads | Sign out of GitHub with threads visible. Verify Debug Console: `Auth session changed`. Threads should disappear. |
+| 20.2 | Sign in triggers fresh sync | After sign-out, sign back in. Verify Debug Console: `recreated PrService + CommentThreadSync`. Threads reappear. |
+
+### 🔍 Recommended spot-checks (one per category, first time only)
+
+Integration smoke tests prove "no crash" but can't verify correct behavior. Spot-check one from each category:
+
+| Category | Recommended test | What to verify in Debug Console |
+|----------|------------------|---------------------------------|
+| Cache/tab switch | 17.1 | Switch tabs away and back. Look for `Thread sync (cache-first): rendering from cache` |
+| Save | 18.1 | Edit + save a markdown file. Look for `Document saved: <filename>` |
+| Close/reopen | 19.3 | Close a markdown tab, reopen it. Verify threads reappear instantly from cache |
+
+**Once these 3 spot-checks pass**, the remaining integration smoke tests are trustworthy and don't need manual verification.
+
+### Summary
+
+| Trust level | Count | Manual effort |
+|-------------|-------|---------------|
+| ✅ Unit (high trust) | 10 | None |
+| 🔍 Integration (smoke) | 7 | 3 spot-checks (first time) |
+| ⬜ Manual | 3 | Must verify each |
+| ⏭️ Covered by unit | 2 | None |
+| **Total** | **18** | **6 manual checks** |
 
 ---
 
