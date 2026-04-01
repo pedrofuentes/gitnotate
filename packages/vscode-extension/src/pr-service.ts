@@ -19,6 +19,7 @@ export interface ReviewComment {
 
 const BASE_URL = 'https://api.github.com';
 const PER_PAGE = 100;
+const MAX_PAGES = 10;
 
 export class PrService {
   constructor(private token: string) {}
@@ -107,7 +108,7 @@ export class PrService {
     let page = 1;
 
     try {
-      while (true) {
+      while (page <= MAX_PAGES) {
         const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=${PER_PAGE}&page=${page}`;
         console.log('[Gitnotate] GET', url);
         const response = await fetch(url, {
@@ -148,6 +149,10 @@ export class PrService {
 
         if (data.length < PER_PAGE) break;
         page++;
+      }
+
+      if (page > MAX_PAGES) {
+        console.warn('[Gitnotate]', `MAX_PAGES (${MAX_PAGES}) reached — returning ${allComments.length} comments, some may be missing`);
       }
 
       return allComments;
