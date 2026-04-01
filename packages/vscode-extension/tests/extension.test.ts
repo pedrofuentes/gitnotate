@@ -582,6 +582,44 @@ describe('extension', () => {
       clearThreadsSpy.mockRestore();
     });
 
+    it('should clear highlights on active editor when auth changes (20.1b)', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Set an active editor with a setDecorations spy
+      const setDecorationsSpy = vi.fn();
+      __setActiveTextEditor({
+        setDecorations: setDecorationsSpy,
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+          languageId: 'markdown',
+          fileName: '/workspace/docs/readme.md',
+        },
+      });
+
+      // Sign out
+      mockGetGitHubToken.mockResolvedValue(undefined);
+
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      authHandler({ provider: { id: 'github' } });
+
+      // clearHighlights should have been called — setDecorations with empty arrays
+      expect(setDecorationsSpy).toHaveBeenCalled();
+      // Each call should pass an empty array (clearing the decorations)
+      for (const call of setDecorationsSpy.mock.calls) {
+        expect(call[1]).toEqual([]);
+      }
+    });
+
     it('should not crash when auth changes with no active editor (20.3)', async () => {
       const context = makeContext();
       activate(context as any);
