@@ -327,4 +327,93 @@ suite('Gitnotate Integration Tests', () => {
       );
     });
   });
+
+  // Suite 29: Sidebar Smoke Tests (Increment 4)
+  suite('Suite 29: Sidebar Smoke Tests', () => {
+    test('29.1 — Sidebar commands registered on activation', async () => {
+      await openDocument('edge-cases.md');
+      await sleep(2000);
+
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(
+        commands.includes('gitnotate.refreshComments'),
+        'gitnotate.refreshComments command should be registered'
+      );
+      assert.ok(
+        commands.includes('gitnotate.goToComment'),
+        'gitnotate.goToComment command should be registered'
+      );
+    });
+
+    test('29.2 — Opening sidebar does not crash', async () => {
+      await openDocument('edge-cases.md');
+      await sleep(1000);
+
+      // Focus the Gitnotate sidebar view
+      try {
+        await vscode.commands.executeCommand('gitnotateComments.focus');
+      } catch {
+        // View may not be focusable in test environment — that's fine
+      }
+      await sleep(500);
+
+      // No crash = pass
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(
+        commands.includes('gitnotate.refreshComments'),
+        'Extension should still work after sidebar focus attempt'
+      );
+    });
+
+    test('29.3 — Tab switching with sidebar does not crash', async () => {
+      // Open sidebar view
+      try {
+        await vscode.commands.executeCommand('gitnotateComments.focus');
+      } catch {
+        // May not be available
+      }
+      await sleep(500);
+
+      // Switch between files
+      await openDocument('edge-cases.md');
+      await sleep(500);
+      await openDocument('notes.md');
+      await sleep(500);
+      await openDocument('sample.js');
+      await sleep(500);
+      await openDocument('edge-cases.md');
+      await sleep(500);
+
+      // No crash = pass
+    });
+
+    test('29.4 — Close all + reopen with sidebar does not crash', async () => {
+      // Focus sidebar
+      try {
+        await vscode.commands.executeCommand('gitnotateComments.focus');
+      } catch {
+        // May not be available
+      }
+
+      const editor1 = await openDocument('edge-cases.md');
+      assert.ok(editor1);
+      await sleep(500);
+
+      // Close all editors
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await sleep(500);
+
+      // Reopen
+      const editor2 = await openDocument('notes.md');
+      assert.ok(editor2);
+      await sleep(1000);
+
+      // Verify extension is still active
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(
+        commands.includes('gitnotate.refreshComments'),
+        'Sidebar commands should still exist after close-all + reopen'
+      );
+    });
+  });
 });
