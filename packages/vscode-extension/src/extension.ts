@@ -159,6 +159,10 @@ export function activate(context: vscode.ExtensionContext) {
   const authDisposable = vscode.authentication.onDidChangeSessions(() => {
     debug('Auth session changed — invalidating cache and re-syncing');
     commentCtrl?.clearThreads();
+    const editor = vscode.window.activeTextEditor;
+    if (editor && commentCtrl) {
+      commentCtrl.clearHighlights(editor);
+    }
     cachedToken = undefined;
     threadSync = undefined;
     prService = undefined;
