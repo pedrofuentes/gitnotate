@@ -133,10 +133,15 @@ export function activate(context: vscode.ExtensionContext) {
   debug('Commands registered: enable, disable, addComment');
   updatePRStatusBar();
 
-  // Sync the already-open editor (onDidChangeActiveTextEditor doesn't fire for it)
-  if (vscode.window.activeTextEditor) {
-    debouncedSync(vscode.window.activeTextEditor);
-  }
+  // Sync the already-open editor (onDidChangeActiveTextEditor doesn't fire for it).
+  // Use a delay because vscode.git extension may not be available yet at activation time.
+  const initialSyncDelay = setTimeout(() => {
+    if (vscode.window.activeTextEditor) {
+      debug('Initial sync: triggering for', vscode.window.activeTextEditor.document.fileName);
+      debouncedSync(vscode.window.activeTextEditor);
+    }
+  }, 1500);
+  context.subscriptions.push({ dispose: () => clearTimeout(initialSyncDelay) });
 }
 
 export function deactivate() {
