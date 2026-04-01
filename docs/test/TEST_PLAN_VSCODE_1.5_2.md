@@ -82,11 +82,11 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 12.1 | Comments load on activation | Launch Extension Development Host with a markdown file already open on a PR branch. Do NOT switch tabs. | Comments and highlights appear automatically after 2-5s. Debug Console shows `[Gitnotate] Initial sync: git not ready, retry N of 5` then `[Gitnotate] Initial sync: triggering for <file>`. | ✅ |
-| 12.2 | Sync on editor switch | Have PR comments on `edge-cases.md`. Open `edge-cases.md` → see threads. Switch to `notes.md`. | After ~300ms, `edge-cases.md` threads disappear from the Comments panel. `notes.md` threads appear (or empty if no comments on it). | ⬜ |
-| 12.3 | Rapid switching debounced | Quickly switch between 3+ tabs within 300ms. | Only the final tab triggers a sync. Debug Console shows only one `[Gitnotate] Comment sync: syncing ...` entry (not multiple). | ⬜ |
-| 12.4 | Non-markdown editor ignored | Switch from a markdown file to `sample.js`. | Debug Console: `[Gitnotate] Comment sync: not markdown — skipping`. Existing threads from the markdown file are not affected. | ⬜ |
+| 12.2 | Sync on editor switch | Have PR comments on `edge-cases.md`. Open `edge-cases.md` → see threads. Switch to `notes.md`. | After ~300ms, `edge-cases.md` threads disappear from the Comments panel. `notes.md` threads appear (or empty if no comments on it). | ✅ |
+| 12.3 | Rapid switching debounced | Quickly switch between 3+ tabs within 300ms. | Only the final tab triggers a sync. Debug Console shows only one `[Gitnotate] Comment sync: syncing ...` entry (not multiple). | ✅ |
+| 12.4 | Non-markdown editor ignored | Switch from a markdown file to `sample.js`. | Debug Console: `[Gitnotate] Comment sync: not markdown — skipping`. Existing threads from the markdown file are not affected. | ✅ |
 | 12.5 | No auth — silent skip | Sign out of GitHub. Switch to a markdown file on a PR branch. | No threads appear. No error message. Debug Console: `[Gitnotate] Comment sync: no auth token — skipping`. | ⬜ |
-| 12.6 | No PR — silent skip | Open a repo on `main` (no PR). Switch to a markdown file. | No threads appear. No error. Debug Console: `[Gitnotate] Comment sync: no PR found — skipping`. | ⬜ |
+| 12.6 | No PR — silent skip | Open a repo on `main` (no PR). Switch to a markdown file. | No threads appear. No error. Debug Console: `[Gitnotate] Comment sync: no PR found — skipping`. | ✅ |
 
 ---
 
@@ -94,7 +94,7 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 13.1 | Wavy underlines visible | Open a markdown file with `^gn` comments. | Colored wavy underlines appear on the exact text ranges. No yellow background highlights (old behavior removed). | ⬜ |
+| 13.1 | Wavy underlines visible | Open a markdown file with `^gn` comments. | Colored wavy underlines appear on the exact text ranges. No yellow background highlights (old behavior removed). | ✅ |
 | 13.2 | Post-comment refresh | Select text in a markdown file. Run "Gitnotate: Add Comment". Enter comment text. | Comment posts to GitHub. After success, the new comment immediately appears as a thread with a wavy underline — no manual tab switch needed. | ⬜ |
 | 13.3 | Color matches between underline and emoji | Open a file with multiple `^gn` comments. | Each thread's emoji label (🟡🔵🟣🟠🟢🔴) matches the color of its wavy underline. | ⬜ |
 | 13.4 | No hover-to-see-comment | Hover over text that has a `^gn` comment. | No custom hover tooltip appears (old `DecorationManager` behavior). The comment is visible only via the thread UI. | ⬜ |
@@ -105,7 +105,7 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 14.1 | Extended fields in API call | Open a file with `^gn` comments. Check Debug Console. | Debug Console: `[Gitnotate] GET https://api.github.com/repos/.../pulls/.../comments?per_page=100&page=1`. Thread sync logs show comments parsed with author names. | ⬜ |
+| 14.1 | Extended fields in API call | Open a file with `^gn` comments. Check Debug Console. | Debug Console: `[Gitnotate] GET https://api.github.com/repos/.../pulls/.../comments?per_page=100&page=1`. Thread sync logs show comments parsed with author names. | ✅ |
 | 14.2 | Pagination with many comments | Have a PR with 100+ review comments. Open a file. | Debug Console shows page 1 AND page 2 fetch calls. All comments load correctly. | ⏭️ Difficult to set up manually — covered by unit test |
 
 ---
@@ -125,8 +125,8 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 16.1 | Network failure during sync | Disconnect network. Switch to a markdown file on a PR branch. | No crash. No threads appear. Debug Console: `[Gitnotate] listReviewComments failed:` with error. | ⬜ |
-| 16.2 | Malformed `^gn` metadata | Post a PR comment with invalid metadata (e.g., `^gn:abc:X:not:valid`). | Comment shows as a regular line thread (not parsed as `^gn`). Other valid `^gn` comments still render. No crash. | ⬜ |
-| 16.3 | Deactivation cleanup | Run tests, then close the Extension Development Host window. | No errors on shutdown. All threads disposed. Debug Console: `[Gitnotate] Extension deactivating...` | ⬜ |
+| 16.2 | Malformed `^gn` metadata | Post a PR comment with invalid metadata (e.g., `^gn:abc:X:not:valid`). | Comment shows as a regular line thread (not parsed as `^gn`). Other valid `^gn` comments still render. No crash. | ✅ |
+| 16.3 | Deactivation cleanup | Run tests, then close the Extension Development Host window. | No errors on shutdown. All threads disposed. Debug Console: `[Gitnotate] Extension deactivating...` | ✅ |
 
 ---
 
