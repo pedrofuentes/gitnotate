@@ -12,6 +12,9 @@ import { getRelativePath, debounce } from './utils';
 
 let commentCtrl: CommentController | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
+let prService: PrService | undefined;
+let threadSync: CommentThreadSync | undefined;
+let cachedToken: string | undefined;
 
 async function promptSignIn(): Promise<void> {
   const action = await vscode.window.showInformationMessage(
@@ -77,6 +80,14 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
+    if (token !== cachedToken || !prService || !threadSync) {
+      cachedToken = token;
+      prService = new PrService(token);
+      if (!commentCtrl) return;
+      threadSync = new CommentThreadSync(prService, commentCtrl);
+      debug('Comment sync: recreated PrService + CommentThreadSync (token changed)');
+    }
+
     const gitService = new GitService();
     const pr = await detectCurrentPR(gitService, token);
     if (!pr) {
@@ -84,12 +95,10 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const prService = new PrService(token);
     if (!commentCtrl) return;
-    const sync = new CommentThreadSync(prService, commentCtrl);
     const relativePath = getRelativePath(editor.document.fileName);
     debug('Comment sync: syncing', relativePath, `(PR #${pr.number})`);
-    const highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
+    const highlightRanges = await threadSync.syncForDocument(editor.document.uri, relativePath, pr);
     if (highlightRanges.length > 0) {
       commentCtrl.applyHighlights(editor, highlightRanges);
     } else {
@@ -171,5 +180,8 @@ export function deactivate() {
     commentCtrl.dispose();
     commentCtrl = undefined;
   }
+  prService = undefined;
+  threadSync = undefined;
+  cachedToken = undefined;
   statusBarItem?.dispose();
 }
