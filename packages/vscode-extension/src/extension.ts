@@ -64,22 +64,12 @@ export function activate(context: vscode.ExtensionContext) {
   commentCtrl = new CommentController();
   context.subscriptions.push({ dispose: () => commentCtrl?.dispose() });
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('gitnotate.enable', async () => {
-      await enableWorkspace();
-      vscode.window.showInformationMessage('Gitnotate enabled for this workspace');
-    }),
-    vscode.commands.registerCommand('gitnotate.disable', async () => {
-      await disableWorkspace();
-      vscode.window.showInformationMessage('Gitnotate disabled for this workspace');
-    }),
-    vscode.commands.registerCommand('gitnotate.addComment', () =>
-      addCommentCommand(context)
-    )
-  );
-
   const debouncedSync = debounce(async (editor: vscode.TextEditor) => {
-    if (editor.document.languageId !== 'markdown') return;
+    debug('Comment sync: editor changed →', editor.document.fileName, `(${editor.document.languageId})`);
+    if (editor.document.languageId !== 'markdown') {
+      debug('Comment sync: not markdown — skipping');
+      return;
+    }
 
     const token = await getGitHubToken();
     if (!token) {
@@ -106,6 +96,27 @@ export function activate(context: vscode.ExtensionContext) {
       commentCtrl.clearHighlights(editor);
     }
   }, 300);
+
+  const triggerSync = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      debouncedSync(editor);
+    }
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('gitnotate.enable', async () => {
+      await enableWorkspace();
+      vscode.window.showInformationMessage('Gitnotate enabled for this workspace');
+    }),
+    vscode.commands.registerCommand('gitnotate.disable', async () => {
+      await disableWorkspace();
+      vscode.window.showInformationMessage('Gitnotate disabled for this workspace');
+    }),
+    vscode.commands.registerCommand('gitnotate.addComment', () =>
+      addCommentCommand(context, triggerSync)
+    )
+  );
 
   const editorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(
     (editor) => {

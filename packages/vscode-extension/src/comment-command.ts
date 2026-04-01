@@ -9,7 +9,8 @@ import { debug } from './logger';
 import type { GnMetadata } from '@gitnotate/core';
 
 export async function addCommentCommand(
-  _context: vscode.ExtensionContext
+  _context: vscode.ExtensionContext,
+  onCommentPosted?: () => void
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.selection.isEmpty) {
@@ -76,6 +77,7 @@ export async function addCommentCommand(
 
   if (result.ok) {
     vscode.window.showInformationMessage('Comment posted successfully!');
+    onCommentPosted?.();
   } else {
     vscode.window.showErrorMessage(`Gitnotate: ${result.userMessage ?? 'Failed to post comment.'}`);
   }
