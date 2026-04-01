@@ -240,6 +240,7 @@ Full round-trip polish and GH PR extension coexistence.
 - Right-click context menu: "Gitnotate: Add Comment" on text selection
 - Error UX with action buttons ("Sign in to GitHub")
 - Output channel (`Gitnotate`) for debugging
+- Diff-aware anchor resolution: track line deltas via `onDidChangeTextDocument` so `^gn` threads follow text through local edits (moved from Phase 3 — critical for usable save-after-edit experience)
 
 ### Phase 2: Full Sidecar Mode (persistent comments outside PRs) 🔮 PLANNED
 
@@ -256,7 +257,6 @@ Full round-trip polish and GH PR extension coexistence.
 
 - Comment notifications / badges
 - Support for PR-specific comment branches
-- Diff-aware anchor resolution (track anchors through edits)
 - Keyboard shortcuts
 - Settings: auto-commit vs. batch commit, branch selection
 - "Suggest edit" comment type (like Word Track Changes)
