@@ -81,11 +81,12 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 12.1 | Sync on editor switch | Have PR comments on `file-a.md` and `file-b.md`. Open `file-a.md` → see threads. Switch to `file-b.md`. | After ~300ms, `file-a.md` threads disappear from the Comments panel. `file-b.md` threads appear. | ⬜ |
-| 12.2 | Rapid switching debounced | Quickly switch between 3+ tabs within 300ms. | Only the final tab triggers a sync. Debug Console shows only one `[Gitnotate] Comment sync: syncing ...` entry (not multiple). | ⬜ |
-| 12.3 | Non-markdown editor ignored | Switch from a markdown file to a `.ts` file. | Debug Console: `[Gitnotate] Comment sync: not markdown — skipping`. Existing threads from the markdown file are not affected. | ⬜ |
-| 12.4 | No auth — silent skip | Sign out of GitHub. Switch to a markdown file on a PR branch. | No threads appear. No error message. Debug Console: `[Gitnotate] Comment sync: no auth token — skipping`. | ⬜ |
-| 12.5 | No PR — silent skip | Open a repo on `main` (no PR). Switch to a markdown file. | No threads appear. No error. Debug Console: `[Gitnotate] Comment sync: no PR found — skipping`. | ⬜ |
+| 12.1 | Comments load on activation | Launch Extension Development Host with a markdown file already open on a PR branch. Do NOT switch tabs. | Comments and highlights appear automatically after 2-5s. Debug Console shows `[Gitnotate] Initial sync: git not ready, retry N of 5` then `[Gitnotate] Initial sync: triggering for <file>`. | ✅ |
+| 12.2 | Sync on editor switch | Have PR comments on `file-a.md` and `file-b.md`. Open `file-a.md` → see threads. Switch to `file-b.md`. | After ~300ms, `file-a.md` threads disappear from the Comments panel. `file-b.md` threads appear. | ⬜ |
+| 12.3 | Rapid switching debounced | Quickly switch between 3+ tabs within 300ms. | Only the final tab triggers a sync. Debug Console shows only one `[Gitnotate] Comment sync: syncing ...` entry (not multiple). | ⬜ |
+| 12.4 | Non-markdown editor ignored | Switch from a markdown file to a `.ts` file. | Debug Console: `[Gitnotate] Comment sync: not markdown — skipping`. Existing threads from the markdown file are not affected. | ⬜ |
+| 12.5 | No auth — silent skip | Sign out of GitHub. Switch to a markdown file on a PR branch. | No threads appear. No error message. Debug Console: `[Gitnotate] Comment sync: no auth token — skipping`. | ⬜ |
+| 12.6 | No PR — silent skip | Open a repo on `main` (no PR). Switch to a markdown file. | No threads appear. No error. Debug Console: `[Gitnotate] Comment sync: no PR found — skipping`. | ⬜ |
 
 ---
 
