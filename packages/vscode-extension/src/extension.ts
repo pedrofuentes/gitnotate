@@ -139,6 +139,32 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(editorChangeDisposable);
   context.subscriptions.push({ dispose: () => debouncedSync.dispose() });
 
+  // Lifecycle: re-sync on save
+  const saveDisposable = vscode.workspace.onDidSaveTextDocument((doc) => {
+    if (doc.languageId !== 'markdown') return;
+    debug('Document saved:', doc.fileName);
+    triggerSync();
+  });
+  context.subscriptions.push(saveDisposable);
+
+  // Lifecycle: clear threads on close
+  const closeDisposable = vscode.workspace.onDidCloseTextDocument((doc) => {
+    if (doc.languageId !== 'markdown') return;
+    debug('Document closed:', doc.fileName);
+    commentCtrl?.clearThreads(doc.uri);
+  });
+  context.subscriptions.push(closeDisposable);
+
+  // Lifecycle: re-sync on auth session change
+  const authDisposable = vscode.authentication.onDidChangeSessions(() => {
+    debug('Auth session changed — invalidating cache and re-syncing');
+    cachedToken = undefined;
+    threadSync = undefined;
+    prService = undefined;
+    triggerSync();
+  });
+  context.subscriptions.push(authDisposable);
+
   debug('Commands registered: enable, disable, addComment');
   updatePRStatusBar();
 

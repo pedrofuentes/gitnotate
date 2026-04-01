@@ -35,6 +35,7 @@ import {
   ExtensionMode,
   __getCommentControllers,
   __getStatusBarItem,
+  __setActiveTextEditor,
   __reset,
   Uri,
 } from '../__mocks__/vscode';
@@ -417,10 +418,10 @@ describe('extension', () => {
       };
 
       // Simulate the active editor matching the saved doc
-      window.activeTextEditor = {
+      __setActiveTextEditor({
         setDecorations: vi.fn(),
         document: mockDoc,
-      } as any;
+      });
 
       saveHandler(mockDoc);
       await vi.advanceTimersByTimeAsync(300);
@@ -536,14 +537,14 @@ describe('extension', () => {
       const authHandler = authHandlerCall[0] as (e: unknown) => void;
 
       // Set an active editor
-      window.activeTextEditor = {
+      __setActiveTextEditor({
         setDecorations: vi.fn(),
         document: {
           uri: Uri.file('/workspace/docs/readme.md'),
           languageId: 'markdown',
           fileName: '/workspace/docs/readme.md',
         },
-      } as any;
+      });
 
       authHandler({ provider: { id: 'github' } });
       await vi.advanceTimersByTimeAsync(300);
