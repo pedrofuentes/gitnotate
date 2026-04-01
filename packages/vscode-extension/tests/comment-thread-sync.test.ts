@@ -63,20 +63,27 @@ describe('CommentThreadSync', () => {
       });
     });
 
-    it('should skip comments without ^gn metadata', async () => {
+    it('should show non-^gn comments as full-line threads without underline', async () => {
       const comment = makeComment({
         id: 2,
         body: 'This is a regular line comment without gn metadata',
         path: 'docs/readme.md',
+        line: 5,
       });
       const prService = makeMockPrService([comment]);
       const sync = new CommentThreadSync(prService, commentController);
       const uri = Uri.file('/workspace/docs/readme.md');
 
-      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+      const highlightRanges = await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(0);
+      expect(threads).toHaveLength(1);
+      expect(threads[0].range).toEqual(new Range(4, 0, 4, 0));
+      expect(threads[0].comments[0]).toMatchObject({
+        body: 'This is a regular line comment without gn metadata',
+      });
+      // No highlight ranges for non-^gn comments
+      expect(highlightRanges).toHaveLength(0);
     });
 
     it('should skip comments for different files', async () => {

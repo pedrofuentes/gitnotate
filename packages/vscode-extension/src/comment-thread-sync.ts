@@ -45,45 +45,52 @@ export class CommentThreadSync {
     }
 
     let threadsCreated = 0;
-    let skippedNonGn = 0;
+    let gnThreads = 0;
+    let lineThreads = 0;
     const highlightRanges: vscode.Range[] = [];
 
     for (const root of rootComments) {
       const parsed = parseGnComment(root.body);
-      if (!parsed) {
-        skippedNonGn++;
-        continue;
-      }
-
-      const { metadata, userComment } = parsed;
-      // Strip the human-readable blockquote fallback (e.g. > 📌 **"text"** (chars N–M))
-      // It's redundant in VSCode since the thread range already shows the highlighted text
-      const cleanBody = stripBlockquoteFallback(userComment);
-      // GitHub uses 1-indexed lines; VSCode uses 0-indexed
-      const line = metadata.lineNumber - 1;
-      const range = new vscode.Range(line, metadata.start, line, metadata.end);
-
-      const threadComments = [
-        {
-          body: cleanBody,
-          author: root.userLogin ?? 'unknown',
-        },
-      ];
 
       const replies = repliesByParent.get(root.id) ?? [];
-      for (const reply of replies) {
-        threadComments.push({
-          body: reply.body,
-          author: reply.userLogin ?? 'unknown',
-        });
+
+      if (parsed) {
+        // ^gn comment: sub-line range + wavy underline
+        const { metadata, userComment } = parsed;
+        const cleanBody = stripBlockquoteFallback(userComment);
+        const line = metadata.lineNumber - 1;
+        const range = new vscode.Range(line, metadata.start, line, metadata.end);
+
+        const threadComments = [
+          { body: cleanBody, author: root.userLogin ?? 'unknown' },
+        ];
+        for (const reply of replies) {
+          threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
+        }
+
+        this.commentController.createThread(uri, range, threadComments, gnThreads);
+        highlightRanges.push(range);
+        gnThreads++;
+      } else {
+        // Regular line comment: full-line range, no underline highlight
+        const line = (root.line ?? 1) - 1;
+        const range = new vscode.Range(line, 0, line, 0);
+
+        const threadComments = [
+          { body: root.body, author: root.userLogin ?? 'unknown' },
+        ];
+        for (const reply of replies) {
+          threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
+        }
+
+        this.commentController.createThread(uri, range, threadComments);
+        lineThreads++;
       }
 
-      this.commentController.createThread(uri, range, threadComments, threadsCreated);
-      highlightRanges.push(range);
       threadsCreated++;
     }
 
-    debug('Thread sync: created', threadsCreated, 'threads, skipped', skippedNonGn, 'non-^gn comments');
+    debug('Thread sync: created', threadsCreated, 'threads (' + gnThreads, '^gn +', lineThreads, 'line)');
     return highlightRanges;
   }
 
