@@ -78,8 +78,8 @@ Same as Increment 2 (see `TEST_PLAN_VSCODE_1.5_2.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 20.1 | Sign out clears threads | Have a markdown file with `^gn` threads visible. Sign out of GitHub (Command Palette → "GitHub: Sign Out" or revoke the session). | Debug Console shows `[Gitnotate] Auth session changed — invalidating cache and re-syncing`. Threads may disappear (no token → sync skips). | ⬜ Manual |
-| 20.2 | Sign in triggers fresh sync | After signing out (test 20.1), sign back in via the Gitnotate sign-in prompt or "GitHub Pull Requests: Sign In". | Debug Console shows `Auth session changed — invalidating cache and re-syncing` then `Comment sync: recreated PrService + CommentThreadSync (token changed)`. Threads reappear with fresh data. | ⬜ Manual |
+| 20.1 | Sign out clears threads | Have a markdown file with `^gn` threads visible. Sign out of GitHub (Command Palette → "GitHub: Sign Out" or revoke the session). | Debug Console shows `[Gitnotate] Auth session changed — invalidating cache and re-syncing`. Threads and highlights disappear (no token → sync skips). | ✅ Manual verified |
+| 20.2 | Sign in triggers fresh sync | After signing out (test 20.1), sign back in via the Gitnotate sign-in prompt or "GitHub Pull Requests: Sign In". | Debug Console shows `Auth session changed — invalidating cache and re-syncing` then `Comment sync: recreated PrService + CommentThreadSync (token changed)`. Threads reappear with fresh data. | ✅ Manual verified |
 | 20.3 | Auth change with no active editor | Close all editor tabs. Sign out and back into GitHub. | Debug Console shows the auth change log, but no sync is triggered (no active editor). No crash. | ✅ Unit |
 
 ---
