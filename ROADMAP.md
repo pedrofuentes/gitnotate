@@ -208,16 +208,19 @@ Core pipeline — fetch PR comments, parse `^gn` metadata, display as native com
 - ✅ 126 tests, 97.56% coverage
 - Sentinel: ⚠️ CONDITIONAL APPROVE (SENTINEL-2025-0715-CTS-001) — cache hoisting tracked for Increment 3
 
-#### Increment 3: Comment Lifecycle & Refresh 🔮 PLANNED
+#### Increment 3: Comment Lifecycle & Refresh ✅ COMPLETE
 
 Keep comment threads in sync with editor state.
 
-- Hoist `PrService` and `CommentThreadSync` to `activate()` scope so cache persists across editor changes (SENTINEL-2025-0715-CTS-001 🟡 follow-up)
-- Add `MAX_PAGES` safety bound to `PrService.listReviewComments` pagination loop
-- Debounced lifecycle handlers: editor change, save, close, auth session change
-- Cache-first approach: show stale data instantly, refresh in background
-- `forceRefresh()` after posting a new comment
-- ~~`debounce()` utility function~~ (done in Increment 2)
+- ✅ Hoisted `PrService` and `CommentThreadSync` to `activate()` scope — cache persists across editor changes (SENTINEL-2025-0715-CTS-001 🟡 resolved)
+- ✅ `MAX_PAGES = 10` safety bound on `PrService.listReviewComments` pagination (1,000 comments max)
+- ✅ Cache-first display: show cached threads instantly on tab switch, refresh in background
+- ✅ Token-change detection: recreates services when GitHub auth token changes
+- ✅ Lifecycle handlers: `onDidSaveTextDocument` (re-sync), `onDidCloseTextDocument` (clear threads), `onDidChangeSessions` (clear threads + highlights, invalidate cache, re-sync)
+- ✅ 160 tests, 87.15% statements, 100% functions
+- ✅ Test plan: 18 tests (10 unit, 7 integration, 3 manual) — all verified
+- Sentinel: ✅ APPROVED (SENTINEL-2026-0331-HSV-001), ⚠️ CONDITIONAL APPROVE (SNTNL-20260401-001)
+- Bugs found during testing: auth change not clearing threads (fixed), auth change not clearing highlights (fixed)
 
 #### Increment 4: Comments Sidebar (TreeView) 🔮 PLANNED
 

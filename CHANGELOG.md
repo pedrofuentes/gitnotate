@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (VSCode Extension — Phase 1.5 Increment 3)
+- Cache-first comment thread display — cached threads render instantly on tab switch, then refresh in background
+- `MAX_PAGES = 10` safety bound on PR comment pagination (caps at 1,000 comments)
+- Lifecycle handler: `onDidSaveTextDocument` — re-syncs comment threads when a markdown file is saved
+- Lifecycle handler: `onDidCloseTextDocument` — clears comment threads when a markdown tab is closed
+- Lifecycle handler: `onDidChangeSessions` — clears threads/highlights and re-syncs when GitHub auth changes
+- 25 new automated tests (160 total), integration test suites 17–22
+
+### Changed (VSCode Extension)
+- `PrService` and `CommentThreadSync` hoisted to module scope — cache persists across editor tab switches (was per-invocation)
+- Token-change detection: services are recreated when GitHub auth token changes
+- `syncForDocument` refactored — extracted `renderComments()` private method, added `syncForDocumentCacheFirst()` and `getCachedComments()` public methods
+
+### Fixed (VSCode Extension)
+- Stale comment threads remained visible after GitHub sign-out (auth handler now calls `clearThreads()`)
+- Wavy underline highlights remained visible after GitHub sign-out (auth handler now calls `clearHighlights()`)
+- Merge conflict markers from Increment 2 merge resolved on 9 files
+
+### Fixed (Root)
+- CVE in `serialize-javascript@6.0.2` — forced `>=7.0.5` via `pnpm.overrides`
+- CVE in `diff@7.0.0` — forced `>=8.0.3` via `pnpm.overrides`
+
 ## [0.1.0] — 2026-03-29
 
 ### Added
