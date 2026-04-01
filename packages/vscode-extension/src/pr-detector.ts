@@ -1,10 +1,6 @@
 import { GitService } from './git-service';
 import { debug, warn, error as logError } from './logger';
-<<<<<<< HEAD
-import type { PullRequestInfo } from './github-api';
-=======
 import type { PullRequestInfo } from './pr-service';
->>>>>>> feature/comment-controller-thread-sync
 
 const REQUEST_TIMEOUT_MS = 10_000;
 

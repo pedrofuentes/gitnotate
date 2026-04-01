@@ -5,13 +5,10 @@ import { detectCurrentPR } from './pr-detector';
 import { GitService } from './git-service';
 import { getGitHubToken, ensureAuthenticated } from './auth';
 import { initLogger, debug } from './logger';
-<<<<<<< HEAD
-=======
 import { CommentController } from './comment-controller';
 import { CommentThreadSync } from './comment-thread-sync';
 import { PrService } from './pr-service';
 import { getRelativePath, debounce } from './utils';
->>>>>>> feature/comment-controller-thread-sync
 
 let commentCtrl: CommentController | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
@@ -117,15 +114,6 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage('Gitnotate disabled for this workspace');
     }),
     vscode.commands.registerCommand('gitnotate.addComment', () =>
-<<<<<<< HEAD
-      addCommentCommand(context)
-    )
-  );
-
-  const editorChangeDisposable= vscode.window.onDidChangeActiveTextEditor(
-    (_editor) => {
-      // TODO: fetch PR comments, parse ^gn metadata, apply decorations
-=======
       addCommentCommand(context, triggerSync)
     )
   );
@@ -136,7 +124,6 @@ export function activate(context: vscode.ExtensionContext) {
       if (editor) {
         debouncedSync(editor);
       }
->>>>>>> feature/comment-controller-thread-sync
     }
   );
 
@@ -180,15 +167,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   debug('Extension deactivating...');
-<<<<<<< HEAD
-  if (decorationManager) {
-    decorationManager.dispose();
-    decorationManager = undefined;
-=======
   if (commentCtrl) {
     commentCtrl.dispose();
     commentCtrl = undefined;
->>>>>>> feature/comment-controller-thread-sync
   }
   statusBarItem?.dispose();
 }

@@ -7,8 +7,6 @@ let mockGithubToken: string | undefined = undefined;
 let mockActiveTextEditor: unknown = undefined;
 let mockAuthSession: { accessToken: string; id: string; scopes: string[] } | undefined = undefined;
 let mockGitRepository: unknown = undefined;
-<<<<<<< HEAD
-=======
 
 // Comments API tracking
 interface MockCommentThread {
@@ -32,7 +30,6 @@ interface MockCommentController {
 }
 
 let mockCommentControllers: MockCommentController[] = [];
->>>>>>> feature/comment-controller-thread-sync
 
 export const ConfigurationTarget = {
   Global: 1,
@@ -172,21 +169,6 @@ export enum ExtensionMode {
   Test = 3,
 }
 
-<<<<<<< HEAD
-export const comments = {
-  createCommentController: vi.fn((_id: string, _label: string) => ({
-    dispose: vi.fn(),
-    commentingRangeProvider: undefined,
-    createCommentThread: vi.fn(),
-  })),
-};
-
-export const MarkdownString = vi.fn().mockImplementation((value?: string) => ({
-  value: value ?? '',
-  isTrusted: false,
-  supportThemeIcons: false,
-}));
-=======
 export enum OverviewRulerLane {
   Left = 1,
   Center = 2,
@@ -239,7 +221,6 @@ export const MarkdownString = vi.fn().mockImplementation((value?: string) => {
   };
   return md;
 });
->>>>>>> feature/comment-controller-thread-sync
 
 // Test helpers — not part of the real vscode API
 export function __setWorkspaceFolders(
@@ -295,8 +276,6 @@ export function __setGitRepository(repo: unknown) {
   });
 }
 
-<<<<<<< HEAD
-=======
 export function __getCommentControllers(): MockCommentController[] {
   return mockCommentControllers;
 }
@@ -305,7 +284,6 @@ export function __getCommentThreads(): MockCommentThread[] {
   return mockCommentControllers.flatMap((c) => c.threads);
 }
 
->>>>>>> feature/comment-controller-thread-sync
 export function __reset() {
   mockEnabledRepos = [];
   mockWorkspaceFolders = undefined;
@@ -313,10 +291,7 @@ export function __reset() {
   mockActiveTextEditor = undefined;
   mockAuthSession = undefined;
   mockGitRepository = undefined;
-<<<<<<< HEAD
-=======
   mockCommentControllers = [];
->>>>>>> feature/comment-controller-thread-sync
   vi.clearAllMocks();
   authentication.getSession.mockImplementation(async () => undefined);
   authentication.onDidChangeSessions.mockImplementation((_listener: unknown) => ({

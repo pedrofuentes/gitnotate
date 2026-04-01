@@ -7,8 +7,6 @@ export function getRelativePath(filePath: string): string {
   }
   return filePath.replace(/\\/g, '/');
 }
-<<<<<<< HEAD
-=======
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface DebouncedFunction<T extends (...args: any[]) => any> {
@@ -40,4 +38,3 @@ export function debounce<T extends (...args: any[]) => any>(
 
   return debounced;
 }
->>>>>>> feature/comment-controller-thread-sync

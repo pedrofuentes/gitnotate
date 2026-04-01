@@ -15,9 +15,6 @@ docs/internal/
 
 # Agent backups
 .agent-backup/
-<<<<<<< HEAD
-=======
 
 # VSCode test-electron downloaded binaries
 .vscode-test/
->>>>>>> feature/comment-controller-thread-sync
