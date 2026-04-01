@@ -385,6 +385,50 @@ describe('CommentsTreeProvider', () => {
     });
   });
 
+  describe('click-to-navigate commands', () => {
+    it('should set goToComment command on ^gn comment items', async () => {
+      provider.setComments([makeGnComment({ id: 1, path: 'docs/proposal.md' })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.command).toBeDefined();
+      expect(item.command!.command).toBe('gitnotate.goToComment');
+    });
+
+    it('should pass file path, line, start, end as arguments for ^gn comments', async () => {
+      provider.setComments([makeGnComment({ id: 1, path: 'docs/proposal.md' })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      const args = item.command!.arguments!;
+      expect(args[0]).toBe('docs/proposal.md');
+      expect(args[1]).toBe(10); // line number from ^gn:10:R:5:20
+      expect(args[2]).toBe(5);  // start
+      expect(args[3]).toBe(20); // end
+    });
+
+    it('should set goToComment command on regular comment items', async () => {
+      provider.setComments([makeComment({ id: 1, path: 'README.md', line: 15 })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.command).toBeDefined();
+      expect(item.command!.command).toBe('gitnotate.goToComment');
+    });
+
+    it('should pass file path and line without start/end for regular comments', async () => {
+      provider.setComments([makeComment({ id: 1, path: 'README.md', line: 15 })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      const args = item.command!.arguments!;
+      expect(args[0]).toBe('README.md');
+      expect(args[1]).toBe(15);
+      expect(args[2]).toBeUndefined();
+      expect(args[3]).toBeUndefined();
+    });
+  });
+
   describe('dispose', () => {
     it('should clean up without errors', () => {
       expect(() => provider.dispose()).not.toThrow();
