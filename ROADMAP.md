@@ -195,6 +195,7 @@ my-repo/
 - ✅ URL parameters percent-encoded in GitHub API calls
 - ✅ 95 tests, 97.53% coverage
 
+<<<<<<< HEAD
 #### Increment 2: Comment Controller & Thread Sync 🔮 PLANNED
 
 Core pipeline — fetch PR comments, parse `^gn` metadata, display as native comment threads.
@@ -206,15 +207,38 @@ Core pipeline — fetch PR comments, parse `^gn` metadata, display as native com
 - Remove `decoration-manager.ts` and `comment-decoration.ts` (replaced by Comments API)
 - `CommentingRangeProvider` enables gutter `+` on markdown files
 - Detect diff context (left/right side) when commenting from VSCode diff views — currently hardcoded to RIGHT
+=======
+#### Increment 2: Comment Controller & Thread Sync ✅ COMPLETE
+
+Core pipeline — fetch PR comments, parse `^gn` metadata, display as native comment threads.
+
+- ✅ `comment-controller.ts` — wraps `vscode.comments.createCommentController` with sub-line ranges
+- ✅ `comment-thread-sync.ts` — orchestrator: fetch → parse → create threads, with in-memory cache
+- ✅ Renamed `github-api.ts` → `pr-service.ts` with extended response fields (`side`, `in_reply_to_id`, `user.login`)
+- ✅ Wired `onDidChangeActiveTextEditor` handler with 300ms debounce
+- ✅ Removed `decoration-manager.ts` and `comment-decoration.ts` (replaced by Comments API)
+- ✅ `CommentingRangeProvider` enables gutter `+` on markdown files
+- ✅ 126 tests, 97.56% coverage
+- Sentinel: ⚠️ CONDITIONAL APPROVE (SENTINEL-2025-0715-CTS-001) — cache hoisting tracked for Increment 3
+>>>>>>> feature/comment-controller-thread-sync
 
 #### Increment 3: Comment Lifecycle & Refresh 🔮 PLANNED
 
 Keep comment threads in sync with editor state.
 
+<<<<<<< HEAD
 - Debounced lifecycle handlers: editor change, save, close, auth session change
 - Cache-first approach: show stale data instantly, refresh in background
 - `forceRefresh()` after posting a new comment
 - `debounce()` utility function
+=======
+- Hoist `PrService` and `CommentThreadSync` to `activate()` scope so cache persists across editor changes (SENTINEL-2025-0715-CTS-001 🟡 follow-up)
+- Add `MAX_PAGES` safety bound to `PrService.listReviewComments` pagination loop
+- Debounced lifecycle handlers: editor change, save, close, auth session change
+- Cache-first approach: show stale data instantly, refresh in background
+- `forceRefresh()` after posting a new comment
+- ~~`debounce()` utility function~~ (done in Increment 2)
+>>>>>>> feature/comment-controller-thread-sync
 
 #### Increment 4: Comments Sidebar (TreeView) 🔮 PLANNED
 

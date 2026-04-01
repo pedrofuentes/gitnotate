@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { buildGnComment } from '@gitnotate/core';
-import { GitHubApiClient } from './github-api';
+import { PrService } from './pr-service';
 import { detectCurrentPR } from './pr-detector';
 import { getRelativePath } from './utils';
 import { GitService } from './git-service';
@@ -9,7 +9,8 @@ import { debug } from './logger';
 import type { GnMetadata } from '@gitnotate/core';
 
 export async function addCommentCommand(
-  _context: vscode.ExtensionContext
+  _context: vscode.ExtensionContext,
+  onCommentPosted?: () => void
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.selection.isEmpty) {
@@ -59,7 +60,7 @@ export async function addCommentCommand(
   const commentBody = buildGnComment(metadata, userComment);
 
   // Submit via GitHub API
-  const client = new GitHubApiClient(token);
+  const client = new PrService(token);
   const filePath = getRelativePath(editor.document.fileName);
   const line = editor.selection.start.line + 1;
 
@@ -76,6 +77,7 @@ export async function addCommentCommand(
 
   if (result.ok) {
     vscode.window.showInformationMessage('Comment posted successfully!');
+    onCommentPosted?.();
   } else {
     vscode.window.showErrorMessage(`Gitnotate: ${result.userMessage ?? 'Failed to post comment.'}`);
   }

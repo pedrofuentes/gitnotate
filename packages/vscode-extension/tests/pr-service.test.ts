@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { GitHubApiClient } from '../src/github-api';
-import type { PullRequestInfo } from '../src/github-api';
+import { PrService } from '../src/pr-service';
+import type { PullRequestInfo } from '../src/pr-service';
 
 // Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-describe('GitHubApiClient', () => {
+describe('PrService', () => {
   const token = 'ghp_test_token_123';
-  let client: GitHubApiClient;
+  let client: PrService;
   const pr: PullRequestInfo = {
     owner: 'octocat',
     repo: 'hello-world',
@@ -18,7 +18,7 @@ describe('GitHubApiClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    client = new GitHubApiClient(token);
+    client = new PrService(token);
   });
 
   afterEach(() => {
@@ -120,10 +120,30 @@ describe('GitHubApiClient', () => {
   });
 
   describe('listReviewComments', () => {
-    it('should list review comments', async () => {
+    it('should list review comments with extended fields', async () => {
       const mockComments = [
-        { body: 'First comment', path: 'src/a.ts', line: 5 },
-        { body: 'Second comment', path: 'src/b.ts', line: 12 },
+        {
+          id: 101,
+          body: 'First comment',
+          path: 'src/a.ts',
+          line: 5,
+          side: 'RIGHT',
+          in_reply_to_id: undefined,
+          user: { login: 'octocat' },
+          created_at: '2026-03-29T10:00:00Z',
+          updated_at: '2026-03-29T10:00:00Z',
+        },
+        {
+          id: 102,
+          body: 'Second comment',
+          path: 'src/b.ts',
+          line: 12,
+          side: 'LEFT',
+          in_reply_to_id: 101,
+          user: { login: 'reviewer' },
+          created_at: '2026-03-29T11:00:00Z',
+          updated_at: '2026-03-29T12:00:00Z',
+        },
       ];
 
       mockFetch.mockResolvedValueOnce({
@@ -136,18 +156,30 @@ describe('GitHubApiClient', () => {
 
       expect(comments).toHaveLength(2);
       expect(comments[0]).toEqual({
+        id: 101,
         body: 'First comment',
         path: 'src/a.ts',
         line: 5,
+        side: 'RIGHT',
+        inReplyToId: undefined,
+        userLogin: 'octocat',
+        createdAt: '2026-03-29T10:00:00Z',
+        updatedAt: '2026-03-29T10:00:00Z',
       });
       expect(comments[1]).toEqual({
+        id: 102,
         body: 'Second comment',
         path: 'src/b.ts',
         line: 12,
+        side: 'LEFT',
+        inReplyToId: 101,
+        userLogin: 'reviewer',
+        createdAt: '2026-03-29T11:00:00Z',
+        updatedAt: '2026-03-29T12:00:00Z',
       });
     });
 
-    it('should call correct endpoint', async () => {
+    it('should call correct endpoint with per_page=100', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -158,9 +190,69 @@ describe('GitHubApiClient', () => {
 
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toBe(
-        'https://api.github.com/repos/octocat/hello-world/pulls/42/comments'
+        'https://api.github.com/repos/octocat/hello-world/pulls/42/comments?per_page=100&page=1'
       );
       expect(options.method).toBe('GET');
+    });
+
+    it('should paginate when response contains 100 items', async () => {
+      const page1 = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 1,
+        body: `comment ${i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+      const page2 = [
+        {
+          id: 101,
+          body: 'last comment',
+          path: 'src/a.ts',
+          line: 2,
+          side: 'RIGHT',
+          in_reply_to_id: undefined,
+          user: { login: 'user' },
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page1 })
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page2 });
+
+      const comments = await client.listReviewComments(pr);
+
+      expect(comments).toHaveLength(101);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      const secondUrl = mockFetch.mock.calls[1][0];
+      expect(secondUrl).toContain('page=2');
+    });
+
+    it('should stop paginating when response has fewer than 100 items', async () => {
+      const page1 = Array.from({ length: 50 }, (_, i) => ({
+        id: i + 1,
+        body: `comment ${i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => page1 });
+
+      const comments = await client.listReviewComments(pr);
+
+      expect(comments).toHaveLength(50);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     it('should handle API errors gracefully', async () => {
@@ -209,6 +301,33 @@ describe('GitHubApiClient', () => {
       const [, options] = mockFetch.mock.calls[0];
       expect(options.headers['Authorization']).toBe(`Bearer ${token}`);
       expect(options.headers['Accept']).toBe('application/vnd.github+json');
+    });
+
+    it('should handle missing user field gracefully', async () => {
+      const mockComments = [
+        {
+          id: 200,
+          body: 'orphan comment',
+          path: 'src/a.ts',
+          line: 1,
+          side: 'RIGHT',
+          in_reply_to_id: undefined,
+          user: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockComments,
+      });
+
+      const comments = await client.listReviewComments(pr);
+
+      expect(comments).toHaveLength(1);
+      expect(comments[0].userLogin).toBeUndefined();
     });
   });
 });

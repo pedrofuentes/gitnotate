@@ -8,7 +8,9 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "main": "./dist/extension.js",
   "activationEvents": [
     "onLanguage:markdown",
@@ -64,6 +66,8 @@
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
     "watch": "pnpm build --watch",
     "test": "vitest run",
+    "test:integration:compile": "tsc -p tsconfig.integration.json",
+    "test:integration": "pnpm test:integration:compile && vscode-test",
     "lint": "eslint src/",
     "package": "vsce package --no-dependencies"
   },
@@ -71,7 +75,17 @@
     "@gitnotate/core": "workspace:*"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.25.0"
+=======
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.15",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.0",
+    "mocha": "^11.7.5"
+>>>>>>> feature/comment-controller-thread-sync
   }
 }
