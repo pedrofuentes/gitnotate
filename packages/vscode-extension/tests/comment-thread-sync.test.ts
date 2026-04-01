@@ -78,7 +78,7 @@ describe('CommentThreadSync', () => {
 
       const threads = __getCommentThreads();
       expect(threads).toHaveLength(1);
-      expect(threads[0].range).toEqual(new Range(4, 0, 4, 0));
+      expect(threads[0].range).toEqual(new Range(4, Number.MAX_SAFE_INTEGER, 4, Number.MAX_SAFE_INTEGER));
       expect(threads[0].comments[0]).toMatchObject({
         body: 'This is a regular line comment without gn metadata',
       });

@@ -72,9 +72,9 @@ export class CommentThreadSync {
         highlightRanges.push(range);
         gnThreads++;
       } else {
-        // Regular line comment: full-line range, no underline highlight
+        // Regular line comment: position at end of line, no underline highlight
         const line = (root.line ?? 1) - 1;
-        const range = new vscode.Range(line, 0, line, 0);
+        const range = new vscode.Range(line, Number.MAX_SAFE_INTEGER, line, Number.MAX_SAFE_INTEGER);
 
         const threadComments = [
           { body: root.body, author: root.userLogin ?? 'unknown' },
