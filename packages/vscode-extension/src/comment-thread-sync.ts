@@ -4,6 +4,13 @@ import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
 import { debug } from './logger';
 
+// Matches the > 📌 **"quoted text"** (chars N–M) blockquote line
+const BLOCKQUOTE_FALLBACK_RE = /^>\s*📌\s*\*\*".*?"\*\*\s*\(chars\s*\d+[–-]\d+\)\s*\n*/;
+
+export function stripBlockquoteFallback(text: string): string {
+  return text.replace(BLOCKQUOTE_FALLBACK_RE, '').trim();
+}
+
 export class CommentThreadSync {
   private cache: Map<string, ReviewComment[]> = new Map();
 
@@ -49,13 +56,16 @@ export class CommentThreadSync {
       }
 
       const { metadata, userComment } = parsed;
+      // Strip the human-readable blockquote fallback (e.g. > 📌 **"text"** (chars N–M))
+      // It's redundant in VSCode since the thread range already shows the highlighted text
+      const cleanBody = stripBlockquoteFallback(userComment);
       // GitHub uses 1-indexed lines; VSCode uses 0-indexed
       const line = metadata.lineNumber - 1;
       const range = new vscode.Range(line, metadata.start, line, metadata.end);
 
       const threadComments = [
         {
-          body: userComment,
+          body: cleanBody,
           author: root.userLogin ?? 'unknown',
         },
       ];
