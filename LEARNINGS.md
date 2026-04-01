@@ -19,6 +19,16 @@
 
 <!-- Add new learnings below this line, most recent first -->
 
+### [2026-04-01] Never merge without Sentinel — no size exception
+**Context**: `fix/auth-change-clear-threads` (1-line production fix + 1 test) was merged to `main` without invoking Sentinel. Retroactive review (SENTINEL-2026-0331-R001) found the code correct but flagged the process violation.
+**Learning**: No fix is too small for Sentinel. The mental shortcut "it's just 1 line" bypasses the quality gate. Sentinel must be invoked before every `git merge` to `main`, regardless of change size. If you catch yourself thinking "this is too small to review," that is the exact moment you must invoke Sentinel.
+**Impact**: Consider adding a pre-merge checklist that must be printed before every merge, and escalating to a CI check (L5) that verifies merge commits contain a Sentinel Report ID.
+
+### [2026-04-01] Do not rewrite tests in the fix commit
+**Context**: Retroactive Sentinel review (SENTINEL-2026-0331-R001) flagged `68ce696` for modifying `extension.test.ts` alongside `extension.ts`. The test commit (`8e493d8`) wrote a test using `__getCommentThreads()` + `dispose()` assertion, but the fix commit rewrote it to use `vi.spyOn(CommentController.prototype, 'clearThreads')` — effectively rewriting the test during implementation.
+**Learning**: The `feat`/`fix` commit must contain ONLY production code. If the test approach needs to change during implementation, separate the test adjustment into its own `test` or `refactor` commit. The test commit must remain intact as proof that the test detected the bug before the fix.
+**Impact**: Preserves the RED→GREEN evidence chain. Future agents should finalize the test approach before committing the test commit, not adjust it during the fix commit.
+
 ### [2026-03-31] Hoist long-lived service instances above debounced callbacks
 **Context**: Sentinel review (SENTINEL-2025-0715-CTS-001) of `feature/comment-controller-thread-sync` found that `PrService` and `CommentThreadSync` were instantiated inside the debounced `onDidChangeActiveTextEditor` callback, making `CommentThreadSync`'s in-memory cache useless — a new instance (with an empty cache) is created on every editor change.
 **Learning**: When a class provides caching or state persistence, hoist its instantiation to the activation scope so the cache survives across invocations. Instantiate per-callback only when statelessness is intentional.
