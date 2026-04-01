@@ -132,6 +132,11 @@ export function activate(context: vscode.ExtensionContext) {
 
   debug('Commands registered: enable, disable, addComment');
   updatePRStatusBar();
+
+  // Sync the already-open editor (onDidChangeActiveTextEditor doesn't fire for it)
+  if (vscode.window.activeTextEditor) {
+    debouncedSync(vscode.window.activeTextEditor);
+  }
 }
 
 export function deactivate() {

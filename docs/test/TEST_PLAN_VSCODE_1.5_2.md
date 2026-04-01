@@ -48,10 +48,10 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 | 9.1 | `^gn` comments render as threads | Sign in to GitHub. Open a repo on a PR branch. Open a markdown file that has `^gn` review comments on the PR. | After ~300ms, comment threads appear in the editor gutter with colored wavy underlines on the annotated text. Debug Console: `[Gitnotate] Comment sync: syncing <file> (PR #N)` then `[Gitnotate] Thread sync: created N threads (M ^gn + K line)`. | ✅ |
 | 9.2 | Sub-line range highlighting | Open a file with a `^gn:10:R:5:20` comment (chars 5–20 on line 10). | The comment thread marker appears at line 10. A colored wavy underline highlights characters 5–20 (not the full line). The range corresponds to `^gn` metadata `start:end`. | ✅ |
 | 9.3 | Comment body displayed | Expand a `^gn` comment thread. | Shows only the user's comment text. The `^gn:...` metadata tag and `> 📌 "quoted text"` blockquote are both stripped. Author name shows the GitHub username. | ✅ |
-| 9.4 | Non-`^gn` comments shown as line threads | Have regular line-level PR comments (without `^gn` metadata) on the same file. | Regular comments appear as full-line threads (no sub-line range, no wavy underline, no emoji label). Comment body shows the full text as-is. | ⬜ |
-| 9.5 | No threads on other files | Open a markdown file that has NO PR comments. | No comment threads appear. No errors. | ⬜ |
-| 9.6 | Multiple threads on same file | Have 2+ `^gn` comments on different lines of the same file. | Each comment renders as a separate thread at the correct line and character range with a distinct colored wavy underline. | ⬜ |
-| 9.7 | Multi-color on same line | Have 2+ `^gn` comments on the same line targeting different text ranges. | Each underline uses a different color from the palette (yellow → blue → purple → ...). Matching emoji labels appear on the corresponding threads. | ⬜ |
+| 9.4 | Non-`^gn` comments shown as line threads | Have regular line-level PR comments (without `^gn` metadata) on the same file. | Regular comments appear as full-line threads (no sub-line range, no wavy underline, no emoji label). Comment body shows the full text as-is. | ✅ |
+| 9.5 | No threads on other files | Open a markdown file that has NO PR comments. | No comment threads appear. No errors. | ✅ |
+| 9.6 | Multiple threads on same file | Have 2+ `^gn` comments on different lines of the same file. | Each comment renders as a separate thread at the correct line and character range with a distinct colored wavy underline. | ✅ |
+| 9.7 | Multi-color on same line | Have 2+ `^gn` comments on the same line targeting different text ranges. | Each underline uses a different color from the palette (yellow → blue → purple → ...). Matching emoji labels appear on the corresponding threads. | ✅ |
 | 9.8 | Unknown author fallback | Post a `^gn` comment via a bot or deleted account (rare). | Thread shows author as "unknown" instead of crashing. | ⏭️ Covered by unit test |
 
 ---
@@ -60,10 +60,10 @@ Same as Increment 1 (see `TEST_PLAN_VSCODE_1.5_1.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 10.1 | Replies grouped under parent | Have a `^gn` comment with 1+ replies on GitHub. Open the file. | The thread shows the parent comment first, followed by replies in chronological order. Each reply shows its own author. | ⬜ |
-| 10.2 | Reply without `^gn` metadata | Reply to a `^gn` comment on GitHub (the reply won't have `^gn` metadata). | The reply body appears as-is (no parsing). It's grouped correctly under the parent thread. | ⬜ |
-| 10.3 | Multiple reply chains | Have two separate `^gn` threads, each with replies. | Each thread contains only its own replies — no cross-contamination. | ⬜ |
-| 10.4 | Reply on non-`^gn` comment | Reply to a regular line comment on GitHub. Open the file. | The reply appears under the parent line thread. | ⬜ |
+| 10.1 | Replies grouped under parent | Have a `^gn` comment with 1+ replies on GitHub. Open the file. | The thread shows the parent comment first, followed by replies in chronological order. Each reply shows its own author. | ✅ |
+| 10.2 | Reply without `^gn` metadata | Reply to a `^gn` comment on GitHub (the reply won't have `^gn` metadata). | The reply body appears as-is (no parsing). It's grouped correctly under the parent thread. | ✅ |
+| 10.3 | Multiple reply chains | Have two separate `^gn` threads, each with replies. | Each thread contains only its own replies — no cross-contamination. | ✅ |
+| 10.4 | Reply on non-`^gn` comment | Reply to a regular line comment on GitHub. Open the file. | The reply appears under the parent line thread. | ✅ |
 
 ---
 
