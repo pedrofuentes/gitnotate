@@ -57,10 +57,10 @@ describe('CommentThreadSync', () => {
       // ^gn:10:R:5:15 → line 9 (0-indexed), chars 5-15
       expect(threads[0].range).toEqual(new Range(9, 5, 9, 15));
       expect(threads[0].comments).toHaveLength(1);
-      // body is a MarkdownString with colored author header
-      const body = threads[0].comments[0].body;
-      expect(body.value).toContain('octocat');
-      expect(body.value).toContain('Looks good');
+      expect(threads[0].comments[0]).toMatchObject({
+        body: '> 📌 **"some text"** (chars 5–15)\n\nLooks good',
+        author: { name: 'octocat' },
+      });
     });
 
     it('should skip comments without ^gn metadata', async () => {
@@ -119,11 +119,14 @@ describe('CommentThreadSync', () => {
       const threads = __getCommentThreads();
       expect(threads).toHaveLength(1);
       expect(threads[0].comments).toHaveLength(2);
-      // body is a MarkdownString with colored author header
-      expect(threads[0].comments[0].body.value).toContain('alice');
-      expect(threads[0].comments[0].body.value).toContain('Is this correct?');
-      expect(threads[0].comments[1].body.value).toContain('bob');
-      expect(threads[0].comments[1].body.value).toContain('Yes, looks good to me');
+      expect(threads[0].comments[0]).toMatchObject({
+        body: '> 📌 **"heading"** (chars 0–10)\n\nIs this correct?',
+        author: { name: 'alice' },
+      });
+      expect(threads[0].comments[1]).toMatchObject({
+        body: 'Yes, looks good to me',
+        author: { name: 'bob' },
+      });
     });
 
     it('should clear existing threads for the URI before creating new ones', async () => {

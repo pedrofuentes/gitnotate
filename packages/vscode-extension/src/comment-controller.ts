@@ -19,14 +19,9 @@ const COLOR_EMOJIS = [
   '🔵', // blue
   '🟣', // purple
   '🟠', // orange
-  '🟢', // teal (closest)
-  '🔴', // pink (closest)
+  '🟢', // teal
+  '🔴', // pink
 ];
-
-function makeColoredCircleIcon(color: string): vscode.Uri {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="8" cy="8" r="7" fill="${color}"/></svg>`;
-  return vscode.Uri.parse(`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
-}
 
 export class CommentController {
   private controller: vscode.CommentController;
@@ -77,29 +72,14 @@ export class CommentController {
     comments: ThreadComment[],
     colorIndex?: number
   ): vscode.CommentThread {
-    const color = colorIndex !== undefined ? HIGHLIGHT_COLORS[colorIndex % HIGHLIGHT_COLORS.length] : undefined;
     const colorEmoji = colorIndex !== undefined ? COLOR_EMOJIS[colorIndex % COLOR_EMOJIS.length] : undefined;
-    const iconPath = color ? makeColoredCircleIcon(color) : undefined;
 
-    const vscodeComments: vscode.Comment[] = comments.map((c) => {
-      let body: string | vscode.MarkdownString;
-      if (color) {
-        const md = new vscode.MarkdownString();
-        md.supportHtml = true;
-        md.isTrusted = true;
-        md.appendMarkdown(`<span style="color:${color};font-weight:bold;">⬤ ${c.author}</span>\n\n`);
-        md.appendMarkdown(c.body);
-        body = md;
-      } else {
-        body = c.body;
-      }
-      return {
-        body,
-        mode: vscode.CommentMode.Preview,
-        author: { name: c.author, iconPath },
-        label: colorEmoji,
-      };
-    });
+    const vscodeComments: vscode.Comment[] = comments.map((c) => ({
+      body: c.body,
+      mode: vscode.CommentMode.Preview,
+      author: { name: c.author },
+      label: colorEmoji,
+    }));
 
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
 
