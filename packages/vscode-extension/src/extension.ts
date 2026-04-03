@@ -163,6 +163,7 @@ export function activate(context: vscode.ExtensionContext) {
             zeroLine, end ?? Number.MAX_SAFE_INTEGER
           );
           await vscode.window.showTextDocument(doc, { selection: range, preserveFocus: false });
+          commentCtrl?.revealThread(uri, line);
         } catch (err) {
           debug('goToComment failed:', err);
         }

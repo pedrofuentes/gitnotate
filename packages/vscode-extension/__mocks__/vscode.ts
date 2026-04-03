@@ -201,6 +201,11 @@ export const extensions = {
   }),
 };
 
+export enum CommentThreadCollapsibleState {
+  Collapsed = 0,
+  Expanded = 1,
+}
+
 export enum CommentMode {
   Preview = 0,
   Editing = 1,
