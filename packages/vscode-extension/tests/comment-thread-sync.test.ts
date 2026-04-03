@@ -690,4 +690,52 @@ describe('CommentThreadSync', () => {
       expect(clearSpy).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('reveal callback integration', () => {
+    it('should call onThreadRevealed for each created thread during sync', async () => {
+      const comment1 = makeComment({
+        id: 10,
+        body: '^gn:5:R:0:10\n\nFirst comment',
+        path: 'docs/readme.md',
+        line: 5,
+      });
+      const comment2 = makeComment({
+        id: 20,
+        body: '^gn:12:R:3:20\n\nSecond comment',
+        path: 'docs/readme.md',
+        line: 12,
+      });
+      const prService = makeMockPrService([comment1, comment2]);
+      const callback = vi.fn();
+      commentController.onThreadRevealed = callback;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(callback).toHaveBeenCalledWith(10);
+      expect(callback).toHaveBeenCalledWith(20);
+    });
+
+    it('should call onThreadRevealed for regular line comments too', async () => {
+      const comment = makeComment({
+        id: 30,
+        body: 'A regular line comment',
+        path: 'docs/readme.md',
+        line: 7,
+      });
+      const prService = makeMockPrService([comment]);
+      const callback = vi.fn();
+      commentController.onThreadRevealed = callback;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      expect(callback).toHaveBeenCalledWith(30);
+    });
+  });
 });

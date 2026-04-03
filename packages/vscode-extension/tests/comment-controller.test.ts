@@ -475,4 +475,59 @@ describe('CommentController', () => {
       controller.dispose();
     });
   });
+
+  describe('onThreadRevealed callback', () => {
+    it('should fire callback from revealThread with stored commentId', () => {
+      const controller = new CommentController();
+      const callback = vi.fn();
+      controller.onThreadRevealed = callback;
+
+      const uri = Uri.file('/workspace/docs/test.md');
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment on line 10', author: 'pedro' }],
+        undefined,
+        99
+      );
+
+      controller.revealThread(uri, 10);
+
+      expect(callback).toHaveBeenCalledWith(99);
+      controller.dispose();
+    });
+
+    it('should not fire callback from revealThread when no commentId stored', () => {
+      const controller = new CommentController();
+      const callback = vi.fn();
+      controller.onThreadRevealed = callback;
+
+      const uri = Uri.file('/workspace/docs/test.md');
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment', author: 'user' }]
+      );
+
+      controller.revealThread(uri, 10);
+
+      expect(callback).not.toHaveBeenCalled();
+      controller.dispose();
+    });
+
+    it('should not throw when revealThread fires without callback set', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/test.md');
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment', author: 'user' }],
+        undefined,
+        99
+      );
+
+      expect(() => controller.revealThread(uri, 10)).not.toThrow();
+      controller.dispose();
+    });
+  });
 });

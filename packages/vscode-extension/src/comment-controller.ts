@@ -30,6 +30,8 @@ export class CommentController {
   private decorationTypes: vscode.TextEditorDecorationType[];
   private log: Logger | undefined;
   private parentCommentIds: Map<vscode.CommentThread, number> = new Map();
+  private threadCommentIds = new Map<vscode.CommentThread, number>();
+  onThreadRevealed?: (commentId: number) => void;
 
   constructor() {
     try { this.log = getLogger(); } catch { /* logger not initialized */ }
@@ -75,7 +77,7 @@ export class CommentController {
     range: vscode.Range,
     comments: ThreadComment[],
     colorIndex?: number,
-    parentCommentId?: number
+    commentId?: number
   ): vscode.CommentThread {
     const colorEmoji = colorIndex !== undefined ? COLOR_EMOJIS[colorIndex % COLOR_EMOJIS.length] : undefined;
 
@@ -89,8 +91,9 @@ export class CommentController {
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
     this.log?.info('CommentController', 'thread created at', `L${range.start.line + 1}`, uri.fsPath);
 
-    if (parentCommentId !== undefined) {
-      this.parentCommentIds.set(thread, parentCommentId);
+    if (commentId !== undefined) {
+      this.parentCommentIds.set(thread, commentId);
+      this.threadCommentIds.set(thread, commentId);
     }
 
     const key = uri.fsPath;
@@ -155,6 +158,7 @@ export class CommentController {
       const threads = this.threads.get(key);
       if (threads) {
         for (const thread of threads) {
+          this.threadCommentIds.delete(thread);
           thread.dispose();
         }
         this.threads.delete(key);
@@ -162,6 +166,7 @@ export class CommentController {
     } else {
       for (const threads of this.threads.values()) {
         for (const thread of threads) {
+          this.threadCommentIds.delete(thread);
           thread.dispose();
         }
       }
@@ -179,12 +184,19 @@ export class CommentController {
     if (!thread) return false;
 
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+
+    const commentId = this.threadCommentIds.get(thread);
+    if (commentId !== undefined) {
+      this.onThreadRevealed?.(commentId);
+    }
+
     return true;
   }
 
   dispose(): void {
     this.log?.info('CommentController', 'disposing');
     this.clearThreads();
+    this.threadCommentIds.clear();
     for (const decorationType of this.decorationTypes) {
       decorationType.dispose();
     }
