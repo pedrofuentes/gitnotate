@@ -10,9 +10,10 @@ import { CommentThreadSync } from './comment-thread-sync';
 import { PrService } from './pr-service';
 import { getRelativePath, debounce } from './utils';
 import { CommentsTreeProvider } from './comments-tree-provider';
+import { StatusBarManager } from './status-bar';
 
 let commentCtrl: CommentController | undefined;
-let statusBarItem: vscode.StatusBarItem | undefined;
+let statusBar: StatusBarManager | undefined;
 let prService: PrService | undefined;
 let threadSync: CommentThreadSync | undefined;
 let cachedToken: string | undefined;
@@ -39,32 +40,31 @@ async function updatePRStatusBar(): Promise<void> {
   const gitService = new GitService();
   const token = await getGitHubToken();
   debug('Auth token:', token ? 'present' : 'absent');
-  const pr = await detectCurrentPR(gitService, token);
 
-  if (!statusBarItem) {
-    statusBarItem = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Left
-    );
-  }
+  if (!statusBar) return;
+
+  statusBar.setLoading();
+  const pr = await detectCurrentPR(gitService, token);
 
   if (pr) {
     debug('PR detected:', `${pr.owner}/${pr.repo}#${pr.number}`);
-    statusBarItem.text = `$(git-pull-request) Gitnotate: PR #${pr.number}`;
-    statusBarItem.tooltip = `${pr.owner}/${pr.repo}#${pr.number}`;
-    statusBarItem.show();
+    statusBar.show(pr.number);
 
     if (!token) {
       promptSignIn();
     }
   } else {
     debug('No PR detected — status bar hidden');
-    statusBarItem.hide();
+    statusBar.hide();
   }
 }
 
 export function activate(context: vscode.ExtensionContext) {
   initLogger(context);
   debug('Extension activating...');
+
+  statusBar = new StatusBarManager();
+  context.subscriptions.push({ dispose: () => statusBar?.dispose() });
 
   commentCtrl = new CommentController();
   context.subscriptions.push({ dispose: () => commentCtrl?.dispose() });
@@ -300,5 +300,6 @@ export function deactivate() {
   prService = undefined;
   threadSync = undefined;
   cachedToken = undefined;
-  statusBarItem?.dispose();
+  statusBar?.dispose();
+  statusBar = undefined;
 }
