@@ -330,4 +330,51 @@ describe('CommentController', () => {
       controller.dispose();
     });
   });
+
+  describe('revealThread', () => {
+    it('should expand the thread at the matching line', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/test.md');
+
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment on line 10', author: 'pedro' }]
+      );
+
+      const result = controller.revealThread(uri, 10);
+      expect(result).toBe(true);
+
+      const threads = __getCommentThreads();
+      expect(threads[0].collapsibleState).toBe(1); // Expanded
+
+      controller.dispose();
+    });
+
+    it('should return false when no thread matches the line', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/test.md');
+
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment on line 10', author: 'pedro' }]
+      );
+
+      const result = controller.revealThread(uri, 50);
+      expect(result).toBe(false);
+
+      controller.dispose();
+    });
+
+    it('should return false when no threads exist for the URI', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/test.md');
+
+      const result = controller.revealThread(uri, 10);
+      expect(result).toBe(false);
+
+      controller.dispose();
+    });
+  });
 });

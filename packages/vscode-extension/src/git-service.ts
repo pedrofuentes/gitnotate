@@ -5,6 +5,7 @@ interface GitRepository {
   state: {
     HEAD?: { name?: string; commit?: string };
     remotes: Array<{ name: string; fetchUrl: string }>;
+    onDidChange: vscode.Event<void>;
   };
 }
 
@@ -82,5 +83,11 @@ export class GitService {
   isAvailable(): boolean {
     const repo = this.getRepo();
     return repo !== undefined;
+  }
+
+  onDidChangeState(listener: () => void): vscode.Disposable | undefined {
+    const repo = this.getRepo();
+    if (!repo) return undefined;
+    return repo.state.onDidChange(listener);
   }
 }

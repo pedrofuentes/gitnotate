@@ -163,6 +163,7 @@ export function activate(context: vscode.ExtensionContext) {
             zeroLine, end ?? Number.MAX_SAFE_INTEGER
           );
           await vscode.window.showTextDocument(doc, { selection: range, preserveFocus: false });
+          commentCtrl?.revealThread(uri, line);
         } catch (err) {
           debug('goToComment failed:', err);
         }
@@ -199,17 +200,29 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(closeDisposable);
 
   // Lifecycle: re-sync on auth session change
-  const authDisposable = vscode.authentication.onDidChangeSessions(() => {
+  const authDisposable = vscode.authentication.onDidChangeSessions(async () => {
     debug('Auth session changed — invalidating cache and re-syncing');
     commentCtrl?.clearThreads();
     const editor = vscode.window.activeTextEditor;
     if (editor && commentCtrl) {
       commentCtrl.clearHighlights(editor);
     }
-    treeProvider?.setState('noAuth');
     cachedToken = undefined;
     threadSync = undefined;
     prService = undefined;
+
+    // Check if this is a sign-in or sign-out
+    const newToken = await getGitHubToken();
+    if (newToken) {
+      // Only show "Loading" if we can actually sync right now
+      const activeEditor = vscode.window.activeTextEditor;
+      if (activeEditor && activeEditor.document.languageId === 'markdown') {
+        treeProvider?.setState('loading');
+      }
+      // else: keep whatever state we had — sync will update when user opens a markdown file
+    } else {
+      treeProvider?.setState('noAuth');
+    }
     triggerSync();
   });
   context.subscriptions.push(authDisposable);
@@ -247,6 +260,31 @@ export function activate(context: vscode.ExtensionContext) {
 
   retryTimer = setTimeout(tryInitialSync, 500);
   context.subscriptions.push({ dispose: () => { if (retryTimer) clearTimeout(retryTimer); } });
+
+  // Lifecycle: re-sync when git branch changes
+  let gitWatcherRetries = 0;
+  let gitWatcherTimer: ReturnType<typeof setTimeout> | undefined;
+  const setupGitWatcher = () => {
+    const gitService = new GitService();
+    const disposable = gitService.onDidChangeState(() => {
+      debug('Git state changed — re-syncing');
+      cachedToken = undefined;
+      threadSync = undefined;
+      prService = undefined;
+      updatePRStatusBar();
+      triggerSync();
+    });
+    if (disposable) {
+      context.subscriptions.push(disposable);
+      debug('Git state watcher registered');
+    } else if (gitWatcherRetries < maxRetries) {
+      gitWatcherRetries++;
+      debug('Git state watcher: git not available, retry', gitWatcherRetries, 'of', maxRetries);
+      gitWatcherTimer = setTimeout(setupGitWatcher, 3000);
+    }
+  };
+  gitWatcherTimer = setTimeout(setupGitWatcher, 1000);
+  context.subscriptions.push({ dispose: () => { if (gitWatcherTimer) clearTimeout(gitWatcherTimer); } });
 }
 
 export function deactivate() {
