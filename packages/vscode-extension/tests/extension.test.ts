@@ -8,7 +8,10 @@ vi.mock('../src/settings', () => ({
 
 // Mock new dependencies used by extension
 vi.mock('../src/git-service', () => ({
-  GitService: vi.fn().mockImplementation(() => ({})),
+  GitService: vi.fn().mockImplementation(() => ({
+    isAvailable: vi.fn().mockReturnValue(false),
+    onDidChangeState: vi.fn().mockReturnValue(undefined),
+  })),
 }));
 
 vi.mock('../src/auth', () => ({

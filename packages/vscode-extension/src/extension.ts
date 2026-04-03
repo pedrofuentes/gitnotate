@@ -260,6 +260,31 @@ export function activate(context: vscode.ExtensionContext) {
 
   retryTimer = setTimeout(tryInitialSync, 500);
   context.subscriptions.push({ dispose: () => { if (retryTimer) clearTimeout(retryTimer); } });
+
+  // Lifecycle: re-sync when git branch changes
+  let gitWatcherRetries = 0;
+  let gitWatcherTimer: ReturnType<typeof setTimeout> | undefined;
+  const setupGitWatcher = () => {
+    const gitService = new GitService();
+    const disposable = gitService.onDidChangeState(() => {
+      debug('Git state changed — re-syncing');
+      cachedToken = undefined;
+      threadSync = undefined;
+      prService = undefined;
+      updatePRStatusBar();
+      triggerSync();
+    });
+    if (disposable) {
+      context.subscriptions.push(disposable);
+      debug('Git state watcher registered');
+    } else if (gitWatcherRetries < maxRetries) {
+      gitWatcherRetries++;
+      debug('Git state watcher: git not available, retry', gitWatcherRetries, 'of', maxRetries);
+      gitWatcherTimer = setTimeout(setupGitWatcher, 3000);
+    }
+  };
+  gitWatcherTimer = setTimeout(setupGitWatcher, 1000);
+  context.subscriptions.push({ dispose: () => { if (gitWatcherTimer) clearTimeout(gitWatcherTimer); } });
 }
 
 export function deactivate() {

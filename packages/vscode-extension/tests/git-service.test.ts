@@ -10,6 +10,7 @@ function makeRepo(overrides: {
     state: {
       HEAD: overrides.head ?? undefined,
       remotes: overrides.remotes ?? [],
+      onDidChange: vi.fn((_listener: () => void) => ({ dispose: vi.fn() })),
     },
   };
 }
@@ -154,6 +155,23 @@ describe('GitService', () => {
     it('returns false when no git extension', () => {
       // No git repository set — default state
       expect(service.isAvailable()).toBe(false);
+    });
+  });
+
+  describe('onDidChangeState', () => {
+    it('returns a disposable when git is available', () => {
+      __setGitRepository(makeRepo({ head: { name: 'main', commit: 'abc' } }));
+      service = new GitService();
+
+      const listener = vi.fn();
+      const disposable = service.onDidChangeState(listener);
+      expect(disposable).toBeDefined();
+      expect(disposable!.dispose).toBeDefined();
+    });
+
+    it('returns undefined when git is not available', () => {
+      const disposable = service.onDidChangeState(vi.fn());
+      expect(disposable).toBeUndefined();
     });
   });
 });
