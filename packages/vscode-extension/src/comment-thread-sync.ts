@@ -4,6 +4,7 @@ import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
 import { debug, getLogger, Logger } from './logger';
 import { detectDocumentSide, normalizeSide } from './side-utils';
+import { showAuthError, showApiError } from './error-handler';
 
 // Matches the > 📌 **"quoted text"** (chars N–M) blockquote line
 const BLOCKQUOTE_FALLBACK_RE = /^>\s*📌\s*\*\*".*?"\*\*\s*\(chars\s*\d+[–-]\d+\)\s*\n*/;
@@ -29,7 +30,13 @@ export class CommentThreadSync {
     pr: PullRequestInfo
   ): Promise<vscode.Range[]> {
     this.log?.info('ThreadSync', 'syncing', relativePath, `PR #${pr.number}`);
-    const comments = await this.getComments(pr);
+    let comments: ReviewComment[];
+    try {
+      comments = await this.getComments(pr);
+    } catch (err) {
+      await this.handleFetchError(err);
+      return [];
+    }
     return this.renderComments(uri, relativePath, comments);
   }
 
@@ -140,7 +147,13 @@ export class CommentThreadSync {
     // Fetch fresh data in background
     debug('Thread sync (cache-first): fetching fresh data');
     const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
-    const freshComments = await this.prService.listReviewComments(pr);
+    let freshComments: ReviewComment[];
+    try {
+      freshComments = await this.prService.listReviewComments(pr);
+    } catch (err) {
+      await this.handleFetchError(err);
+      return cachedRanges;
+    }
 
     // null means 304 Not Modified — data unchanged, keep cache
     if (freshComments === null) {
@@ -171,6 +184,20 @@ export class CommentThreadSync {
 
   invalidateCache(): void {
     this.cache.clear();
+  }
+
+  private async handleFetchError(err: unknown): Promise<void> {
+    const status =
+      err instanceof Error && 'status' in err
+        ? (err as Error & { status: number }).status
+        : undefined;
+    if (status === 401 || status === 403) {
+      await showAuthError();
+    } else {
+      const message =
+        err instanceof Error ? err.message : 'Failed to fetch PR comments.';
+      await showApiError(message);
+    }
   }
 
   private async getComments(pr: PullRequestInfo): Promise<ReviewComment[]> {

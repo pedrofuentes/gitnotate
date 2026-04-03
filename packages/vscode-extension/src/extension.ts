@@ -11,6 +11,7 @@ import { PrService } from './pr-service';
 import { getRelativePath, debounce } from './utils';
 import { CommentsTreeProvider } from './comments-tree-provider';
 import { StatusBarManager } from './status-bar';
+import { showAuthError } from './error-handler';
 
 let commentCtrl: CommentController | undefined;
 let statusBar: StatusBarManager | undefined;
@@ -274,6 +275,7 @@ export function activate(context: vscode.ExtensionContext) {
       // else: keep whatever state we had — sync will update when user opens a markdown file
     } else {
       treeProvider?.setState('noAuth');
+      showAuthError();
     }
     triggerSync();
   });
