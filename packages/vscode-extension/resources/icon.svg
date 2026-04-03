@@ -1,0 +1,9 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pin head (circle) -->
+  <circle cx="12" cy="7" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+  <!-- Pin needle -->
+  <line x1="12" y1="12" x2="12" y2="21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Annotation lines inside pin head -->
+  <line x1="9.5" y1="5.5" x2="14.5" y2="5.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+  <line x1="9.5" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+</svg>
