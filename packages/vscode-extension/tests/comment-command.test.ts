@@ -23,9 +23,17 @@ vi.mock('@gitnotate/core', () => ({
   buildGnComment: vi.fn(),
 }));
 
+vi.mock('../src/side-utils', () => ({
+  detectDocumentSide: vi.fn(),
+}));
+
+vi.mock('../src/logger', () => ({
+  debug: vi.fn(),
+}));
+
 import {
   window,
-  Position,
+  Uri,
   Range,
   __setActiveTextEditor,
   __reset,
@@ -35,6 +43,11 @@ import { PrService } from '../src/pr-service';
 import { detectCurrentPR } from '../src/pr-detector';
 import { buildGnComment } from '@gitnotate/core';
 import { getGitHubToken } from '../src/auth';
+import { detectDocumentSide } from '../src/side-utils';
+import { debug } from '../src/logger';
+
+const mockDetectDocumentSide = vi.mocked(detectDocumentSide);
+const mockDebug = vi.mocked(debug);
 
 const mockDetectCurrentPR = vi.mocked(detectCurrentPR);
 const mockBuildGnComment = vi.mocked(buildGnComment);
@@ -313,5 +326,143 @@ describe('addCommentCommand', () => {
     expect(window.showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('Permission denied')
     );
+  });
+
+  describe('side-aware comment posting', () => {
+    const prInfo = {
+      owner: 'octocat',
+      repo: 'hello-world',
+      number: 42,
+      headSha: 'abc123',
+    };
+
+    function setupEditor(uri: InstanceType<typeof Uri>) {
+      const selection = new Range(5, 2, 5, 10);
+      __setActiveTextEditor({
+        selection,
+        document: {
+          getText: vi.fn().mockReturnValue('selected text'),
+          uri,
+          fileName: uri.fsPath,
+        },
+      });
+      mockGetGitHubToken.mockResolvedValue('ghp_test_token');
+      mockDetectCurrentPR.mockResolvedValue(prInfo);
+      window.showInputBox.mockResolvedValue('Nice comment!');
+      mockBuildGnComment.mockReturnValue('formatted comment body');
+    }
+
+    it('should use side R in metadata and RIGHT in API call for file: URI', async () => {
+      const uri = Uri.file('/project/src/file.ts');
+      setupEditor(uri);
+      mockDetectDocumentSide.mockReturnValue('RIGHT');
+
+      const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      expect(mockBuildGnComment).toHaveBeenCalledWith(
+        expect.objectContaining({ side: 'R' }),
+        'Nice comment!'
+      );
+      expect(mockCreateReviewComment).toHaveBeenCalledWith(
+        prInfo,
+        expect.any(String),
+        6,
+        'RIGHT',
+        'formatted comment body'
+      );
+    });
+
+    it('should use side L in metadata and LEFT in API call for git: URI', async () => {
+      const uri = Uri.from({ scheme: 'git', path: '/project/src/file.ts' });
+      setupEditor(uri);
+      mockDetectDocumentSide.mockReturnValue('LEFT');
+
+      const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      expect(mockBuildGnComment).toHaveBeenCalledWith(
+        expect.objectContaining({ side: 'L' }),
+        'Nice comment!'
+      );
+      expect(mockCreateReviewComment).toHaveBeenCalledWith(
+        prInfo,
+        expect.any(String),
+        6,
+        'LEFT',
+        'formatted comment body'
+      );
+    });
+
+    it('should default to side R/RIGHT for unknown URI scheme (BOTH)', async () => {
+      const uri = Uri.parse('untitled:Untitled-1');
+      setupEditor(uri);
+      mockDetectDocumentSide.mockReturnValue('BOTH');
+
+      const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      expect(mockBuildGnComment).toHaveBeenCalledWith(
+        expect.objectContaining({ side: 'R' }),
+        'Nice comment!'
+      );
+      expect(mockCreateReviewComment).toHaveBeenCalledWith(
+        prInfo,
+        expect.any(String),
+        6,
+        'RIGHT',
+        'formatted comment body'
+      );
+    });
+
+    it('should include correct side value in ^gn tag in comment body', async () => {
+      const uri = Uri.from({ scheme: 'git', path: '/project/src/file.ts' });
+      setupEditor(uri);
+      mockDetectDocumentSide.mockReturnValue('LEFT');
+
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      const metadataArg = mockBuildGnComment.mock.calls[0][0];
+      expect(metadataArg).toMatchObject({
+        exact: 'selected text',
+        lineNumber: 6,
+        side: 'L',
+        start: 2,
+        end: 10,
+      });
+    });
+
+    it('should show detected side in debug log', async () => {
+      const uri = Uri.from({ scheme: 'git', path: '/project/src/file.ts' });
+      setupEditor(uri);
+      mockDetectDocumentSide.mockReturnValue('LEFT');
+
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      expect(mockDebug).toHaveBeenCalledWith(
+        'Add Comment:',
+        expect.objectContaining({ side: 'LEFT' })
+      );
+    });
   });
 });

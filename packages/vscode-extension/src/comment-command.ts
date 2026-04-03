@@ -6,6 +6,7 @@ import { getRelativePath } from './utils';
 import { GitService } from './git-service';
 import { getGitHubToken } from './auth';
 import { debug } from './logger';
+import { detectDocumentSide } from './side-utils';
 import type { GnMetadata } from '@gitnotate/core';
 
 export async function addCommentCommand(
@@ -49,10 +50,15 @@ export async function addCommentCommand(
 
   // Build ^gn comment
   const selectedText = editor.document.getText(editor.selection);
+  const docSide = detectDocumentSide(editor.document.uri);
+  // For BOTH (non-diff view), default to RIGHT since user is editing current file
+  const apiSide: 'LEFT' | 'RIGHT' = docSide === 'LEFT' ? 'LEFT' : 'RIGHT';
+  const metadataSide: 'L' | 'R' = apiSide === 'LEFT' ? 'L' : 'R';
+
   const metadata: GnMetadata = {
     exact: selectedText,
     lineNumber: editor.selection.start.line + 1,
-    side: 'R',
+    side: metadataSide,
     start: editor.selection.start.character,
     end: editor.selection.end.character,
   };
@@ -64,14 +70,14 @@ export async function addCommentCommand(
   const filePath = getRelativePath(editor.document.fileName);
   const line = editor.selection.start.line + 1;
 
-  debug('Add Comment:', { file: filePath, line, side: 'RIGHT', pr: `${pr.owner}/${pr.repo}#${pr.number}`, headSha: pr.headSha });
+  debug('Add Comment:', { file: filePath, line, side: apiSide, pr: `${pr.owner}/${pr.repo}#${pr.number}`, headSha: pr.headSha });
   debug('Comment body:', commentBody);
 
   const result = await client.createReviewComment(
     pr,
     filePath,
     line,
-    'RIGHT',
+    apiSide,
     commentBody
   );
 
