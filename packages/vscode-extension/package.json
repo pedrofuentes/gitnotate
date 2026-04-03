@@ -50,6 +50,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "gitnotate.pollInterval": {
+          "type": "number",
+          "default": 30,
+          "minimum": 10,
+          "description": "Polling interval in seconds for live comment updates from GitHub"
         }
       }
     },

@@ -122,6 +122,9 @@ export function activate(context: vscode.ExtensionContext) {
     if (cachedComments) {
       treeProvider?.setComments(cachedComments);
     }
+
+    // Start polling for live updates
+    threadSync.startPolling(editor.document.uri, relativePath, pr);
   }, 300);
 
   const triggerSync = () => {
@@ -176,6 +179,8 @@ export function activate(context: vscode.ExtensionContext) {
       debug('Editor changed:', editor ? editor.document.fileName : '(none)');
       if (editor) {
         debouncedSync(editor);
+      } else {
+        threadSync?.stopPolling();
       }
     }
   );
@@ -190,6 +195,20 @@ export function activate(context: vscode.ExtensionContext) {
     triggerSync();
   });
   context.subscriptions.push(saveDisposable);
+
+  // Lifecycle: pause polling when window loses focus, resume when focused
+  const windowStateDisposable = vscode.window.onDidChangeWindowState(
+    (state: { focused: boolean }) => {
+      if (!state.focused) {
+        debug('Window lost focus — stopping polling');
+        threadSync?.stopPolling();
+      } else {
+        debug('Window gained focus — re-syncing and resuming polling');
+        triggerSync();
+      }
+    }
+  );
+  context.subscriptions.push(windowStateDisposable);
 
   // Lifecycle: clear threads on close
   const closeDisposable = vscode.workspace.onDidCloseTextDocument((doc) => {
@@ -289,6 +308,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   debug('Extension deactivating...');
+  if (threadSync) {
+    threadSync.stopPolling();
+  }
   if (commentCtrl) {
     commentCtrl.dispose();
     commentCtrl = undefined;
