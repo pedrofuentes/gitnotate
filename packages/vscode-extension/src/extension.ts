@@ -214,7 +214,12 @@ export function activate(context: vscode.ExtensionContext) {
     // Check if this is a sign-in or sign-out
     const newToken = await getGitHubToken();
     if (newToken) {
-      treeProvider?.setState('loading');
+      // Only show "Loading" if we can actually sync right now
+      const activeEditor = vscode.window.activeTextEditor;
+      if (activeEditor && activeEditor.document.languageId === 'markdown') {
+        treeProvider?.setState('loading');
+      }
+      // else: keep whatever state we had — sync will update when user opens a markdown file
     } else {
       treeProvider?.setState('noAuth');
     }

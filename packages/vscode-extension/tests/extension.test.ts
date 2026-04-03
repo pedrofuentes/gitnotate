@@ -924,7 +924,7 @@ describe('extension', () => {
       expect(__mockSetState).toHaveBeenCalledWith('noAuth');
     });
 
-    it('should set loading state on tree provider when signing back in', async () => {
+    it('should set loading state on tree provider when signing back in with markdown editor active', async () => {
       mockGetGitHubToken.mockResolvedValue('test-token');
       mockDetectCurrentPR.mockResolvedValue({
         owner: 'octocat',
@@ -937,6 +937,16 @@ describe('extension', () => {
       activate(context as any);
       await vi.runAllTimersAsync();
 
+      // Set an active markdown editor
+      __setActiveTextEditor({
+        setDecorations: vi.fn(),
+        document: {
+          uri: Uri.file('/workspace/docs/readme.md'),
+          languageId: 'markdown',
+          fileName: '/workspace/docs/readme.md',
+        },
+      });
+
       // Sign back in (token present)
       mockGetGitHubToken.mockResolvedValue('new-token');
       const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
@@ -944,6 +954,34 @@ describe('extension', () => {
       await vi.advanceTimersByTimeAsync(100);
 
       expect(__mockSetState).toHaveBeenCalledWith('loading');
+    });
+
+    it('should not set loading state on sign-in when no markdown editor is active', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      __mockSetState.mockClear();
+
+      // No active editor
+      __setActiveTextEditor(undefined);
+
+      // Sign back in
+      mockGetGitHubToken.mockResolvedValue('new-token');
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      authHandler({ provider: { id: 'github' } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Should NOT have called setState('loading') — no markdown editor to sync
+      expect(__mockSetState).not.toHaveBeenCalledWith('loading');
     });
   });
 });
