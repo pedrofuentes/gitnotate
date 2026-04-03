@@ -364,7 +364,7 @@ describe('addCommentCommand', () => {
 
       const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
       vi.mocked(PrService).mockImplementation(
-        () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
+        () => ({ createReviewWithComment: vi.fn().mockResolvedValue({ ok: false }), createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
       );
 
       await addCommentCommand(mockContext);
@@ -389,7 +389,7 @@ describe('addCommentCommand', () => {
 
       const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
       vi.mocked(PrService).mockImplementation(
-        () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
+        () => ({ createReviewWithComment: vi.fn().mockResolvedValue({ ok: false }), createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
       );
 
       await addCommentCommand(mockContext);
@@ -414,7 +414,7 @@ describe('addCommentCommand', () => {
 
       const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
       vi.mocked(PrService).mockImplementation(
-        () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
+        () => ({ createReviewWithComment: vi.fn().mockResolvedValue({ ok: false }), createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
       );
 
       await addCommentCommand(mockContext);
@@ -438,7 +438,7 @@ describe('addCommentCommand', () => {
       mockDetectDocumentSide.mockReturnValue('LEFT');
 
       vi.mocked(PrService).mockImplementation(
-        () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
+        () => ({ createReviewWithComment: vi.fn().mockResolvedValue({ ok: false }), createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
       );
 
       await addCommentCommand(mockContext);
@@ -459,7 +459,7 @@ describe('addCommentCommand', () => {
       mockDetectDocumentSide.mockReturnValue('LEFT');
 
       vi.mocked(PrService).mockImplementation(
-        () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
+        () => ({ createReviewWithComment: vi.fn().mockResolvedValue({ ok: false }), createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
       );
 
       await addCommentCommand(mockContext);

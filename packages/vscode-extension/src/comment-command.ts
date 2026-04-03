@@ -85,7 +85,7 @@ export async function addCommentCommand(
   // If review endpoint fails, fall back to single-comment endpoint
   if (!result.ok) {
     debug('Review endpoint failed, falling back to single-comment endpoint');
-    result = await client.createReviewComment(pr, filePath, line, 'RIGHT', commentBody);
+    result = await client.createReviewComment(pr, filePath, line, apiSide, commentBody);
   }
 
   if (result.ok) {

@@ -156,7 +156,7 @@ export class CommentThreadSync {
     // Fetch fresh data in background
     debug('Thread sync (cache-first): fetching fresh data');
     const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
-    let freshComments: ReviewComment[];
+    let freshComments: ReviewComment[] | null;
     try {
       freshComments = await this.prService.listReviewComments(pr);
     } catch (err) {

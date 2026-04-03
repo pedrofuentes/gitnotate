@@ -385,12 +385,11 @@ export function deactivate() {
   cachedToken = undefined;
   anchorTracker?.dispose();
   anchorTracker = undefined;
-  statusBarItem?.dispose();
+  statusBar?.dispose();
+  statusBar = undefined;
   try {
     getLogger().dispose();
   } catch {
     // Logger was never created
   }
-  statusBar?.dispose();
-  statusBar = undefined;
 }
