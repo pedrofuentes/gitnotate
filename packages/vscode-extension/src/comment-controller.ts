@@ -142,7 +142,7 @@ export class CommentController {
     if (!threads) return false;
 
     const zeroLine = lineNumber - 1;
-    const thread = threads.find((t) => t.range.start.line === zeroLine);
+    const thread = threads.find((t) => t.range?.start.line === zeroLine);
     if (!thread) return false;
 
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;

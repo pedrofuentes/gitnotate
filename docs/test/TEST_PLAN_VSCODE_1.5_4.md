@@ -47,10 +47,10 @@ Same as Increment 3 (see `TEST_PLAN_VSCODE_1.5_3.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 23.1 | Sidebar shows file items | Open the Gitnotate sidebar (click pin icon in activity bar). Open `edge-cases.md` on PR #6. Wait for sync. | Sidebar shows file items grouped by path (e.g., `edge-cases.md`, `notes.md`). Each file item shows a count like "5 comments" or "1 comment". | ⬜ Manual |
-| 23.2 | File items are collapsible | Click a file item in the sidebar. | It expands to show individual comment items. Clicking again collapses it. | ⬜ Manual |
-| 23.3 | ^gn comments show user body | Expand a file item with `^gn` comments. | Each `^gn` comment shows the user's comment text (not the `^gn:...` metadata line or the `> 📌 "..."` blockquote). Shows author and sub-line range (e.g., `@pedro L10:5-20`). | ⬜ Manual |
-| 23.4 | Regular line comments show body | Expand a file item with regular (non-`^gn`) comments. | Regular comments show the full comment body as label. Shows author and line number (e.g., `@maria L15`). | ⬜ Manual |
+| 23.1 | Sidebar shows file items | Open the Gitnotate sidebar (click pin icon in activity bar). Open `edge-cases.md` on PR #6. Wait for sync. | Sidebar shows file items grouped by path (e.g., `edge-cases.md`, `notes.md`). Each file item shows a count like "5 comments" or "1 comment". | ✅ Manual verified |
+| 23.2 | File items are collapsible | Click a file item in the sidebar. | It expands to show individual comment items. Clicking again collapses it. | ✅ Manual verified |
+| 23.3 | ^gn comments show user body | Expand a file item with `^gn` comments. | Each `^gn` comment shows the user's comment text (not the `^gn:...` metadata line or the `> 📌 "..."` blockquote). Shows author and sub-line range (e.g., `@pedro L10:5-20`). | ✅ Manual verified |
+| 23.4 | Regular line comments show body | Expand a file item with regular (non-`^gn`) comments. | Regular comments show the full comment body as label. Shows author and line number (e.g., `@maria L15`). | ✅ Manual verified |
 | 23.5 | Comments sorted by line number | Expand a file item with multiple comments. | Comments are ordered by ascending line number. | ✅ Unit |
 | 23.6 | Files sorted alphabetically | Sidebar with comments on multiple files. | File items are sorted alphabetically by path. | ✅ Unit |
 | 23.7 | Only root comments shown (not replies) | File item with a root comment that has replies. | Only the root comment appears as a tree item. Reply count shown in description (e.g., `· 2 replies`). | ✅ Unit |
@@ -63,10 +63,10 @@ Same as Increment 3 (see `TEST_PLAN_VSCODE_1.5_3.md`), plus:
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 24.1 | Loading state on startup | Open the Gitnotate sidebar immediately after extension activation (before any sync completes). | Sidebar shows "Loading comments..." message item. | ✅ Unit |
-| 24.2 | No PR state | Switch to a branch that has **no open PR** (e.g., checkout `main` or a branch without a PR). Open a markdown file. Open the sidebar. | Sidebar shows "No open PR detected" message. **Note**: If you're on a PR branch, files without comments simply don't appear in the tree — that's correct. This test requires actually being on a non-PR branch. | ⬜ Manual |
-| 24.3 | No auth state | Sign out of GitHub. Open the Gitnotate sidebar. | Sidebar shows "Sign in to GitHub" message. | ⬜ Manual |
-| 24.4 | No comments state | Open a markdown file on a PR branch that has zero review comments. Open the sidebar. | Sidebar shows "No comments on this PR" message. | ✅ Unit + ⬜ Manual |
-| 24.5 | State transitions correctly | Start signed out → sign in → open PR branch → see comments → sign out again. | Sidebar state transitions: "Sign in" → "Loading" → comments tree → "Sign in". | ⬜ Manual |
+| 24.2 | No PR state | Switch to a branch that has **no open PR** (e.g., checkout `main` or a branch without a PR). Open a markdown file. Open the sidebar. | Sidebar shows "No open PR detected" message. **Note**: If you're on a PR branch, files without comments simply don't appear in the tree — that's correct. This test requires actually being on a non-PR branch. | ✅ Manual verified |
+| 24.3 | No auth state | Sign out of GitHub. Open the Gitnotate sidebar. | Sidebar shows "Sign in to GitHub" message. | ✅ Manual verified |
+| 24.4 | No comments state | Open a markdown file on a PR branch that has zero review comments. Open the sidebar. | Sidebar shows "No comments on this PR" message. | ✅ Unit + ✅ Manual verified |
+| 24.5 | State transitions correctly | Start signed out → sign in → open PR branch → see comments → sign out again. | Sidebar state transitions: "Sign in" → "Loading" → comments tree → "Sign in". | ✅ Manual verified |
 
 ---
 
@@ -74,9 +74,9 @@ Same as Increment 3 (see `TEST_PLAN_VSCODE_1.5_3.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 25.1 | Click ^gn comment navigates to sub-line range | In sidebar, click a `^gn` comment item (e.g., `@pedro L10:5-20`). | The file opens (or focuses if already open) and the cursor/selection jumps to line 10, characters 5–20. The comment thread at that range should be visible. | ⬜ Manual |
-| 25.2 | Click regular comment navigates to line | In sidebar, click a regular (non-`^gn`) comment item (e.g., `@maria L15`). | The file opens and the cursor jumps to line 15. | ⬜ Manual |
-| 25.3 | Click comment on different file | Sidebar shows comments on `edge-cases.md` and `notes.md`. Currently viewing `edge-cases.md`. Click a comment under `notes.md`. | `notes.md` opens and navigates to the comment's line. | ⬜ Manual |
+| 25.1 | Click ^gn comment navigates to sub-line range | In sidebar, click a `^gn` comment item (e.g., `@pedro L10:5-20`). | The file opens (or focuses if already open) and the cursor/selection jumps to line 10, characters 5–20. The comment thread at that range should be visible. | ✅ Manual verified |
+| 25.2 | Click regular comment navigates to line | In sidebar, click a regular (non-`^gn`) comment item (e.g., `@maria L15`). | The file opens and the cursor jumps to line 15. | ✅ Manual verified |
+| 25.3 | Click comment on different file | Sidebar shows comments on `edge-cases.md` and `notes.md`. Currently viewing `edge-cases.md`. Click a comment under `notes.md`. | `notes.md` opens and navigates to the comment's line. | ✅ Manual verified |
 | 25.4 | CommentItem has correct command args | (Unit test) Verify CommentItem command arguments for ^gn vs regular. | ^gn: `[path, line, start, end]`. Regular: `[path, line, undefined, undefined]`. | ✅ Unit |
 
 ---
@@ -85,9 +85,9 @@ Same as Increment 3 (see `TEST_PLAN_VSCODE_1.5_3.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 26.1 | Refresh button visible | Open the Gitnotate sidebar. | A refresh icon (↻) appears in the sidebar title bar. | ⬜ Manual |
-| 26.2 | Refresh triggers re-sync | Click the refresh button. Check Debug Console. | Debug Console shows `[Gitnotate] Manual refresh triggered` followed by comment sync logs. Sidebar updates with fresh data. | ⬜ Manual |
-| 26.3 | Refresh picks up new comments | Add a new comment on the PR via GitHub web UI. Click refresh in sidebar. | The new comment appears in the sidebar tree after refresh. | ⬜ Manual |
+| 26.1 | Refresh button visible | Open the Gitnotate sidebar. | A refresh icon (↻) appears in the sidebar title bar. | ✅ Manual verified |
+| 26.2 | Refresh triggers re-sync | Click the refresh button. Check Debug Console. | Debug Console shows `[Gitnotate] Manual refresh triggered` followed by comment sync logs. Sidebar updates with fresh data. | ✅ Manual verified |
+| 26.3 | Refresh picks up new comments | Add a new comment on the PR via GitHub web UI. Click refresh in sidebar. | The new comment appears in the sidebar tree after refresh. | ✅ Manual verified |
 | 26.4 | refreshComments command registered | (Unit test) Verify command is registered on activation. | `gitnotate.refreshComments` registered. | ✅ Unit |
 
 ---
@@ -108,9 +108,9 @@ Same as Increment 3 (see `TEST_PLAN_VSCODE_1.5_3.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 28.1 | Sidebar updates on editor change | Open `edge-cases.md` (sync happens). Check sidebar. Open `notes.md` (sync happens). Check sidebar. | Sidebar shows all comments from the PR (both files) after each sync. The tree content should be the same regardless of which file is active, since all PR comments are shown. | ⬜ Manual |
-| 28.2 | Sidebar clears on sign-out | Have comments visible in sidebar. Sign out of GitHub. | Sidebar changes to "Sign in to GitHub" message. Comments disappear. | ⬜ Manual |
-| 28.3 | Sidebar repopulates on sign-in | After signing out (28.2), sign back in. Open a markdown file on the PR branch. | Sidebar transitions from "Sign in" → loading → shows all PR comments. | ⬜ Manual |
+| 28.1 | Sidebar updates on editor change | Open `edge-cases.md` (sync happens). Check sidebar. Open `notes.md` (sync happens). Check sidebar. | Sidebar shows all comments from the PR (both files) after each sync. The tree content should be the same regardless of which file is active, since all PR comments are shown. | ✅ Manual verified |
+| 28.2 | Sidebar clears on sign-out | Have comments visible in sidebar. Sign out of GitHub. | Sidebar changes to "Sign in to GitHub" message. Comments disappear. | ✅ Manual verified |
+| 28.3 | Sidebar repopulates on sign-in | After signing out (28.2), sign back in. Open a markdown file on the PR branch. | Sidebar transitions from "Sign in" → loading → shows all PR comments. | ✅ Manual verified |
 | 28.4 | Tree provider updated after sync | (Unit test) Verify sync pipeline calls `treeProvider.setComments()`. | After successful sync, tree provider receives comment data. | ✅ Unit |
 | 28.5 | No-auth state set when no token | (Unit test) Verify sync sets noAuth state when no token. | `treeProvider.setState('noAuth')` called. | ✅ Unit |
 | 28.6 | No-PR state set when no PR found | (Unit test) Verify sync sets noPr state when no PR detected. | `treeProvider.setState('noPr')` called. | ✅ Unit |
@@ -121,10 +121,10 @@ Same as Increment 3 (see `TEST_PLAN_VSCODE_1.5_3.md`), plus:
 
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
-| 29.1 | Sidebar commands registered on activation | Open a markdown file. Check registered commands. | `gitnotate.refreshComments` and `gitnotate.goToComment` exist in command list. | 🔍 Integration |
-| 29.2 | Opening sidebar does not crash | Click the Gitnotate icon in the activity bar. | Sidebar opens without errors. Shows a message item (loading/no PR/no auth). | 🔍 Integration |
-| 29.3 | Tab switching with sidebar open doesn't crash | Open sidebar. Open `edge-cases.md`. Switch to `notes.md`. Switch to `sample.js`. Switch back to `edge-cases.md`. | No errors. Sidebar remains functional. | 🔍 Integration |
-| 29.4 | Close all + reopen with sidebar open | Open sidebar. Open `edge-cases.md`. Close all editors. Reopen `notes.md`. | No errors. Extension still active. Sidebar shows appropriate state. | 🔍 Integration |
+| 29.1 | Sidebar commands registered on activation | Open a markdown file. Check registered commands. | `gitnotate.refreshComments` and `gitnotate.goToComment` exist in command list. | ✅ Integration verified |
+| 29.2 | Opening sidebar does not crash | Click the Gitnotate icon in the activity bar. | Sidebar opens without errors. Shows a message item (loading/no PR/no auth). | ✅ Integration verified |
+| 29.3 | Tab switching with sidebar open doesn't crash | Open sidebar. Open `edge-cases.md`. Switch to `notes.md`. Switch to `sample.js`. Switch back to `edge-cases.md`. | No errors. Sidebar remains functional. | ✅ Integration verified |
+| 29.4 | Close all + reopen with sidebar open | Open sidebar. Open `edge-cases.md`. Close all editors. Reopen `notes.md`. | No errors. Extension still active. Sidebar shows appropriate state. | ✅ Integration verified |
 
 ---
 
