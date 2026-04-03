@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getLogger, Logger } from './logger';
 
 export interface ThreadComment {
   body: string;
@@ -27,8 +28,10 @@ export class CommentController {
   private controller: vscode.CommentController;
   private threads: Map<string, vscode.CommentThread[]> = new Map();
   private decorationTypes: vscode.TextEditorDecorationType[];
+  private log: Logger | undefined;
 
   constructor() {
+    try { this.log = getLogger(); } catch { /* logger not initialized */ }
     this.controller = vscode.comments.createCommentController(
       'gitnotate',
       'Gitnotate Sub-line Comments'
@@ -82,6 +85,7 @@ export class CommentController {
     }));
 
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
+    this.log?.info('CommentController', 'thread created at', `L${range.start.line + 1}`, uri.fsPath);
 
     const key = uri.fsPath;
     const existing = this.threads.get(key) ?? [];
@@ -150,6 +154,7 @@ export class CommentController {
   }
 
   dispose(): void {
+    this.log?.info('CommentController', 'disposing');
     this.clearThreads();
     for (const decorationType of this.decorationTypes) {
       decorationType.dispose();

@@ -4,7 +4,7 @@ import { addCommentCommand } from './comment-command';
 import { detectCurrentPR } from './pr-detector';
 import { GitService } from './git-service';
 import { getGitHubToken, ensureAuthenticated } from './auth';
-import { initLogger, debug } from './logger';
+import { initLogger, debug, createLogger, getLogger } from './logger';
 import { CommentController } from './comment-controller';
 import { CommentThreadSync } from './comment-thread-sync';
 import { PrService } from './pr-service';
@@ -64,6 +64,8 @@ async function updatePRStatusBar(): Promise<void> {
 
 export function activate(context: vscode.ExtensionContext) {
   initLogger(context);
+  const log = createLogger();
+  log.info('Extension', 'activating');
   debug('Extension activating...');
 
   commentCtrl = new CommentController();
@@ -301,4 +303,9 @@ export function deactivate() {
   threadSync = undefined;
   cachedToken = undefined;
   statusBarItem?.dispose();
+  try {
+    getLogger().dispose();
+  } catch {
+    // Logger was never created
+  }
 }

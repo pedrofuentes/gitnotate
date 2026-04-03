@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { parseGnComment } from '@gitnotate/core';
 import type { ReviewComment } from './pr-service';
 import { stripBlockquoteFallback } from './comment-thread-sync';
+import { getLogger, Logger } from './logger';
 
 const MAX_LABEL_LENGTH = 60;
 
@@ -71,11 +72,17 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
   private fileGroups: FileGroup[] = [];
   private state: SidebarState = 'loading';
   private hasData = false;
+  private log: Logger | undefined;
 
   private _onDidChangeTreeData = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+  constructor() {
+    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+  }
+
   setComments(comments: ReviewComment[]): void {
+    this.log?.info('TreeProvider', 'refreshing with', comments.length, 'comments');
     const rootComments = comments.filter((c) => c.inReplyToId === undefined);
     const replyCounts = new Map<number, number>();
     for (const c of comments) {
@@ -130,6 +137,7 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
   }
 
   refresh(): void {
+    this.log?.info('TreeProvider', 'refresh triggered');
     this._onDidChangeTreeData.fire();
   }
 

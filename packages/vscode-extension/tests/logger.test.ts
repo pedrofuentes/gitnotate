@@ -1,26 +1,22 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { __reset, window } from '../__mocks__/vscode';
-
-// We need resetModules because logger.ts uses a module-level singleton.
-// Each test imports a fresh module to avoid cross-test state leaks.
+import { createLogger, getLogger, _resetForTesting } from '../src/logger';
 
 describe('Logger', () => {
   beforeEach(() => {
     __reset();
-    vi.resetModules();
+    _resetForTesting();
   });
 
   describe('createLogger', () => {
-    it('creates an output channel named "Gitnotate"', async () => {
-      const { createLogger } = await import('../src/logger');
+    it('creates an output channel named "Gitnotate"', () => {
       createLogger();
       expect(window.createOutputChannel).toHaveBeenCalledWith('Gitnotate');
     });
   });
 
   describe('info', () => {
-    it('calls appendLine with correct format', async () => {
-      const { createLogger } = await import('../src/logger');
+    it('calls appendLine with correct format', () => {
       const logger = createLogger();
       logger.info('TestComponent', 'hello world');
 
@@ -33,8 +29,7 @@ describe('Logger', () => {
       );
     });
 
-    it('formats multiple args separated by spaces', async () => {
-      const { createLogger } = await import('../src/logger');
+    it('formats multiple args separated by spaces', () => {
       const logger = createLogger();
       logger.info('Comp', 'a', 42, true);
 
@@ -47,8 +42,7 @@ describe('Logger', () => {
   });
 
   describe('warn', () => {
-    it('calls appendLine with correct format', async () => {
-      const { createLogger } = await import('../src/logger');
+    it('calls appendLine with correct format', () => {
       const logger = createLogger();
       logger.warn('SyncService', 'cache miss');
 
@@ -63,8 +57,7 @@ describe('Logger', () => {
   });
 
   describe('error', () => {
-    it('calls appendLine with correct format', async () => {
-      const { createLogger } = await import('../src/logger');
+    it('calls appendLine with correct format', () => {
       const logger = createLogger();
       logger.error('API', 'request failed', 404);
 
@@ -79,8 +72,7 @@ describe('Logger', () => {
   });
 
   describe('component name', () => {
-    it('includes the component name in brackets in the output', async () => {
-      const { createLogger } = await import('../src/logger');
+    it('includes the component name in brackets in the output', () => {
       const logger = createLogger();
       logger.info('MyComponent', 'test message');
 
@@ -91,22 +83,19 @@ describe('Logger', () => {
   });
 
   describe('getLogger', () => {
-    it('returns the singleton logger after createLogger', async () => {
-      const { createLogger, getLogger } = await import('../src/logger');
+    it('returns the singleton logger after createLogger', () => {
       const logger = createLogger();
       const same = getLogger();
       expect(same).toBe(logger);
     });
 
-    it('throws if called before createLogger', async () => {
-      const { getLogger } = await import('../src/logger');
+    it('throws if called before createLogger', () => {
       expect(() => getLogger()).toThrow();
     });
   });
 
   describe('dispose', () => {
-    it('disposes the output channel', async () => {
-      const { createLogger } = await import('../src/logger');
+    it('disposes the output channel', () => {
       const logger = createLogger();
       logger.dispose();
 

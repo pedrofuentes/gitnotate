@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { parseGnComment } from '@gitnotate/core';
 import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
-import { debug } from './logger';
+import { debug, getLogger, Logger } from './logger';
 
 // Matches the > 📌 **"quoted text"** (chars N–M) blockquote line
 const BLOCKQUOTE_FALLBACK_RE = /^>\s*📌\s*\*\*".*?"\*\*\s*\(chars\s*\d+[–-]\d+\)\s*\n*/;
@@ -13,17 +13,21 @@ export function stripBlockquoteFallback(text: string): string {
 
 export class CommentThreadSync {
   private cache: Map<string, ReviewComment[]> = new Map();
+  private log: Logger | undefined;
 
   constructor(
     private prService: PrService,
     private commentController: CommentController
-  ) {}
+  ) {
+    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+  }
 
   async syncForDocument(
     uri: vscode.Uri,
     relativePath: string,
     pr: PullRequestInfo
   ): Promise<vscode.Range[]> {
+    this.log?.info('ThreadSync', 'syncing', relativePath, `PR #${pr.number}`);
     const comments = await this.getComments(pr);
     return this.renderComments(uri, relativePath, comments);
   }
@@ -114,11 +118,13 @@ export class CommentThreadSync {
   ): Promise<vscode.Range[]> {
     const cached = this.getCachedComments(pr);
     if (!cached) {
+      this.log?.info('ThreadSync', 'cache miss — fetching from API');
       debug('Thread sync (cache-first): no cache — falling back to normal sync');
       return this.syncForDocument(uri, relativePath, pr);
     }
 
     // Render from cache immediately
+    this.log?.info('ThreadSync', 'cache hit — rendering from cache');
     debug('Thread sync (cache-first): rendering from cache');
     const cachedRanges = this.renderComments(uri, relativePath, cached);
 

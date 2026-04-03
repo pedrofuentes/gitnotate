@@ -1,3 +1,5 @@
+import { getLogger, Logger } from './logger';
+
 export interface PullRequestInfo {
   owner: string;
   repo: string;
@@ -22,7 +24,11 @@ const PER_PAGE = 100;
 const MAX_PAGES = 10;
 
 export class PrService {
-  constructor(private token: string) {}
+  private log: Logger | undefined;
+
+  constructor(private token: string) {
+    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+  }
 
   private headers(): Record<string, string> {
     return {
@@ -49,6 +55,7 @@ export class PrService {
     };
 
     try {
+      this.log?.info('PrService', 'POST', url);
       console.log('[Gitnotate] POST', url);
       console.log('[Gitnotate] Payload:', JSON.stringify(payload, null, 2));
 
@@ -62,13 +69,16 @@ export class PrService {
         const errorBody = await response.text().catch(() => '(could not read body)');
         console.error('[Gitnotate] createReviewComment failed:', response.status, response.statusText);
         console.error('[Gitnotate] Response body:', errorBody);
+        this.log?.error('PrService', 'createReviewComment failed:', response.status, response.statusText);
         return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
       }
 
       console.log('[Gitnotate] createReviewComment succeeded:', response.status);
+      this.log?.info('PrService', 'createReviewComment succeeded:', response.status);
       return { ok: true };
     } catch (err) {
       console.error('[Gitnotate] createReviewComment failed:', err);
+      this.log?.error('PrService', 'createReviewComment network error:', err);
       return { ok: false, userMessage: 'Network error — check your connection and try again.' };
     }
   }
@@ -110,6 +120,7 @@ export class PrService {
     try {
       while (page <= MAX_PAGES) {
         const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=${PER_PAGE}&page=${page}`;
+        this.log?.info('PrService', 'GET', url);
         console.log('[Gitnotate] GET', url);
         const response = await fetch(url, {
           method: 'GET',
@@ -118,6 +129,7 @@ export class PrService {
 
         if (!response.ok) {
           console.error('[Gitnotate] listReviewComments failed:', response.status, response.statusText);
+          this.log?.error('PrService', 'listReviewComments failed:', response.status);
           return allComments;
         }
 
@@ -158,6 +170,7 @@ export class PrService {
       return allComments;
     } catch (err) {
       console.error('[Gitnotate] listReviewComments failed:', err);
+      this.log?.error('PrService', 'listReviewComments network error:', err);
       return [];
     }
   }
