@@ -5,6 +5,7 @@ import type { CommentController } from './comment-controller';
 import { debug, getLogger, Logger } from './logger';
 import { detectDocumentSide, normalizeSide } from './side-utils';
 import { showAuthError, showApiError } from './error-handler';
+import type { AnchorTracker } from './anchor-tracker';
 
 // Matches the > 📌 **"quoted text"** (chars N–M) blockquote line
 const BLOCKQUOTE_FALLBACK_RE = /^>\s*📌\s*\*\*".*?"\*\*\s*\(chars\s*\d+[–-]\d+\)\s*\n*/;
@@ -23,7 +24,8 @@ export class CommentThreadSync {
 
   constructor(
     private prService: PrService,
-    private commentController: CommentController
+    private commentController: CommentController,
+    private anchorTracker?: AnchorTracker
   ) {
     try { this.log = getLogger(); } catch { /* logger not initialized */ }
   }
@@ -50,6 +52,7 @@ export class CommentThreadSync {
     comments: ReviewComment[]
   ): vscode.Range[] {
     this.commentController.clearThreads(uri);
+    this.anchorTracker?.reset(uri);
 
     const fileComments = comments.filter((c) => c.path === relativePath);
     debug('Thread sync:', fileComments.length, 'comments for', relativePath);
@@ -98,8 +101,9 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        this.commentController.createThread(uri, range, threadComments, gnThreads, root.id);
+        const thread = this.commentController.createThread(uri, range, threadComments, gnThreads, root.id);
         this.commentController.onThreadRevealed?.(root.id);
+        this.anchorTracker?.registerThread(uri, line, thread);
         highlightRanges.push(range);
         gnThreads++;
       } else {
@@ -114,8 +118,9 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        this.commentController.createThread(uri, range, threadComments, undefined, root.id);
+        const thread = this.commentController.createThread(uri, range, threadComments, undefined, root.id);
         this.commentController.onThreadRevealed?.(root.id);
+        this.anchorTracker?.registerThread(uri, line, thread);
         lineThreads++;
       }
 

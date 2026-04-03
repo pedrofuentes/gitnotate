@@ -7,6 +7,7 @@ import { getGitHubToken, ensureAuthenticated } from './auth';
 import { initLogger, debug, createLogger, getLogger } from './logger';
 import { CommentController } from './comment-controller';
 import { CommentThreadSync } from './comment-thread-sync';
+import { AnchorTracker } from './anchor-tracker';
 import { PrService } from './pr-service';
 import { getRelativePath, debounce } from './utils';
 import { CommentsTreeProvider } from './comments-tree-provider';
@@ -19,6 +20,7 @@ let prService: PrService | undefined;
 let threadSync: CommentThreadSync | undefined;
 let cachedToken: string | undefined;
 let treeProvider: CommentsTreeProvider | undefined;
+let anchorTracker: AnchorTracker | undefined;
 
 async function promptSignIn(): Promise<void> {
   const action = await vscode.window.showInformationMessage(
@@ -72,6 +74,10 @@ export function activate(context: vscode.ExtensionContext) {
   commentCtrl = new CommentController();
   context.subscriptions.push({ dispose: () => commentCtrl?.dispose() });
 
+  anchorTracker = new AnchorTracker();
+  anchorTracker.activate();
+  context.subscriptions.push({ dispose: () => anchorTracker?.dispose() });
+
   treeProvider = new CommentsTreeProvider();
   const treeView = vscode.window.createTreeView('gitnotateComments', {
     treeDataProvider: treeProvider,
@@ -103,7 +109,7 @@ export function activate(context: vscode.ExtensionContext) {
       cachedToken = token;
       prService = new PrService(token);
       if (!commentCtrl) return;
-      threadSync = new CommentThreadSync(prService, commentCtrl);
+      threadSync = new CommentThreadSync(prService, commentCtrl, anchorTracker);
       debug('Comment sync: recreated PrService + CommentThreadSync (token changed)');
     }
 
@@ -275,6 +281,7 @@ export function activate(context: vscode.ExtensionContext) {
   const authDisposable = vscode.authentication.onDidChangeSessions(async () => {
     debug('Auth session changed — invalidating cache and re-syncing');
     commentCtrl?.clearThreads();
+    anchorTracker?.resetAll();
     const editor = vscode.window.activeTextEditor;
     if (editor && commentCtrl) {
       commentCtrl.clearHighlights(editor);
@@ -376,6 +383,8 @@ export function deactivate() {
   prService = undefined;
   threadSync = undefined;
   cachedToken = undefined;
+  anchorTracker?.dispose();
+  anchorTracker = undefined;
   statusBarItem?.dispose();
   try {
     getLogger().dispose();

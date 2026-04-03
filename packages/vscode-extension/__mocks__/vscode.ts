@@ -137,6 +137,9 @@ export class Uri {
   static from(components: { scheme: string; path: string }): Uri {
     return new Uri(components.path, components.scheme);
   }
+  toString(): string {
+    return `file://${this.fsPath}`;
+  }
 }
 
 const mockStatusBarItem = {
