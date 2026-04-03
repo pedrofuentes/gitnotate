@@ -16,6 +16,10 @@ export function stripBlockquoteFallback(text: string): string {
 export class CommentThreadSync {
   private cache: Map<string, ReviewComment[]> = new Map();
   private log: Logger | undefined;
+  private pollingTimer: ReturnType<typeof setInterval> | null = null;
+  private currentPr: PullRequestInfo | null = null;
+  private currentUri: vscode.Uri | null = null;
+  private currentRelativePath: string | null = null;
 
   constructor(
     private prService: PrService,
@@ -182,6 +186,36 @@ export class CommentThreadSync {
     return cachedRanges;
   }
 
+  startPolling(uri: vscode.Uri, relativePath: string, pr: PullRequestInfo): void {
+    this.stopPolling();
+    this.currentPr = pr;
+    this.currentUri = uri;
+    this.currentRelativePath = relativePath;
+
+    const intervalMs = this.getPollingInterval();
+    this.pollingTimer = setInterval(() => {
+      this.pollOnce();
+    }, intervalMs);
+  }
+
+  stopPolling(): void {
+    if (this.pollingTimer) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
+    }
+    this.currentPr = null;
+    this.currentUri = null;
+    this.currentRelativePath = null;
+  }
+
+  get isPolling(): boolean {
+    return this.pollingTimer !== null;
+  }
+
+  dispose(): void {
+    this.stopPolling();
+  }
+
   invalidateCache(): void {
     this.cache.clear();
   }
@@ -216,5 +250,25 @@ export class CommentThreadSync {
     }
     this.cache.set(cacheKey, comments);
     return comments;
+  }
+
+  private async pollOnce(): Promise<void> {
+    if (!this.currentPr || !this.currentUri || !this.currentRelativePath) return;
+
+    try {
+      await this.syncForDocumentCacheFirst(
+        this.currentUri,
+        this.currentRelativePath,
+        this.currentPr
+      );
+    } catch {
+      // Silent failure during polling — don't spam user
+    }
+  }
+
+  private getPollingInterval(): number {
+    const config = vscode.workspace.getConfiguration('gitnotate');
+    const seconds = config.get<number>('pollInterval', 30);
+    return Math.max(10, seconds) * 1000;
   }
 }
