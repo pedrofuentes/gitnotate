@@ -99,6 +99,13 @@
           "group": "inline",
           "when": "commentController == gitnotate && commentThread.state == 1"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "gitnotate.addComment",
+          "when": "editorHasSelection && resourceLangId == markdown && gitnotate.hasPR",
+          "group": "gitnotate@1"
+        }
       ]
     }
   },
