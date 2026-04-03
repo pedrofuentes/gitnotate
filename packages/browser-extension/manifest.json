@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gitnotate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Sub-line commenting for Markdown files in GitHub PR reviews. Highlight specific words and phrases, not just lines.",
   "homepage_url": "https://github.com/pedrofuentes/gitnotate",
   "icons": {

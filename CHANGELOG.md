@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Lifecycle handler: `onDidChangeSessions` — clears threads/highlights and re-syncs when GitHub auth changes
 - 25 new automated tests (160 total), integration test suites 17–22
 
+## [0.2.0] — 2026-04-03
+
+### Added (Browser Extension)
+- **Conversation-view support** — ^gn comments are now processed on the PR Conversation tab (`/pull/N`), not just the Changes/Files tab
+- Scan for ^gn metadata in conversation timeline threads
+- Hide metadata text from rendered comment bodies in conversation view
+- Highlight the referenced character range in each thread's code snippet
+- Colorize comment threads to match highlight colors
+- DOM mutation observer for lazily-loaded timeline items
+- 18 new tests for conversation-view processing (248 total browser extension tests)
+
 ### Changed (VSCode Extension)
 - `PrService` and `CommentThreadSync` hoisted to module scope — cache persists across editor tab switches (was per-invocation)
 - Token-change detection: services are recreated when GitHub auth token changes
