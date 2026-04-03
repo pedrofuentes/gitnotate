@@ -29,6 +29,7 @@ export class CommentController {
   private threads: Map<string, vscode.CommentThread[]> = new Map();
   private decorationTypes: vscode.TextEditorDecorationType[];
   private log: Logger | undefined;
+  private parentCommentIds: Map<vscode.CommentThread, number> = new Map();
 
   constructor() {
     try { this.log = getLogger(); } catch { /* logger not initialized */ }
@@ -73,7 +74,8 @@ export class CommentController {
     uri: vscode.Uri,
     range: vscode.Range,
     comments: ThreadComment[],
-    colorIndex?: number
+    colorIndex?: number,
+    parentCommentId?: number
   ): vscode.CommentThread {
     const colorEmoji = colorIndex !== undefined ? COLOR_EMOJIS[colorIndex % COLOR_EMOJIS.length] : undefined;
 
@@ -87,12 +89,39 @@ export class CommentController {
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
     this.log?.info('CommentController', 'thread created at', `L${range.start.line + 1}`, uri.fsPath);
 
+    if (parentCommentId !== undefined) {
+      this.parentCommentIds.set(thread, parentCommentId);
+    }
+
     const key = uri.fsPath;
     const existing = this.threads.get(key) ?? [];
     existing.push(thread);
     this.threads.set(key, existing);
 
     return thread;
+  }
+
+  getParentCommentId(thread: vscode.CommentThread): number | undefined {
+    return this.parentCommentIds.get(thread);
+  }
+
+  addReplyToThread(thread: vscode.CommentThread, comment: ThreadComment): void {
+    const newComment: vscode.Comment = {
+      body: comment.body,
+      mode: vscode.CommentMode.Preview,
+      author: { name: comment.author },
+    };
+    thread.comments = [...thread.comments, newComment];
+  }
+
+  resolveThread(thread: vscode.CommentThread): void {
+    // TODO: Call GitHub GraphQL resolveReviewThread mutation
+    thread.state = vscode.CommentThreadState.Resolved;
+  }
+
+  unresolveThread(thread: vscode.CommentThread): void {
+    // TODO: Call GitHub GraphQL unresolveReviewThread mutation
+    thread.state = vscode.CommentThreadState.Unresolved;
   }
 
   applyHighlights(editor: vscode.TextEditor, ranges: vscode.Range[]): void {

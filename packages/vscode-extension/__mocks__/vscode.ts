@@ -17,6 +17,7 @@ interface MockCommentThread {
   canReply: boolean;
   contextValue: string;
   collapsibleState: number;
+  state?: number;
   dispose: ReturnType<typeof vi.fn>;
 }
 
@@ -222,6 +223,11 @@ export const extensions = {
 export enum CommentThreadCollapsibleState {
   Collapsed = 0,
   Expanded = 1,
+}
+
+export enum CommentThreadState {
+  Unresolved = 0,
+  Resolved = 1,
 }
 
 export enum CommentMode {

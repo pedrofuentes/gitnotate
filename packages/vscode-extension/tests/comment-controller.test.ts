@@ -4,9 +4,11 @@ import {
   __getCommentControllers,
   __getCommentThreads,
   CommentMode,
+  CommentThreadState,
   Uri,
   Range,
   window,
+  commands,
 } from '../__mocks__/vscode';
 import { CommentController } from '../src/comment-controller';
 
@@ -374,6 +376,102 @@ describe('CommentController', () => {
       const result = controller.revealThread(uri, 10);
       expect(result).toBe(false);
 
+      controller.dispose();
+    });
+  });
+
+  describe('createThread with parentCommentId', () => {
+    it('should store parentCommentId when provided', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }],
+        undefined,
+        42
+      );
+
+      expect(controller.getParentCommentId(thread)).toBe(42);
+      controller.dispose();
+    });
+
+    it('should return undefined parentCommentId when not provided', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }]
+      );
+
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
+      controller.dispose();
+    });
+  });
+
+  describe('addReplyToThread', () => {
+    it('should append a reply comment to the thread', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'Original', author: 'alice' }]
+      );
+
+      controller.addReplyToThread(thread, { body: 'Reply text', author: 'bob' });
+
+      expect(thread.comments).toHaveLength(2);
+      expect(thread.comments[1]).toMatchObject({
+        body: 'Reply text',
+        mode: CommentMode.Preview,
+        author: { name: 'bob' },
+      });
+
+      controller.dispose();
+    });
+  });
+
+  describe('resolve/unresolve thread', () => {
+    it('should set thread state to Resolved', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }]
+      );
+
+      controller.resolveThread(thread);
+
+      expect(thread.state).toBe(CommentThreadState.Resolved);
+      controller.dispose();
+    });
+
+    it('should set thread state to Unresolved', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }]
+      );
+
+      controller.resolveThread(thread);
+      controller.unresolveThread(thread);
+
+      expect(thread.state).toBe(CommentThreadState.Unresolved);
       controller.dispose();
     });
   });

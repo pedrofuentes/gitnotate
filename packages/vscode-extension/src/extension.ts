@@ -170,6 +170,51 @@ export function activate(context: vscode.ExtensionContext) {
           debug('goToComment failed:', err);
         }
       }
+    ),
+    vscode.commands.registerCommand(
+      'gitnotate.replyToThread',
+      async (reply: { thread: vscode.CommentThread; text: string }) => {
+        if (!commentCtrl || !prService) return;
+
+        const parentId = commentCtrl.getParentCommentId(reply.thread);
+        if (parentId === undefined) {
+          debug('replyToThread: no parentCommentId on thread');
+          return;
+        }
+
+        const gitService = new GitService();
+        const token = await getGitHubToken();
+        if (!token) return;
+        const pr = await detectCurrentPR(gitService, token);
+        if (!pr) return;
+
+        const result = await prService.createReplyComment(pr, reply.text, parentId);
+        if (result.ok) {
+          commentCtrl.addReplyToThread(reply.thread, {
+            body: reply.text,
+            author: 'you',
+          });
+          triggerSync();
+        } else {
+          vscode.window.showErrorMessage(`Gitnotate: ${result.userMessage}`);
+        }
+      }
+    ),
+    vscode.commands.registerCommand(
+      'gitnotate.resolveThread',
+      (thread: vscode.CommentThread) => {
+        if (!commentCtrl) return;
+        commentCtrl.resolveThread(thread);
+        debug('Thread resolved');
+      }
+    ),
+    vscode.commands.registerCommand(
+      'gitnotate.unresolveThread',
+      (thread: vscode.CommentThread) => {
+        if (!commentCtrl) return;
+        commentCtrl.unresolveThread(thread);
+        debug('Thread unresolved');
+      }
     )
   );
 

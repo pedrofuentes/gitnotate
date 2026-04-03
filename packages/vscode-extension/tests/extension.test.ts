@@ -125,7 +125,19 @@ describe('extension', () => {
       'gitnotate.goToComment',
       expect.any(Function)
     );
-    expect(commands.registerCommand).toHaveBeenCalledTimes(5);
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.replyToThread',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.resolveThread',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.unresolveThread',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledTimes(8);
   });
 
   it('should call enableWorkspace when gitnotate.enable is invoked', async () => {
