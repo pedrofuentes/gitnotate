@@ -3,6 +3,7 @@ import { parseGnComment } from '@gitnotate/core';
 import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
 import { debug, getLogger, Logger } from './logger';
+import { detectDocumentSide, normalizeSide } from './side-utils';
 
 // Matches the > 📌 **"quoted text"** (chars N–M) blockquote line
 const BLOCKQUOTE_FALLBACK_RE = /^>\s*📌\s*\*\*".*?"\*\*\s*\(chars\s*\d+[–-]\d+\)\s*\n*/;
@@ -42,11 +43,17 @@ export class CommentThreadSync {
     const fileComments = comments.filter((c) => c.path === relativePath);
     debug('Thread sync:', fileComments.length, 'comments for', relativePath);
 
+    const docSide = detectDocumentSide(uri);
+    const sideFiltered = docSide === 'BOTH'
+      ? fileComments
+      : fileComments.filter((c) => normalizeSide(c.side) === docSide);
+    debug('Thread sync: side filter', docSide, '→', sideFiltered.length, 'of', fileComments.length);
+
     // Separate root comments (with ^gn metadata) from replies
     const rootComments: ReviewComment[] = [];
     const repliesByParent = new Map<number, ReviewComment[]>();
 
-    for (const comment of fileComments) {
+    for (const comment of sideFiltered) {
       if (comment.inReplyToId !== undefined) {
         const existing = repliesByParent.get(comment.inReplyToId) ?? [];
         existing.push(comment);

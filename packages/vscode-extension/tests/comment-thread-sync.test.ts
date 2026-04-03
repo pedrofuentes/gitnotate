@@ -235,6 +235,133 @@ describe('CommentThreadSync', () => {
     });
   });
 
+  describe('side-aware rendering', () => {
+    it('should show only RIGHT-side comments for file: URI', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nRight side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: '^gn:10:L:5:15\n\nLeft side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Right side comment' });
+    });
+
+    it('should show only LEFT-side comments for git: URI', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nRight side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: '^gn:10:L:5:15\n\nLeft side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Left side comment' });
+    });
+
+    it('should show ALL comments for unknown URI scheme (BOTH mode)', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nRight side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: '^gn:10:L:5:15\n\nLeft side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.from({ scheme: 'untitled', path: '/workspace/docs/readme.md' });
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(2);
+    });
+
+    it('should filter mixed L and R comments — only matching side rendered', async () => {
+      const comments = [
+        makeComment({ id: 1, body: '^gn:5:R:0:10\n\nRight line 5', path: 'docs/readme.md', side: 'RIGHT' }),
+        makeComment({ id: 2, body: '^gn:5:L:0:10\n\nLeft line 5', path: 'docs/readme.md', side: 'LEFT' }),
+        makeComment({ id: 3, body: '^gn:12:R:3:20\n\nRight line 12', path: 'docs/readme.md', side: 'RIGHT' }),
+        makeComment({ id: 4, body: '^gn:8:L:2:18\n\nLeft line 8', path: 'docs/readme.md', side: 'LEFT' }),
+      ];
+      const prService = makeMockPrService(comments);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(2);
+      const bodies = threads.map((t) => (t.comments[0] as { body: string }).body);
+      expect(bodies).toContain('Right line 5');
+      expect(bodies).toContain('Right line 12');
+      expect(bodies).not.toContain('Left line 5');
+      expect(bodies).not.toContain('Left line 8');
+    });
+
+    it('should filter non-^gn regular line comments by side', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: 'Regular right-side comment',
+        path: 'docs/readme.md',
+        line: 5,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: 'Regular left-side comment',
+        path: 'docs/readme.md',
+        line: 5,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Regular right-side comment' });
+    });
+  });
+
   describe('getCachedComments', () => {
     it('should return undefined when no cache exists', () => {
       const prService = makeMockPrService([]);
