@@ -149,6 +149,14 @@ export const window = {
   onDidChangeActiveTextEditor: vi.fn((_listener: unknown) => ({
     dispose: vi.fn(),
   })),
+  createOutputChannel: vi.fn((_name: string) => ({
+    appendLine: vi.fn(),
+    append: vi.fn(),
+    clear: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    dispose: vi.fn(),
+  })),
   createStatusBarItem: vi.fn(() => mockStatusBarItem),
   createTreeView: vi.fn((viewId: string, options: Record<string, unknown>) => {
     const treeView: MockTreeView = {
