@@ -119,12 +119,22 @@ export class Range {
 }
 
 export class Uri {
-  constructor(public readonly fsPath: string) {}
+  public readonly scheme: string;
+
+  constructor(public readonly fsPath: string, scheme?: string) {
+    this.scheme = scheme ?? 'file';
+  }
   static file(path: string): Uri {
-    return new Uri(path);
+    return new Uri(path, 'file');
   }
   static parse(value: string): Uri {
-    return new Uri(value);
+    // Extract scheme from URI string (e.g., "git:/path" → scheme "git")
+    const colonIndex = value.indexOf(':');
+    const scheme = colonIndex > 0 ? value.slice(0, colonIndex) : 'file';
+    return new Uri(value, scheme);
+  }
+  static from(components: { scheme: string; path: string }): Uri {
+    return new Uri(components.path, components.scheme);
   }
 }
 
