@@ -63,7 +63,7 @@ Same as Increment 3 (see `TEST_PLAN_VSCODE_1.5_3.md`), plus:
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 24.1 | Loading state on startup | Open the Gitnotate sidebar immediately after extension activation (before any sync completes). | Sidebar shows "Loading comments..." message item. | ✅ Unit |
-| 24.2 | No PR state | Open a markdown file that is NOT on a PR branch (e.g., `main` with no open PR). Open the sidebar. | Sidebar shows "No open PR detected" message. | ⬜ Manual |
+| 24.2 | No PR state | Switch to a branch that has **no open PR** (e.g., checkout `main` or a branch without a PR). Open a markdown file. Open the sidebar. | Sidebar shows "No open PR detected" message. **Note**: If you're on a PR branch, files without comments simply don't appear in the tree — that's correct. This test requires actually being on a non-PR branch. | ⬜ Manual |
 | 24.3 | No auth state | Sign out of GitHub. Open the Gitnotate sidebar. | Sidebar shows "Sign in to GitHub" message. | ⬜ Manual |
 | 24.4 | No comments state | Open a markdown file on a PR branch that has zero review comments. Open the sidebar. | Sidebar shows "No comments on this PR" message. | ✅ Unit + ⬜ Manual |
 | 24.5 | State transitions correctly | Start signed out → sign in → open PR branch → see comments → sign out again. | Sidebar state transitions: "Sign in" → "Loading" → comments tree → "Sign in". | ⬜ Manual |
