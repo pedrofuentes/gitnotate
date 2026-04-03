@@ -375,5 +375,192 @@ describe('CommentThreadSync', () => {
       // (since data is the same)
       expect(clearSpy).toHaveBeenCalledTimes(1);
     });
+
+    it('should not re-render when body and updatedAt are identical', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nOriginal text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+      // Fresh data returns identical comment
+      const freshComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nOriginal text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([comment])
+        .mockResolvedValueOnce([freshComment]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render only — no re-render since data is identical
+      expect(clearSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should re-render when a comment body is edited', async () => {
+      const original = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nOriginal text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+      const edited = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nEdited text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T11:00:00Z',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([original])
+        .mockResolvedValueOnce([edited]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render + re-render from fresh data = 2 calls
+      expect(clearSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should re-render when updatedAt changes', async () => {
+      const original = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nSame body',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+      const touched = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nSame body',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T12:00:00Z',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([original])
+        .mockResolvedValueOnce([touched]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render + re-render = 2 calls
+      expect(clearSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should re-render when a new comment is added', async () => {
+      const existing = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nFirst comment',
+        path: 'docs/readme.md',
+      });
+      const added = makeComment({
+        id: 2,
+        body: '^gn:12:R:0:10\n\nSecond comment',
+        path: 'docs/readme.md',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([existing])
+        .mockResolvedValueOnce([existing, added]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render + re-render = 2 calls
+      expect(clearSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should re-render when a comment is deleted', async () => {
+      const comment1 = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nFirst',
+        path: 'docs/readme.md',
+      });
+      const comment2 = makeComment({
+        id: 2,
+        body: '^gn:12:R:0:10\n\nSecond',
+        path: 'docs/readme.md',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([comment1, comment2])
+        .mockResolvedValueOnce([comment1]); // comment2 deleted
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render + re-render = 2 calls
+      expect(clearSpy).toHaveBeenCalledTimes(2);
+    });
   });
 });
