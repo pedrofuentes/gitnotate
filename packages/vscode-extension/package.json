@@ -77,6 +77,13 @@
           "when": "view == gitnotateComments",
           "group": "navigation"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "gitnotate.addComment",
+          "when": "editorHasSelection && resourceLangId == markdown && gitnotate.hasPR",
+          "group": "gitnotate@1"
+        }
       ]
     }
   },
