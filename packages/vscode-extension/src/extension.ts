@@ -200,17 +200,24 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(closeDisposable);
 
   // Lifecycle: re-sync on auth session change
-  const authDisposable = vscode.authentication.onDidChangeSessions(() => {
+  const authDisposable = vscode.authentication.onDidChangeSessions(async () => {
     debug('Auth session changed — invalidating cache and re-syncing');
     commentCtrl?.clearThreads();
     const editor = vscode.window.activeTextEditor;
     if (editor && commentCtrl) {
       commentCtrl.clearHighlights(editor);
     }
-    treeProvider?.setState('noAuth');
     cachedToken = undefined;
     threadSync = undefined;
     prService = undefined;
+
+    // Check if this is a sign-in or sign-out
+    const newToken = await getGitHubToken();
+    if (newToken) {
+      treeProvider?.setState('loading');
+    } else {
+      treeProvider?.setState('noAuth');
+    }
     triggerSync();
   });
   context.subscriptions.push(authDisposable);

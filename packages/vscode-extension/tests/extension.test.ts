@@ -919,8 +919,31 @@ describe('extension', () => {
       mockGetGitHubToken.mockResolvedValue(undefined);
       const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
       authHandler({ provider: { id: 'github' } });
+      await vi.advanceTimersByTimeAsync(100);
 
       expect(__mockSetState).toHaveBeenCalledWith('noAuth');
+    });
+
+    it('should set loading state on tree provider when signing back in', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello',
+        number: 42,
+        headSha: 'abc123',
+      });
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Sign back in (token present)
+      mockGetGitHubToken.mockResolvedValue('new-token');
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      authHandler({ provider: { id: 'github' } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(__mockSetState).toHaveBeenCalledWith('loading');
     });
   });
 });
