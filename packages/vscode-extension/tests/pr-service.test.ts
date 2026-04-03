@@ -149,6 +149,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => mockComments,
       });
 
@@ -183,6 +184,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => [],
       });
 
@@ -222,8 +224,8 @@ describe('PrService', () => {
       ];
 
       mockFetch
-        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page1 })
-        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page2 });
+        .mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => page1 })
+        .mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => page2 });
 
       const comments = await client.listReviewComments(pr);
 
@@ -247,7 +249,7 @@ describe('PrService', () => {
         updated_at: '2026-01-01T00:00:00Z',
       }));
 
-      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => page1 });
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => page1 });
 
       const comments = await client.listReviewComments(pr);
 
@@ -293,6 +295,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => [],
       });
 
@@ -321,6 +324,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => mockComments,
       });
 
@@ -348,6 +352,7 @@ describe('PrService', () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
         });
       }
@@ -375,6 +380,7 @@ describe('PrService', () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
         });
       }
@@ -407,6 +413,7 @@ describe('PrService', () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
         });
       }
