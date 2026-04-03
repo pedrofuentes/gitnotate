@@ -346,7 +346,7 @@ describe('processConversationComments', () => {
       codeLines: [
         { number: 7, text: 'In Q3, our revenue growth exceeded expectations.' },
       ],
-      comments: [{ bodyHTML: gnCommentHTML(7, 15, 30, 'Highlight this range') }],
+      comments: [{ bodyHTML: gnCommentHTML(7, 19, 34, 'Highlight this range') }],
     });
     document.body.appendChild(thread);
 
@@ -354,7 +354,7 @@ describe('processConversationComments', () => {
 
     const highlight = thread.querySelector('.gn-highlight');
     expect(highlight).not.toBeNull();
-    // The highlighted text should be "growth exceeded" (chars 15-30)
+    // The highlighted text should be "growth exceeded" (chars 19-34)
     expect(highlight!.textContent).toBe('growth exceeded');
   });
 
