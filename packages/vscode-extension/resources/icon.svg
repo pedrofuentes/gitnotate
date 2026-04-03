@@ -1,9 +1,14 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Pin head (circle) -->
-  <circle cx="12" cy="7" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/>
-  <!-- Pin needle -->
-  <line x1="12" y1="12" x2="12" y2="21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-  <!-- Annotation lines inside pin head -->
-  <line x1="9.5" y1="5.5" x2="14.5" y2="5.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
-  <line x1="9.5" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 512 512">
+  <!-- Pin/document body -->
+  <rect x="128" y="66.56" width="256" height="217.6" rx="26" fill="currentColor"/>
+  <!-- Pin point (triangle) -->
+  <polygon points="220.16,283.16 256,355.84 291.84,283.16" fill="currentColor"/>
+  <!-- Text lines (knocked out) -->
+  <rect x="179.2" y="144.64" width="153.6" height="23" rx="12" fill="currentColor" opacity="0.4"/>
+  <rect x="194.56" y="206.08" width="122.88" height="23" rx="12" fill="currentColor" opacity="0.4"/>
+  <!-- Highlight bar -->
+  <rect x="204.8" y="138.14" width="102.4" height="36" rx="13" fill="currentColor" opacity="0.7"/>
+  <!-- Caret/chevron at bottom -->
+  <path d="M209.92,422.4 L256,381.44 L302.08,422.4"
+        stroke="currentColor" stroke-width="15" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
