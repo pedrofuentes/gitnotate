@@ -199,6 +199,7 @@ describe('addCommentCommand', () => {
     mockBuildGnComment.mockReturnValue('<!-- ^gn {} -->\n> quote\n\nGreat code!');
 
     const mockApiInstance = {
+      createReviewWithComment: vi.fn().mockResolvedValue({ ok: true, id: 1 }),
       createReviewComment: vi.fn().mockResolvedValue({ ok: true }),
     };
     vi.mocked(PrService).mockImplementation(() => mockApiInstance as any);
@@ -237,14 +238,14 @@ describe('addCommentCommand', () => {
     window.showInputBox.mockResolvedValue('Nice!');
     mockBuildGnComment.mockReturnValue('formatted comment body');
 
-    const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
+    const mockCreateReviewWithComment = vi.fn().mockResolvedValue({ ok: true, id: 1 });
     vi.mocked(PrService).mockImplementation(
-      () => ({ createReviewComment: mockCreateReviewComment, listReviewComments: vi.fn() } as any)
+      () => ({ createReviewWithComment: mockCreateReviewWithComment, createReviewComment: vi.fn(), listReviewComments: vi.fn() } as any)
     );
 
     await addCommentCommand(mockContext);
 
-    expect(mockCreateReviewComment).toHaveBeenCalledWith(
+    expect(mockCreateReviewWithComment).toHaveBeenCalledWith(
       prInfo,
       expect.stringContaining('file.ts'),
       6, // line is 0-indexed in VSCode, 1-indexed in GitHub API
@@ -274,7 +275,7 @@ describe('addCommentCommand', () => {
     mockBuildGnComment.mockReturnValue('comment body');
 
     vi.mocked(PrService).mockImplementation(
-      () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: true }), listReviewComments: vi.fn() } as any)
+      () => ({ createReviewWithComment: vi.fn().mockResolvedValue({ ok: true, id: 1 }), createReviewComment: vi.fn(), listReviewComments: vi.fn() } as any)
     );
 
     await addCommentCommand(mockContext);
@@ -305,7 +306,11 @@ describe('addCommentCommand', () => {
     mockBuildGnComment.mockReturnValue('comment body');
 
     vi.mocked(PrService).mockImplementation(
-      () => ({ createReviewComment: vi.fn().mockResolvedValue({ ok: false, userMessage: 'Permission denied.' }), listReviewComments: vi.fn() } as any)
+      () => ({
+        createReviewWithComment: vi.fn().mockResolvedValue({ ok: false, userMessage: 'Permission denied.' }),
+        createReviewComment: vi.fn().mockResolvedValue({ ok: false, userMessage: 'Permission denied.' }),
+        listReviewComments: vi.fn(),
+      } as any)
     );
 
     await addCommentCommand(mockContext);
