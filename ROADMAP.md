@@ -241,8 +241,10 @@ Implement the contributed `gitnotateComments` view.
 
 #### Increment 5: UX Polish & Integration 🔮 PLANNED
 
-Full round-trip polish and GH PR extension coexistence.
+Full round-trip polish, live sync, side-aware rendering, and GH PR extension coexistence.
 
+- Live comment updates via ETag-based polling: auto-refresh comments when new comments or replies are posted on github.com — poll every 30s (configurable) while a PR file is active, pause on window blur, resume on focus with immediate fetch; use `If-None-Match`/`304 Not Modified` conditional requests to minimize API usage
+- Side-aware comment placement in diff views: respect the `L`/`R` side field in `^gn` metadata and `LEFT`/`RIGHT` from GitHub API — detect diff context via document URI scheme (`git:` = old/LEFT, `file:` = new/RIGHT), filter comments to the correct side; detect cursor side when posting instead of hardcoding RIGHT; add `[Old]`/`[New]` indicators in sidebar
 - Post-comment → refresh decorations + sidebar
 - Reply/resolve handlers on comment threads
 - Use "create a review" API endpoint to avoid `pending review` conflict (GitHub API quirk: single-comment endpoint fails when a pending review exists; the reviews endpoint handles this correctly)
