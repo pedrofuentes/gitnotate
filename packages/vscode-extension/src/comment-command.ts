@@ -73,13 +73,20 @@ export async function addCommentCommand(
   debug('Add Comment:', { file: filePath, line, side: apiSide, pr: `${pr.owner}/${pr.repo}#${pr.number}`, headSha: pr.headSha });
   debug('Comment body:', commentBody);
 
-  const result = await client.createReviewComment(
+  // Try review endpoint first (handles pending review case)
+  let result: { ok: boolean; userMessage?: string } = await client.createReviewWithComment(
     pr,
     filePath,
     line,
     apiSide,
     commentBody
   );
+
+  // If review endpoint fails, fall back to single-comment endpoint
+  if (!result.ok) {
+    debug('Review endpoint failed, falling back to single-comment endpoint');
+    result = await client.createReviewComment(pr, filePath, line, 'RIGHT', commentBody);
+  }
 
   if (result.ok) {
     vscode.window.showInformationMessage('Comment posted successfully!');
