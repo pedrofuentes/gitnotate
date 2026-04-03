@@ -5,6 +5,7 @@ import { scanForGnComments } from './comment-scanner';
 import { highlightTextRange, clearAllHighlights } from './highlighter';
 import { hideGnMetadataInComment } from './metadata-hider';
 import { colorizeCommentThread, clearCommentColorIndicators } from './thread-colorizer';
+import { processConversationComments } from './conversation-processor';
 import { createObserverLifecycle, type ObserverLifecycle } from './observer-lifecycle';
 import { showOptInBanner, hideOptInBanner } from './ui/optin-banner';
 import { isRepoEnabled, enableRepo, isRepoBlocked, blockRepo } from '../storage/repo-settings';
@@ -84,7 +85,35 @@ function activateFeatures(pageInfo: GitHubPageInfo): void {
 
   if (pageInfo.type === 'pr-files-changed') {
     initPrDiffFeatures(pageInfo, featureLifecycle);
+  } else if (pageInfo.type === 'pr-conversation') {
+    initPrConversationFeatures(featureLifecycle);
   }
+}
+
+function initPrConversationFeatures(lifecycle: ObserverLifecycle): void {
+  debug('[Gitnotate] PR conversation page detected, initializing...');
+
+  // Process existing comments immediately
+  processConversationComments();
+
+  // Re-process when new timeline items are loaded (GitHub lazy-loads them)
+  let lastCommentCount = 0;
+  let rescanTimer: ReturnType<typeof setTimeout>;
+  const rescanObserver = new MutationObserver(() => {
+    clearTimeout(rescanTimer);
+    rescanTimer = setTimeout(() => {
+      const commentBodies = document.querySelectorAll(
+        '.comment-body, .markdown-body, [data-testid="markdown-body"]',
+      ).length;
+      if (commentBodies !== lastCommentCount) {
+        lastCommentCount = commentBodies;
+        processConversationComments();
+      }
+    }, 500);
+    lifecycle.trackTimer(rescanTimer);
+  });
+  rescanObserver.observe(document.body, { childList: true, subtree: true });
+  lifecycle.trackObserver(rescanObserver);
 }
 
 function initPrDiffFeatures(_pageInfo: GitHubPageInfo, lifecycle: ObserverLifecycle): void {
