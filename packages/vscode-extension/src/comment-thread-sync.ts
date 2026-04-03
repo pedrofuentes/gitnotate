@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { parseGnComment } from '@gitnotate/core';
 import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
+import type { AnchorTracker } from './anchor-tracker';
 import { debug } from './logger';
 
 // Matches the > 📌 **"quoted text"** (chars N–M) blockquote line
@@ -16,7 +17,8 @@ export class CommentThreadSync {
 
   constructor(
     private prService: PrService,
-    private commentController: CommentController
+    private commentController: CommentController,
+    private anchorTracker?: AnchorTracker
   ) {}
 
   async syncForDocument(
@@ -34,6 +36,7 @@ export class CommentThreadSync {
     comments: ReviewComment[]
   ): vscode.Range[] {
     this.commentController.clearThreads(uri);
+    this.anchorTracker?.reset(uri);
 
     const fileComments = comments.filter((c) => c.path === relativePath);
     debug('Thread sync:', fileComments.length, 'comments for', relativePath);
@@ -76,7 +79,8 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        this.commentController.createThread(uri, range, threadComments, gnThreads);
+        const thread = this.commentController.createThread(uri, range, threadComments, gnThreads);
+        this.anchorTracker?.registerThread(uri, line, thread);
         highlightRanges.push(range);
         gnThreads++;
       } else {
@@ -91,7 +95,8 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        this.commentController.createThread(uri, range, threadComments);
+        const thread = this.commentController.createThread(uri, range, threadComments);
+        this.anchorTracker?.registerThread(uri, line, thread);
         lineThreads++;
       }
 
