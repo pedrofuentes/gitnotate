@@ -74,8 +74,13 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider: treeProvider,
     showCollapseAll: true,
   });
+  treeProvider.registerTreeView(treeView);
   context.subscriptions.push(treeView);
   context.subscriptions.push({ dispose: () => treeProvider?.dispose() });
+
+  commentCtrl.onThreadRevealed = (commentId) => {
+    treeProvider?.revealByCommentId(commentId);
+  };
 
   const debouncedSync = debounce(async (editor: vscode.TextEditor) => {
     debug('Comment sync: editor changed →', editor.document.fileName, `(${editor.document.languageId})`);

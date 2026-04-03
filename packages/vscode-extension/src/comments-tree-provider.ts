@@ -71,6 +71,8 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
   private fileGroups: FileGroup[] = [];
   private state: SidebarState = 'loading';
   private hasData = false;
+  private treeView?: vscode.TreeView<TreeItemBase>;
+  private commentItemCache = new Map<number, CommentItem>();
 
   private _onDidChangeTreeData = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -103,6 +105,13 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
         replyCounts,
       }));
 
+    this.commentItemCache.clear();
+    for (const group of this.fileGroups) {
+      for (const comment of group.rootComments) {
+        this.commentItemCache.set(comment.id, this.buildCommentItem(comment, group));
+      }
+    }
+
     this.hasData = rootComments.length > 0;
     this.state = this.hasData ? 'loading' : 'empty';
 
@@ -110,6 +119,17 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
     void vscode.commands.executeCommand('setContext', 'gitnotate.hasPR', true);
 
     this._onDidChangeTreeData.fire();
+  }
+
+  registerTreeView(treeView: vscode.TreeView<TreeItemBase>): void {
+    this.treeView = treeView;
+  }
+
+  revealByCommentId(commentId: number): void {
+    if (!this.treeView) return;
+    const item = this.commentItemCache.get(commentId);
+    if (!item) return;
+    void this.treeView.reveal(item, { select: true, focus: false, expand: true });
   }
 
   setState(state: SidebarState): void {
@@ -164,38 +184,42 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
     const group = this.fileGroups.find((g) => g.path === fileItem.filePath);
     if (!group) return [];
 
-    return group.rootComments.map((comment) => {
-      const parsed = parseGnComment(comment.body);
-      const author = comment.userLogin ?? 'unknown';
-      const replyCount = group.replyCounts.get(comment.id) ?? 0;
+    return group.rootComments.map((comment) =>
+      this.commentItemCache.get(comment.id) ?? this.buildCommentItem(comment, group)
+    );
+  }
 
-      const { label, lineDesc, lineNumber, commandArgs } = parsed
-        ? {
-            label: stripBlockquoteFallback(parsed.userComment),
-            lineDesc: `L${parsed.metadata.lineNumber}:${parsed.metadata.start}-${parsed.metadata.end}`,
-            lineNumber: parsed.metadata.lineNumber,
-            commandArgs: [comment.path, parsed.metadata.lineNumber, parsed.metadata.start, parsed.metadata.end],
-          }
-        : {
-            label: comment.body,
-            lineDesc: `L${comment.line ?? 1}`,
-            lineNumber: comment.line ?? 1,
-            commandArgs: [comment.path, comment.line ?? 1, undefined, undefined],
-          };
+  private buildCommentItem(comment: ReviewComment, group: FileGroup): CommentItem {
+    const parsed = parseGnComment(comment.body);
+    const author = comment.userLogin ?? 'unknown';
+    const replyCount = group.replyCounts.get(comment.id) ?? 0;
 
-      let description = `@${author} ${lineDesc}`;
-      if (replyCount > 0) {
-        description += ` · ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-      }
+    const { label, lineDesc, lineNumber, commandArgs } = parsed
+      ? {
+          label: stripBlockquoteFallback(parsed.userComment),
+          lineDesc: `L${parsed.metadata.lineNumber}:${parsed.metadata.start}-${parsed.metadata.end}`,
+          lineNumber: parsed.metadata.lineNumber,
+          commandArgs: [comment.path, parsed.metadata.lineNumber, parsed.metadata.start, parsed.metadata.end],
+        }
+      : {
+          label: comment.body,
+          lineDesc: `L${comment.line ?? 1}`,
+          lineNumber: comment.line ?? 1,
+          commandArgs: [comment.path, comment.line ?? 1, undefined, undefined],
+        };
 
-      const command: vscode.Command = {
-        command: 'gitnotate.goToComment',
-        title: 'Go to Comment',
-        arguments: commandArgs,
-      };
+    let description = `@${author} ${lineDesc}`;
+    if (replyCount > 0) {
+      description += ` · ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+    }
 
-      return new CommentItem(label, description, lineNumber, comment.id, command);
-    });
+    const command: vscode.Command = {
+      command: 'gitnotate.goToComment',
+      title: 'Go to Comment',
+      arguments: commandArgs,
+    };
+
+    return new CommentItem(label, description, lineNumber, comment.id, command);
   }
 
   private getCommentLine(comment: ReviewComment): number {

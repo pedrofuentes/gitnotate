@@ -36,6 +36,8 @@ vi.mock('../src/comments-tree-provider', () => {
   const mockRefresh = vi.fn();
   const mockDispose = vi.fn();
   const mockOnDidChangeTreeData = vi.fn();
+  const mockRegisterTreeView = vi.fn();
+  const mockRevealByCommentId = vi.fn();
 
   return {
     CommentsTreeProvider: vi.fn().mockImplementation(() => ({
@@ -47,6 +49,8 @@ vi.mock('../src/comments-tree-provider', () => {
       onDidChangeTreeData: mockOnDidChangeTreeData,
       getChildren: vi.fn().mockResolvedValue([]),
       getTreeItem: vi.fn((el: unknown) => el),
+      registerTreeView: mockRegisterTreeView,
+      revealByCommentId: mockRevealByCommentId,
     })),
     __mockSetComments: mockSetComments,
     __mockSetState: mockSetState,

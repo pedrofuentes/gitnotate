@@ -76,7 +76,8 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        this.commentController.createThread(uri, range, threadComments, gnThreads);
+        this.commentController.createThread(uri, range, threadComments, gnThreads, root.id);
+        this.commentController.onThreadRevealed?.(root.id);
         highlightRanges.push(range);
         gnThreads++;
       } else {
@@ -91,7 +92,8 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        this.commentController.createThread(uri, range, threadComments);
+        this.commentController.createThread(uri, range, threadComments, undefined, root.id);
+        this.commentController.onThreadRevealed?.(root.id);
         lineThreads++;
       }
 

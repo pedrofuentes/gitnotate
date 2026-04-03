@@ -27,6 +27,8 @@ export class CommentController {
   private controller: vscode.CommentController;
   private threads: Map<string, vscode.CommentThread[]> = new Map();
   private decorationTypes: vscode.TextEditorDecorationType[];
+  private threadCommentIds = new Map<vscode.CommentThread, number>();
+  onThreadRevealed?: (commentId: number) => void;
 
   constructor() {
     this.controller = vscode.comments.createCommentController(
@@ -70,7 +72,8 @@ export class CommentController {
     uri: vscode.Uri,
     range: vscode.Range,
     comments: ThreadComment[],
-    colorIndex?: number
+    colorIndex?: number,
+    commentId?: number
   ): vscode.CommentThread {
     const colorEmoji = colorIndex !== undefined ? COLOR_EMOJIS[colorIndex % COLOR_EMOJIS.length] : undefined;
 
@@ -87,6 +90,10 @@ export class CommentController {
     const existing = this.threads.get(key) ?? [];
     existing.push(thread);
     this.threads.set(key, existing);
+
+    if (commentId !== undefined) {
+      this.threadCommentIds.set(thread, commentId);
+    }
 
     return thread;
   }
@@ -122,6 +129,7 @@ export class CommentController {
       const threads = this.threads.get(key);
       if (threads) {
         for (const thread of threads) {
+          this.threadCommentIds.delete(thread);
           thread.dispose();
         }
         this.threads.delete(key);
@@ -129,6 +137,7 @@ export class CommentController {
     } else {
       for (const threads of this.threads.values()) {
         for (const thread of threads) {
+          this.threadCommentIds.delete(thread);
           thread.dispose();
         }
       }
@@ -146,11 +155,18 @@ export class CommentController {
     if (!thread) return false;
 
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+
+    const commentId = this.threadCommentIds.get(thread);
+    if (commentId !== undefined) {
+      this.onThreadRevealed?.(commentId);
+    }
+
     return true;
   }
 
   dispose(): void {
     this.clearThreads();
+    this.threadCommentIds.clear();
     for (const decorationType of this.decorationTypes) {
       decorationType.dispose();
     }
