@@ -27,6 +27,9 @@ Your comment is posted as a standard GitHub PR comment with a small metadata tag
 ### Precise Text Selection in Diffs
 Select any word, phrase, or sentence within a GitHub PR diff. Gitnotate captures the exact text range — file path, line number, character offsets — and embeds it into your review comment.
 
+### Conversation View Support
+Comments with Gitnotate metadata are also processed on the PR Conversation tab. The metadata is hidden, the referenced text is highlighted in each thread's code snippet, and threads are color-coded — so you can review feedback at a glance without switching to the Files tab.
+
 ### Visual Highlights
 Submitted comments with Gitnotate metadata are rendered with colored highlights directly in the diff view. Multiple comments on the same line get distinct colors from a 6-color palette, so you can tell them apart at a glance.
 
