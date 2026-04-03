@@ -6,6 +6,7 @@ import {
   TreeItem,
   ThemeIcon,
   commands,
+  window,
 } from 'vscode';
 import type { ReviewComment } from '../src/pr-service';
 
@@ -432,6 +433,73 @@ describe('CommentsTreeProvider', () => {
   describe('dispose', () => {
     it('should clean up without errors', () => {
       expect(() => provider.dispose()).not.toThrow();
+    });
+  });
+
+  describe('revealByCommentId — bidirectional navigation', () => {
+    it('should call treeView.reveal with the matching CommentItem', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+      provider.setComments([makeComment({ id: 42, path: 'docs/proposal.md', line: 10 })]);
+
+      provider.revealByCommentId(42);
+
+      expect(treeView.reveal).toHaveBeenCalledOnce();
+      const revealedItem = (treeView.reveal as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(revealedItem).toBeInstanceOf(CommentItem);
+      expect(revealedItem.commentId).toBe(42);
+    });
+
+    it('should pass select: true, focus: false, expand: true as reveal options', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+      provider.setComments([makeComment({ id: 42, path: 'docs/proposal.md', line: 10 })]);
+
+      provider.revealByCommentId(42);
+
+      expect(treeView.reveal).toHaveBeenCalledWith(expect.any(CommentItem), {
+        select: true,
+        focus: false,
+        expand: true,
+      });
+    });
+
+    it('should not call reveal when commentId is not found', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+      provider.setComments([makeComment({ id: 1, path: 'docs/proposal.md' })]);
+
+      provider.revealByCommentId(9999);
+
+      expect(treeView.reveal).not.toHaveBeenCalled();
+    });
+
+    it('should gracefully no-op when no treeView is registered', () => {
+      provider.setComments([makeComment({ id: 1, path: 'docs/proposal.md' })]);
+      expect(() => provider.revealByCommentId(1)).not.toThrow();
+    });
+
+    it('should find comment items across multiple file groups', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+      provider.setComments([
+        makeComment({ id: 1, path: 'a.md', line: 5 }),
+        makeComment({ id: 2, path: 'b.md', line: 10 }),
+      ]);
+
+      provider.revealByCommentId(2);
+
+      expect(treeView.reveal).toHaveBeenCalledOnce();
+      const revealedItem = (treeView.reveal as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(revealedItem.commentId).toBe(2);
     });
   });
 });
