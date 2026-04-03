@@ -429,6 +429,70 @@ describe('CommentsTreeProvider', () => {
     });
   });
 
+  describe('side indicator', () => {
+    it('should show [Old] for LEFT side regular comment', async () => {
+      provider.setComments([makeComment({ id: 1, side: 'LEFT', line: 10 })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.description).toContain('[Old]');
+    });
+
+    it('should show [New] for RIGHT side regular comment', async () => {
+      provider.setComments([makeComment({ id: 1, side: 'RIGHT', line: 10 })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.description).toContain('[New]');
+    });
+
+    it('should show [Old] for ^gn comment with L side', async () => {
+      const comment = makeGnComment({
+        id: 1,
+        body: '^gn:10:L:5:20\n> 📌 **"revenue growth"** (chars 5–20)\n\nOld side comment',
+      });
+      provider.setComments([comment]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.description).toContain('[Old]');
+    });
+
+    it('should show [New] for ^gn comment with R side', async () => {
+      provider.setComments([makeGnComment({ id: 1 })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.description).toContain('[New]');
+    });
+
+    it('should show no indicator when side is undefined', async () => {
+      provider.setComments([makeComment({ id: 1, side: undefined as unknown as string, line: 10 })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.description).not.toContain('[Old]');
+      expect(item.description).not.toContain('[New]');
+    });
+
+    it('should show no indicator when side is empty string', async () => {
+      provider.setComments([makeComment({ id: 1, side: '', line: 10 })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.description).not.toContain('[Old]');
+      expect(item.description).not.toContain('[New]');
+    });
+
+    it('should place side indicator at end of description', async () => {
+      provider.setComments([makeComment({ id: 1, side: 'RIGHT', line: 10, userLogin: 'pedro' })]);
+      const roots = await provider.getChildren();
+      const children = await provider.getChildren(roots[0] as FileItem);
+      const item = children[0] as CommentItem;
+      expect(item.description).toMatch(/\[New\]$/);
+    });
+  });
+
   describe('dispose', () => {
     it('should clean up without errors', () => {
       expect(() => provider.dispose()).not.toThrow();
