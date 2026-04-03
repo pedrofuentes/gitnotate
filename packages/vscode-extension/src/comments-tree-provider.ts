@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { parseGnComment } from '@gitnotate/core';
 import type { ReviewComment } from './pr-service';
 import { stripBlockquoteFallback } from './comment-thread-sync';
+import { normalizeSide } from './side-utils';
 
 const MAX_LABEL_LENGTH = 60;
 
@@ -186,6 +187,12 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
       let description = `@${author} ${lineDesc}`;
       if (replyCount > 0) {
         description += ` · ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+      }
+
+      const sideValue = parsed ? parsed.metadata.side : comment.side;
+      if (sideValue) {
+        const normalized = normalizeSide(sideValue);
+        description += normalized === 'LEFT' ? ' [Old]' : ' [New]';
       }
 
       const command: vscode.Command = {
