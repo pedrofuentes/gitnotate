@@ -128,8 +128,14 @@ export class CommentThreadSync {
     const freshComments = await this.prService.listReviewComments(pr);
 
     // Compare: if data changed, re-render
-    const cacheFingerprint = JSON.stringify(cached.map((c) => c.id).sort());
-    const freshFingerprint = JSON.stringify(freshComments.map((c) => c.id).sort());
+    const fingerprint = (comments: ReviewComment[]) =>
+      JSON.stringify(
+        comments
+          .map((c) => ({ id: c.id, body: c.body, updatedAt: c.updatedAt }))
+          .sort((a, b) => a.id - b.id)
+      );
+    const cacheFingerprint = fingerprint(cached);
+    const freshFingerprint = fingerprint(freshComments);
 
     if (cacheFingerprint !== freshFingerprint) {
       debug('Thread sync (cache-first): data changed — re-rendering');
