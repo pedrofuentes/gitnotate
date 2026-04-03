@@ -420,4 +420,65 @@ describe('PrService', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('createReplyComment', () => {
+    it('should send correct payload with in_reply_to_id', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 999, body: 'reply text' }),
+      });
+
+      await client.createReplyComment(pr, 'Great point!', 42);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        'https://api.github.com/repos/octocat/hello-world/pulls/42/comments'
+      );
+      expect(options.method).toBe('POST');
+      const body = JSON.parse(options.body);
+      expect(body.body).toBe('Great point!');
+      expect(body.in_reply_to_id).toBe(42);
+      expect(body.path).toBeUndefined();
+      expect(body.line).toBeUndefined();
+      expect(body.side).toBeUndefined();
+      expect(body.commit_id).toBeUndefined();
+    });
+
+    it('should return ok:true with comment ID on success', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 555, body: 'reply' }),
+      });
+
+      const result = await client.createReplyComment(pr, 'reply', 100);
+
+      expect(result).toEqual({ ok: true, id: 555 });
+    });
+
+    it('should return ok:false with userMessage on API failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        text: async () => JSON.stringify({ message: 'Validation Failed', errors: [] }),
+      });
+
+      const result = await client.createReplyComment(pr, 'reply', 100);
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
+    });
+
+    it('should return ok:false with userMessage on network error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.createReplyComment(pr, 'reply', 100);
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
+    });
+  });
 });
