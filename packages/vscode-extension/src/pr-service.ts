@@ -25,6 +25,7 @@ const MAX_PAGES = 10;
 
 export class PrService {
   private log: Logger | undefined;
+  private etagCache: Map<string, string> = new Map();
 
   constructor(private token: string) {
     try { this.log = getLogger(); } catch { /* logger not initialized */ }
@@ -36,6 +37,10 @@ export class PrService {
       Accept: 'application/vnd.github+json',
       'Content-Type': 'application/json',
     };
+  }
+
+  clearEtagCache(): void {
+    this.etagCache.clear();
   }
 
   async createReviewComment(
@@ -113,24 +118,48 @@ export class PrService {
 
   async listReviewComments(
     pr: PullRequestInfo
-  ): Promise<ReviewComment[]> {
+  ): Promise<ReviewComment[] | null> {
     const allComments: ReviewComment[] = [];
     let page = 1;
+    const cacheKey = `comments:${pr.owner}/${pr.repo}#${pr.number}`;
 
     try {
       while (page <= MAX_PAGES) {
         const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=${PER_PAGE}&page=${page}`;
         this.log?.info('PrService', 'GET', url);
         console.log('[Gitnotate] GET', url);
+
+        const reqHeaders: Record<string, string> = this.headers();
+
+        // Only send If-None-Match on page 1
+        if (page === 1) {
+          const cachedEtag = this.etagCache.get(cacheKey);
+          if (cachedEtag) {
+            reqHeaders['If-None-Match'] = cachedEtag;
+          }
+        }
+
         const response = await fetch(url, {
           method: 'GET',
-          headers: this.headers(),
+          headers: reqHeaders,
         });
+
+        if (page === 1 && response.status === 304) {
+          return null;
+        }
 
         if (!response.ok) {
           console.error('[Gitnotate] listReviewComments failed:', response.status, response.statusText);
           this.log?.error('PrService', 'listReviewComments failed:', response.status);
           return allComments;
+        }
+
+        // Store ETag from page 1
+        if (page === 1) {
+          const etag = response.headers.get('ETag') ?? response.headers.get('etag');
+          if (etag) {
+            this.etagCache.set(cacheKey, etag);
+          }
         }
 
         const data = (await response.json()) as Array<{

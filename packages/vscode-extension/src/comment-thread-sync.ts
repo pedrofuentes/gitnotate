@@ -133,6 +133,12 @@ export class CommentThreadSync {
     const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
     const freshComments = await this.prService.listReviewComments(pr);
 
+    // null means 304 Not Modified — data unchanged, keep cache
+    if (freshComments === null) {
+      debug('Thread sync (cache-first): 304 not modified — skipping re-render');
+      return cachedRanges;
+    }
+
     // Compare: if data changed, re-render
     const cacheFingerprint = JSON.stringify(cached.map((c) => c.id).sort());
     const freshFingerprint = JSON.stringify(freshComments.map((c) => c.id).sort());
@@ -162,6 +168,10 @@ export class CommentThreadSync {
 
     debug('Thread sync: fetching comments for', cacheKey);
     const comments = await this.prService.listReviewComments(pr);
+    if (comments === null) {
+      debug('Thread sync: 304 not modified, no cache available for', cacheKey);
+      return [];
+    }
     this.cache.set(cacheKey, comments);
     return comments;
   }
