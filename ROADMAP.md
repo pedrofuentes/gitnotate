@@ -222,14 +222,22 @@ Keep comment threads in sync with editor state.
 - Sentinel: ✅ APPROVED (SENTINEL-2026-0331-HSV-001), ⚠️ CONDITIONAL APPROVE (SNTNL-20260401-001)
 - Bugs found during testing: auth change not clearing threads (fixed), auth change not clearing highlights (fixed)
 
-#### Increment 4: Comments Sidebar (TreeView) 🔮 PLANNED
+#### Increment 4: Comments Sidebar (TreeView) ✅ COMPLETE
 
 Implement the contributed `gitnotateComments` view.
 
-- `TreeDataProvider` via `createTreeView()` for reveal/selection support
-- Root items: file paths (collapsible) → child items: `^gn` comments
-- Click-to-navigate: opens file at the annotated range
-- `EventEmitter` for selective refresh, context keys, empty/loading states
+- ✅ `CommentsTreeProvider` via `createTreeView()` — FileItem/CommentItem/MessageItem tree structure
+- ✅ All PR comments shown: both `^gn` sub-line and regular line comments, grouped by file
+- ✅ Click-to-navigate: opens file at annotated range + reveals comment thread (`revealThread`)
+- ✅ `EventEmitter` for selective refresh, manual refresh button in view title bar
+- ✅ State messages: loading, no PR, no auth, no comments
+- ✅ Context keys: `gitnotate.hasPR`, `gitnotate.hasComments` for `when` clauses
+- ✅ Git branch change detection: `repository.state.onDidChange` re-syncs sidebar automatically
+- ✅ Auth state handling: sign-in shows "Loading" + triggers sync, sign-out shows "Sign in"
+- ✅ Activity bar icon: monochrome adaptation of official Gitnotate pin icon
+- ✅ 217 unit tests (87.7% coverage), 22 integration tests, 36/36 test plan items verified
+- Sentinel: ⚠️ CONDITIONAL APPROVE (SENTINEL-20250713-CSB-001), ⚠️ CONDITIONAL APPROVE (SENTINEL-20250720-TST-001)
+- Bugs found during testing: comment thread not revealed on navigate (fixed), auth always set noAuth (fixed), no re-sync on branch switch (fixed), Loading stuck without markdown editor (fixed)
 
 #### Increment 5: UX Polish & Integration 🔮 PLANNED
 
@@ -239,7 +247,7 @@ Full round-trip polish and GH PR extension coexistence.
 - Reply/resolve handlers on comment threads
 - Use "create a review" API endpoint to avoid `pending review` conflict (GitHub API quirk: single-comment endpoint fails when a pending review exists; the reviews endpoint handles this correctly)
 - Status bar: "Gitnotate: PR #N" with auto-refresh
-- Context keys (`gitnotate.hasPR`, `gitnotate.hasComments`) for `when` clauses
+- Bidirectional sidebar navigation: clicking a comment thread in the editor reveals it in the sidebar (`treeView.reveal()`)
 - Right-click context menu: "Gitnotate: Add Comment" on text selection
 - Error UX with action buttons ("Sign in to GitHub")
 - Output channel (`Gitnotate`) for debugging

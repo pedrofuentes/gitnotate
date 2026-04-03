@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (VSCode Extension — Phase 1.5 Increment 4)
+- **Comments Sidebar (TreeView)** — `gitnotateComments` view in activity bar showing all PR review comments grouped by file
+- Both `^gn` sub-line and regular line comments displayed with author, line range, and reply count
+- Click-to-navigate: clicking a comment opens the file at the exact range and reveals the comment thread
+- State messages: loading, no open PR, no auth, no comments
+- Manual refresh button (↻) in sidebar title bar
+- Context keys: `gitnotate.hasComments` and `gitnotate.hasPR` for `when` clauses
+- Git branch change detection: sidebar auto-refreshes when switching branches (`repository.state.onDidChange`)
+- Smart auth state handling: sign-in shows "Loading" + triggers sync, sign-out shows "Sign in to GitHub"
+- Activity bar icon: monochrome Gitnotate pin icon (adapted from official design)
+- `revealThread()` on `CommentController` — expands comment thread at a given line
+- `onDidChangeState()` on `GitService` — subscribes to git repository state changes
+- 57 new automated tests (217 total unit, 22 integration), test plan with 36/36 items verified
+
 ### Added (VSCode Extension — Phase 1.5 Increment 3)
 - Cache-first comment thread display — cached threads render instantly on tab switch, then refresh in background
 - `MAX_PAGES = 10` safety bound on PR comment pagination (caps at 1,000 comments)
