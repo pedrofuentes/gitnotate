@@ -421,6 +421,93 @@ describe('PrService', () => {
     });
   });
 
+  describe('createReviewWithComment', () => {
+    it('should POST to /pulls/{number}/reviews', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      await client.createReviewWithComment(pr, 'src/index.ts', 10, 'RIGHT', 'Nice!');
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        'https://api.github.com/repos/octocat/hello-world/pulls/42/reviews'
+      );
+      expect(options.method).toBe('POST');
+    });
+
+    it('should send event: COMMENT and comments array in request body', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      await client.createReviewWithComment(pr, 'src/index.ts', 10, 'RIGHT', 'Nice!');
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.event).toBe('COMMENT');
+      expect(body.comments).toBeInstanceOf(Array);
+      expect(body.comments).toHaveLength(1);
+    });
+
+    it('should include correct commit_id, path, line, side, body in request', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      await client.createReviewWithComment(pr, 'src/app.ts', 25, 'LEFT', 'Fix this');
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.commit_id).toBe('abc123def456');
+      expect(body.comments[0]).toEqual({
+        path: 'src/app.ts',
+        line: 25,
+        side: 'LEFT',
+        body: 'Fix this',
+      });
+    });
+
+    it('should return ok:true with review ID on success', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      const result = await client.createReviewWithComment(pr, 'src/index.ts', 10, 'RIGHT', 'Nice!');
+
+      expect(result).toEqual({ ok: true, id: 777 });
+    });
+
+    it('should return ok:false with userMessage on API error', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        text: async () => JSON.stringify({ message: 'Validation Failed', errors: [] }),
+      });
+
+      const result = await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
+    });
+
+    it('should return ok:false with userMessage on network error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
+    });
+  });
+
   describe('createReplyComment', () => {
     it('should send correct payload with in_reply_to_id', async () => {
       mockFetch.mockResolvedValueOnce({

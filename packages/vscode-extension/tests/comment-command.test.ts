@@ -314,4 +314,70 @@ describe('addCommentCommand', () => {
       expect.stringContaining('Permission denied')
     );
   });
+
+  describe('review endpoint fallback', () => {
+    function setupStandardScenario() {
+      const selection = new Range(5, 2, 5, 10);
+      __setActiveTextEditor({
+        selection,
+        document: {
+          getText: vi.fn().mockReturnValue('selected'),
+          uri: { fsPath: '/project/src/file.ts' },
+          fileName: '/project/src/file.ts',
+        },
+      });
+      mockGetGitHubToken.mockResolvedValue('ghp_test_token');
+      mockDetectCurrentPR.mockResolvedValue({
+        owner: 'octocat',
+        repo: 'hello-world',
+        number: 42,
+        headSha: 'abc123',
+      });
+      window.showInputBox.mockResolvedValue('Nice!');
+      mockBuildGnComment.mockReturnValue('formatted comment body');
+    }
+
+    it('should try createReviewWithComment first', async () => {
+      setupStandardScenario();
+
+      const mockCreateReviewWithComment = vi.fn().mockResolvedValue({ ok: true, id: 100 });
+      const mockCreateReviewComment = vi.fn();
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewWithComment: mockCreateReviewWithComment, createReviewComment: mockCreateReviewComment } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      expect(mockCreateReviewWithComment).toHaveBeenCalledOnce();
+    });
+
+    it('should fall back to createReviewComment when createReviewWithComment fails', async () => {
+      setupStandardScenario();
+
+      const mockCreateReviewWithComment = vi.fn().mockResolvedValue({ ok: false, userMessage: 'Review error' });
+      const mockCreateReviewComment = vi.fn().mockResolvedValue({ ok: true });
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewWithComment: mockCreateReviewWithComment, createReviewComment: mockCreateReviewComment } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      expect(mockCreateReviewWithComment).toHaveBeenCalledOnce();
+      expect(mockCreateReviewComment).toHaveBeenCalledOnce();
+    });
+
+    it('should not call createReviewComment when createReviewWithComment succeeds', async () => {
+      setupStandardScenario();
+
+      const mockCreateReviewWithComment = vi.fn().mockResolvedValue({ ok: true, id: 100 });
+      const mockCreateReviewComment = vi.fn();
+      vi.mocked(PrService).mockImplementation(
+        () => ({ createReviewWithComment: mockCreateReviewWithComment, createReviewComment: mockCreateReviewComment } as any)
+      );
+
+      await addCommentCommand(mockContext);
+
+      expect(mockCreateReviewComment).not.toHaveBeenCalled();
+    });
+  });
 });
