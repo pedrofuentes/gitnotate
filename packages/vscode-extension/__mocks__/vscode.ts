@@ -126,6 +126,9 @@ export class Uri {
   static parse(value: string): Uri {
     return new Uri(value);
   }
+  toString(): string {
+    return `file://${this.fsPath}`;
+  }
 }
 
 const mockStatusBarItem = {
