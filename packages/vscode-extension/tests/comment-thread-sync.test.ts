@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { __reset, __getCommentThreads, Uri, Range } from '../__mocks__/vscode';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { __reset, __getCommentThreads, Uri, Range, workspace } from '../__mocks__/vscode';
 import { CommentThreadSync } from '../src/comment-thread-sync';
 import { CommentController } from '../src/comment-controller';
 import type { PrService, PullRequestInfo, ReviewComment } from '../src/pr-service';
@@ -561,6 +561,195 @@ describe('CommentThreadSync', () => {
 
       // Cache render + re-render = 2 calls
       expect(clearSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('polling', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should set up interval timer when startPolling is called', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+    });
+
+    it('should clear interval timer when stopPolling is called', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      sync.stopPolling();
+
+      expect(sync.isPolling).toBe(false);
+    });
+
+    it('should return true from isPolling when polling, false when not', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+
+      expect(sync.isPolling).toBe(false);
+
+      sync.startPolling(Uri.file('/workspace/docs/readme.md'), 'docs/readme.md', makePr());
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+      expect(sync.isPolling).toBe(false);
+    });
+
+    it('should call syncForDocumentCacheFirst on each tick', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache so syncForDocumentCacheFirst doesn't fall back
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockClear();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      // Default interval: 30s = 30000ms
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(2);
+
+      sync.stopPolling();
+    });
+
+    it('should handle errors silently during polling', async () => {
+      const prService = makeMockPrService([]);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      // Should not throw
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      // Still polling after error
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+    });
+
+    it('should stop previous timer when starting polling again', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      const firstIsPolling = sync.isPolling;
+
+      // Start again — should clear previous timer
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      expect(firstIsPolling).toBe(true);
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+    });
+
+    it('should only have one active timer after restarting polling', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockClear();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      // Should only fire once (not twice from two timers)
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+
+      sync.stopPolling();
+    });
+
+    it('should stop polling on dispose', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      expect(sync.isPolling).toBe(true);
+
+      sync.dispose();
+
+      expect(sync.isPolling).toBe(false);
+    });
+
+    it('should read pollInterval from config with default of 30s', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      expect(workspace.getConfiguration).toHaveBeenCalledWith('gitnotate');
+
+      sync.stopPolling();
+    });
+
+    it('should enforce minimum polling interval of 10 seconds', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockClear();
+
+      // Set pollInterval to 5 (below minimum)
+      const mockConfig = workspace.getConfiguration();
+      (mockConfig.get as ReturnType<typeof vi.fn>).mockImplementation(
+        (key: string, defaultValue?: unknown) => {
+          if (key === 'pollInterval') return 5;
+          return defaultValue;
+        }
+      );
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      // At 9s: should NOT have fired yet (minimum is 10s)
+      await vi.advanceTimersByTimeAsync(9_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(0);
+
+      // At 10s: should fire (clamped to minimum)
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+
+      sync.stopPolling();
     });
   });
 });
