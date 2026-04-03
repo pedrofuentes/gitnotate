@@ -27,6 +27,7 @@ export class CommentController {
   private controller: vscode.CommentController;
   private threads: Map<string, vscode.CommentThread[]> = new Map();
   private decorationTypes: vscode.TextEditorDecorationType[];
+  private parentCommentIds: Map<vscode.CommentThread, number> = new Map();
 
   constructor() {
     this.controller = vscode.comments.createCommentController(
@@ -70,7 +71,8 @@ export class CommentController {
     uri: vscode.Uri,
     range: vscode.Range,
     comments: ThreadComment[],
-    colorIndex?: number
+    colorIndex?: number,
+    parentCommentId?: number
   ): vscode.CommentThread {
     const colorEmoji = colorIndex !== undefined ? COLOR_EMOJIS[colorIndex % COLOR_EMOJIS.length] : undefined;
 
@@ -83,12 +85,39 @@ export class CommentController {
 
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
 
+    if (parentCommentId !== undefined) {
+      this.parentCommentIds.set(thread, parentCommentId);
+    }
+
     const key = uri.fsPath;
     const existing = this.threads.get(key) ?? [];
     existing.push(thread);
     this.threads.set(key, existing);
 
     return thread;
+  }
+
+  getParentCommentId(thread: vscode.CommentThread): number | undefined {
+    return this.parentCommentIds.get(thread);
+  }
+
+  addReplyToThread(thread: vscode.CommentThread, comment: ThreadComment): void {
+    const newComment: vscode.Comment = {
+      body: comment.body,
+      mode: vscode.CommentMode.Preview,
+      author: { name: comment.author },
+    };
+    thread.comments = [...thread.comments, newComment];
+  }
+
+  resolveThread(thread: vscode.CommentThread): void {
+    // TODO: Call GitHub GraphQL resolveReviewThread mutation
+    thread.state = vscode.CommentThreadState.Resolved;
+  }
+
+  unresolveThread(thread: vscode.CommentThread): void {
+    // TODO: Call GitHub GraphQL unresolveReviewThread mutation
+    thread.state = vscode.CommentThreadState.Unresolved;
   }
 
   applyHighlights(editor: vscode.TextEditor, ranges: vscode.Range[]): void {

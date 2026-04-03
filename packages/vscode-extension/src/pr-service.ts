@@ -101,6 +101,38 @@ export class PrService {
     }
   }
 
+  async createReplyComment(
+    pr: PullRequestInfo,
+    body: string,
+    inReplyToId: number
+  ): Promise<{ ok: true; id: number } | { ok: false; userMessage: string }> {
+    const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments`;
+    const payload = { body, in_reply_to_id: inReplyToId };
+
+    try {
+      console.log('[Gitnotate] POST (reply)', url);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '(could not read body)');
+        console.error('[Gitnotate] createReplyComment failed:', response.status, response.statusText);
+        console.error('[Gitnotate] Response body:', errorBody);
+        return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
+      }
+
+      const data = (await response.json()) as { id: number };
+      console.log('[Gitnotate] createReplyComment succeeded:', response.status);
+      return { ok: true, id: data.id };
+    } catch (err) {
+      console.error('[Gitnotate] createReplyComment failed:', err);
+      return { ok: false, userMessage: 'Network error — check your connection and try again.' };
+    }
+  }
+
   async listReviewComments(
     pr: PullRequestInfo
   ): Promise<ReviewComment[]> {
