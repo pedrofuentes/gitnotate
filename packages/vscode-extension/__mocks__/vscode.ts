@@ -397,6 +397,9 @@ export function __reset() {
   mockCommentControllers = [];
   mockTreeViews = [];
   mockContextKeys.clear();
+  mockStatusBarItem.text = '';
+  mockStatusBarItem.tooltip = '';
+  delete (mockStatusBarItem as Record<string, unknown>).command;
   vi.clearAllMocks();
   authentication.getSession.mockImplementation(async () => undefined);
   authentication.onDidChangeSessions.mockImplementation((_listener: unknown) => ({
