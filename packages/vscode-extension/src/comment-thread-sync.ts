@@ -102,7 +102,6 @@ export class CommentThreadSync {
         }
 
         const thread = this.commentController.createThread(uri, range, threadComments, gnThreads, root.id);
-        this.commentController.onThreadRevealed?.(root.id);
         this.anchorTracker?.registerThread(uri, line, thread);
         highlightRanges.push(range);
         gnThreads++;
@@ -119,7 +118,6 @@ export class CommentThreadSync {
         }
 
         const thread = this.commentController.createThread(uri, range, threadComments, undefined, root.id);
-        this.commentController.onThreadRevealed?.(root.id);
         this.anchorTracker?.registerThread(uri, line, thread);
         lineThreads++;
       }

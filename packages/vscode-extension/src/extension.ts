@@ -124,7 +124,10 @@ export function activate(context: vscode.ExtensionContext) {
     if (!commentCtrl) return;
     const relativePath = getRelativePath(editor.document.fileName);
     debug('Comment sync: syncing', relativePath, `(PR #${pr.number})`);
-    const highlightRanges = await threadSync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
+    // Capture local reference — threadSync can be reset by other handlers during awaits
+    const sync = threadSync;
+    if (!sync) return;
+    const highlightRanges = await sync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
     if (highlightRanges.length > 0) {
       commentCtrl.applyHighlights(editor, highlightRanges);
     } else {
@@ -132,13 +135,13 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     // Update sidebar tree with all comments from this PR
-    const cachedComments = threadSync.getCachedComments(pr);
+    const cachedComments = sync.getCachedComments(pr);
     if (cachedComments) {
       treeProvider?.setComments(cachedComments);
     }
 
     // Start polling for live updates
-    threadSync.startPolling(editor.document.uri, relativePath, pr);
+    sync.startPolling(editor.document.uri, relativePath, pr);
   }, 300);
 
   const triggerSync = () => {

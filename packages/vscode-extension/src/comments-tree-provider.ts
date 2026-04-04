@@ -137,7 +137,11 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
     if (!this.treeView) return;
     const item = this.commentItemCache.get(commentId);
     if (!item) return;
-    void this.treeView.reveal(item, { select: true, focus: false, expand: true });
+    try {
+      void this.treeView.reveal(item, { select: true, focus: false, expand: true });
+    } catch {
+      // reveal may fail if tree is not visible — safe to ignore
+    }
   }
 
   setState(state: SidebarState): void {
@@ -164,6 +168,18 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
 
   getTreeItem(element: TreeItemBase): vscode.TreeItem {
     return element;
+  }
+
+  getParent(element: TreeItemBase): TreeItemBase | undefined {
+    if (element instanceof CommentItem) {
+      const group = this.fileGroups.find((g) =>
+        g.rootComments.some((c) => c.id === element.commentId)
+      );
+      if (group) {
+        return new FileItem(group.path, group.rootComments.length);
+      }
+    }
+    return undefined;
   }
 
   async getChildren(element?: TreeItemBase): Promise<TreeItemBase[]> {

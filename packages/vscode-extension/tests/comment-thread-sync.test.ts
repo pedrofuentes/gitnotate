@@ -692,7 +692,7 @@ describe('CommentThreadSync', () => {
   });
 
   describe('reveal callback integration', () => {
-    it('should call onThreadRevealed for each created thread during sync', async () => {
+    it('should NOT call onThreadRevealed during bulk sync (avoids reveal spam)', async () => {
       const comment1 = makeComment({
         id: 10,
         body: '^gn:5:R:0:10\n\nFirst comment',
@@ -714,12 +714,10 @@ describe('CommentThreadSync', () => {
 
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
-      expect(callback).toHaveBeenCalledTimes(2);
-      expect(callback).toHaveBeenCalledWith(10);
-      expect(callback).toHaveBeenCalledWith(20);
+      expect(callback).not.toHaveBeenCalled();
     });
 
-    it('should call onThreadRevealed for regular line comments too', async () => {
+    it('should NOT call onThreadRevealed for regular line comments during sync', async () => {
       const comment = makeComment({
         id: 30,
         body: 'A regular line comment',
@@ -735,7 +733,7 @@ describe('CommentThreadSync', () => {
 
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
-      expect(callback).toHaveBeenCalledWith(30);
+      expect(callback).not.toHaveBeenCalled();
     });
   });
 
