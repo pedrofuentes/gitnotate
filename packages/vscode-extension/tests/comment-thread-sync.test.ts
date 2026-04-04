@@ -236,7 +236,7 @@ describe('CommentThreadSync', () => {
   });
 
   describe('side-aware rendering', () => {
-    it('should show only RIGHT-side comments for file: URI', async () => {
+    it('should show ALL comments regardless of URI scheme (no rendering filter)', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -258,11 +258,10 @@ describe('CommentThreadSync', () => {
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(1);
-      expect(threads[0].comments[0]).toMatchObject({ body: 'Right side comment' });
+      expect(threads).toHaveLength(2);
     });
 
-    it('should show only LEFT-side comments for git: URI', async () => {
+    it('should show ALL comments for git: URI (diff old pane)', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -284,11 +283,10 @@ describe('CommentThreadSync', () => {
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(1);
-      expect(threads[0].comments[0]).toMatchObject({ body: 'Left side comment' });
+      expect(threads).toHaveLength(2);
     });
 
-    it('should show ALL comments for unknown URI scheme (BOTH mode)', async () => {
+    it('should show ALL comments for unknown URI scheme', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -313,7 +311,7 @@ describe('CommentThreadSync', () => {
       expect(threads).toHaveLength(2);
     });
 
-    it('should filter mixed L and R comments — only matching side rendered', async () => {
+    it('should show mixed L and R comments together', async () => {
       const comments = [
         makeComment({ id: 1, body: '^gn:5:R:0:10\n\nRight line 5', path: 'docs/readme.md', side: 'RIGHT' }),
         makeComment({ id: 2, body: '^gn:5:L:0:10\n\nLeft line 5', path: 'docs/readme.md', side: 'LEFT' }),
@@ -327,15 +325,10 @@ describe('CommentThreadSync', () => {
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(2);
-      const bodies = threads.map((t) => (t.comments[0] as { body: string }).body);
-      expect(bodies).toContain('Right line 5');
-      expect(bodies).toContain('Right line 12');
-      expect(bodies).not.toContain('Left line 5');
-      expect(bodies).not.toContain('Left line 8');
+      expect(threads).toHaveLength(4);
     });
 
-    it('should filter non-^gn regular line comments by side', async () => {
+    it('should show non-^gn regular line comments regardless of side', async () => {
       const rightComment = makeComment({
         id: 1,
         body: 'Regular right-side comment',
@@ -357,8 +350,7 @@ describe('CommentThreadSync', () => {
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(1);
-      expect(threads[0].comments[0]).toMatchObject({ body: 'Regular right-side comment' });
+      expect(threads).toHaveLength(2);
     });
   });
 

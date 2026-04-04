@@ -3,7 +3,7 @@ import { parseGnComment } from '@gitnotate/core';
 import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
 import { debug, getLogger, Logger } from './logger';
-import { detectDocumentSide, normalizeSide } from './side-utils';
+import { detectRenderingSide, normalizeSide } from './side-utils';
 import { showAuthError, showApiError } from './error-handler';
 import type { AnchorTracker } from './anchor-tracker';
 
@@ -57,7 +57,7 @@ export class CommentThreadSync {
     const fileComments = comments.filter((c) => c.path === relativePath);
     debug('Thread sync:', fileComments.length, 'comments for', relativePath);
 
-    const docSide = detectDocumentSide(uri);
+    const docSide = detectRenderingSide(uri);
     const sideFiltered = docSide === 'BOTH'
       ? fileComments
       : fileComments.filter((c) => normalizeSide(c.side) === docSide);
