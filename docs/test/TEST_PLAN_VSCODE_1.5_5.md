@@ -68,11 +68,11 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 37.7 | Polling interval from config | Set `gitnotate.pollInterval` to 15. | Polling interval is 15000ms. | ✅ Passed |
 | 37.8 | Polling minimum 10s enforced | Set `gitnotate.pollInterval` to 5. | Interval clamped to 10000ms. | ✅ Passed |
 | 37.9 | Polling errors are silent | API returns error during poll tick. | No user-facing error message. Polling continues. | ✅ Passed |
-| 37.10 | New comment appears via polling | Open a PR markdown file in VSCode. On github.com, add a new `^gn` comment on the same file. Wait ~30 seconds. | New comment thread appears in VSCode without manual refresh. Output channel: sync log with fresh data. | ⬜ Manual |
-| 37.11 | Edited comment updates via polling | Note an existing comment's text. On github.com, edit that comment's body. Wait ~30 seconds. | Comment text in VSCode updates to the new body. | ⬜ Manual |
-| 37.12 | New reply appears via polling | On github.com, reply to an existing thread. Wait ~30 seconds. | Reply appears in the thread in VSCode. | ⬜ Manual |
-| 37.13 | Polling pauses on window blur | Open a PR file (polling active). Alt-Tab to another application. On github.com, add a comment. Return to VSCode. | Comment appears shortly after returning — immediate fetch on focus regain. While away, no polling occurred. | ⬜ Manual |
-| 37.14 | Poll interval setting | Open Settings → search `gitnotate.pollInterval`. | Setting exists with default 30, minimum 10. Change to 15 → polling happens every ~15s. | ⬜ Manual |
+| 37.10 | New comment appears via polling | Open a PR markdown file in VSCode. On github.com, add a new `^gn` comment on the same file. Wait ~30 seconds. | New comment thread appears in VSCode without manual refresh. Output channel: sync log with fresh data. | ✅ Manual verified |
+| 37.11 | Edited comment updates via polling | Note an existing comment's text. On github.com, edit that comment's body. Wait ~30 seconds. | Comment text in VSCode updates to the new body. | ✅ Manual verified |
+| 37.12 | New reply appears via polling | On github.com, reply to an existing thread. Wait ~30 seconds. | Reply appears in the thread in VSCode. | ✅ Manual verified |
+| 37.13 | Polling pauses on window blur | Open a PR file (polling active). Alt-Tab to another application. On github.com, add a comment. Return to VSCode. | Comment appears shortly after returning — immediate fetch on focus regain. While away, no polling occurred. Debug Console: `Window lost focus — stopping polling` / `Window gained focus — re-syncing and resuming polling`. | ✅ Manual verified |
+| 37.14 | Poll interval setting | Open Settings → search `gitnotate.pollInterval`. | Setting exists with default 30, minimum 10. Change to 15 → polling happens every ~15s. | ✅ Manual verified |
 
 ---
 

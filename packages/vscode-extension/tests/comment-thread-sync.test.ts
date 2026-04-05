@@ -236,7 +236,7 @@ describe('CommentThreadSync', () => {
   });
 
   describe('side-aware rendering', () => {
-    it('should show ALL comments regardless of URI scheme (no rendering filter)', async () => {
+    it('syncForDocument should show ALL comments (no side filter) for single file view', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -261,7 +261,7 @@ describe('CommentThreadSync', () => {
       expect(threads).toHaveLength(2);
     });
 
-    it('should show ALL comments for git: URI (diff old pane)', async () => {
+    it('renderForSide LEFT should show only LEFT comments', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -280,13 +280,14 @@ describe('CommentThreadSync', () => {
       const sync = new CommentThreadSync(prService, commentController);
       const uri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
 
-      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+      await sync.renderForSide(uri, 'docs/readme.md', makePr(), 'LEFT');
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(2);
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Left side comment' });
     });
 
-    it('should show ALL comments for unknown URI scheme', async () => {
+    it('renderForSide RIGHT should show only RIGHT comments', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -303,15 +304,16 @@ describe('CommentThreadSync', () => {
       });
       const prService = makeMockPrService([rightComment, leftComment]);
       const sync = new CommentThreadSync(prService, commentController);
-      const uri = Uri.from({ scheme: 'untitled', path: '/workspace/docs/readme.md' });
+      const uri = Uri.file('/workspace/docs/readme.md');
 
-      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+      await sync.renderForSide(uri, 'docs/readme.md', makePr(), 'RIGHT');
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(2);
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Right side comment' });
     });
 
-    it('should show mixed L and R comments together', async () => {
+    it('renderForSide should handle mixed L/R comments correctly', async () => {
       const comments = [
         makeComment({ id: 1, body: '^gn:5:R:0:10\n\nRight line 5', path: 'docs/readme.md', side: 'RIGHT' }),
         makeComment({ id: 2, body: '^gn:5:L:0:10\n\nLeft line 5', path: 'docs/readme.md', side: 'LEFT' }),
@@ -320,38 +322,22 @@ describe('CommentThreadSync', () => {
       ];
       const prService = makeMockPrService(comments);
       const sync = new CommentThreadSync(prService, commentController);
-      const uri = Uri.file('/workspace/docs/readme.md');
+      const rightUri = Uri.file('/workspace/docs/readme.md');
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
 
-      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+      // Render RIGHT on file: URI
+      await sync.renderForSide(rightUri, 'docs/readme.md', makePr(), 'RIGHT');
+      const rightThreads = __getCommentThreads();
+      expect(rightThreads).toHaveLength(2);
 
-      const threads = __getCommentThreads();
-      expect(threads).toHaveLength(4);
+      // Render LEFT on git: URI (separate URI, separate threads)
+      await sync.renderForSide(leftUri, 'docs/readme.md', makePr(), 'LEFT');
+      // Total threads: 2 RIGHT + 2 LEFT = 4
+      const allThreads = __getCommentThreads();
+      expect(allThreads).toHaveLength(4);
     });
 
-    describe('diff view event absence', () => {
-      it('should show all comments on git: URI without needing pane-switch event', async () => {
-        // This test models the real scenario: user opens diff view,
-        // VSCode focuses the left (git:) pane, and we must show ALL
-        // comments — not just LEFT ones — because no event fires to
-        // let us render the RIGHT ones separately.
-        const comments = [
-          makeComment({ id: 1, body: '^gn:5:R:0:10\n\nRight comment', path: 'docs/readme.md', side: 'RIGHT' }),
-          makeComment({ id: 2, body: '^gn:8:L:0:10\n\nLeft comment', path: 'docs/readme.md', side: 'LEFT' }),
-          makeComment({ id: 3, body: 'Regular right comment', path: 'docs/readme.md', line: 12, side: 'RIGHT' }),
-        ];
-        const prService = makeMockPrService(comments);
-        const sync = new CommentThreadSync(prService, commentController);
-        const gitUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
-
-        await sync.syncForDocument(gitUri, 'docs/readme.md', makePr());
-
-        const threads = __getCommentThreads();
-        // All 3 comments must be visible — not just the 1 LEFT comment
-        expect(threads).toHaveLength(3);
-      });
-    });
-
-    it('should show non-^gn regular line comments regardless of side', async () => {
+    it('renderForSide should filter non-^gn regular line comments by side', async () => {
       const rightComment = makeComment({
         id: 1,
         body: 'Regular right-side comment',
@@ -370,10 +356,11 @@ describe('CommentThreadSync', () => {
       const sync = new CommentThreadSync(prService, commentController);
       const uri = Uri.file('/workspace/docs/readme.md');
 
-      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+      await sync.renderForSide(uri, 'docs/readme.md', makePr(), 'RIGHT');
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(2);
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Regular right-side comment' });
     });
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectDocumentSide, detectRenderingSide, normalizeSide } from '../src/side-utils';
+import { detectDocumentSide, normalizeSide } from '../src/side-utils';
 import { Uri } from '../__mocks__/vscode';
 
 describe('detectDocumentSide', () => {
@@ -43,32 +43,5 @@ describe('normalizeSide', () => {
 
   it('should default unknown values to RIGHT', () => {
     expect(normalizeSide('UNKNOWN')).toBe('RIGHT');
-  });
-});
-
-describe('detectRenderingSide', () => {
-  it('should always return BOTH regardless of URI scheme', () => {
-    const fileUri = Uri.file('/workspace/docs/readme.md');
-    const gitUri = Object.assign(Uri.file('/workspace/docs/readme.md'), { scheme: 'git' });
-    const unknownUri = Object.assign(Uri.file('/something'), { scheme: 'untitled' });
-
-    expect(detectRenderingSide(fileUri)).toBe('BOTH');
-    expect(detectRenderingSide(gitUri)).toBe('BOTH');
-    expect(detectRenderingSide(unknownUri)).toBe('BOTH');
-  });
-
-  it('should always return BOTH for file: scheme (no rendering filter)', () => {
-    const uri = Uri.file('/workspace/docs/readme.md');
-    expect(detectRenderingSide(uri)).toBe('BOTH');
-  });
-
-  it('should always return BOTH for git: scheme (diff old pane)', () => {
-    const uri = Object.assign(Uri.file('/workspace/docs/readme.md'), { scheme: 'git' });
-    expect(detectRenderingSide(uri)).toBe('BOTH');
-  });
-
-  it('should always return BOTH for unknown schemes', () => {
-    const uri = Object.assign(Uri.file('/something'), { scheme: 'vscode-webview' });
-    expect(detectRenderingSide(uri)).toBe('BOTH');
   });
 });

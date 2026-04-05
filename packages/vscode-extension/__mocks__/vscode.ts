@@ -199,6 +199,11 @@ export const window = {
   get activeTextEditor() {
     return mockActiveTextEditor;
   },
+  get visibleTextEditors() {
+    // In tests, return only the active editor (single-file view).
+    // Tests that simulate diff views should override this.
+    return mockActiveTextEditor ? [mockActiveTextEditor] : [];
+  },
 };
 
 export const commands = {

@@ -127,11 +127,44 @@ export function activate(context: vscode.ExtensionContext) {
     // Capture local reference — threadSync can be reset by other handlers during awaits
     const sync = threadSync;
     if (!sync) return;
-    const highlightRanges = await sync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
-    if (highlightRanges.length > 0) {
-      commentCtrl.applyHighlights(editor, highlightRanges);
+
+    // Detect if we're in a diff view by checking for a paired editor
+    const activeUri = editor.document.uri;
+    const pairedEditor = vscode.window.visibleTextEditors.find(e =>
+      e !== editor &&
+      getRelativePath(e.document.fileName) === relativePath &&
+      e.document.uri.scheme !== activeUri.scheme
+    );
+
+    let highlightRanges: vscode.Range[];
+
+    if (pairedEditor) {
+      // Diff view: render LEFT comments on git: URI, RIGHT on file: URI
+      const leftUri = activeUri.scheme === 'git' ? activeUri : pairedEditor.document.uri;
+      const rightUri = activeUri.scheme === 'file' ? activeUri : pairedEditor.document.uri;
+      debug('Comment sync: diff view detected — rendering per-side', leftUri.scheme, '/', rightUri.scheme);
+
+      const leftRanges = await sync.renderForSide(leftUri, relativePath, pr, 'LEFT');
+      const rightRanges = await sync.renderForSide(rightUri, relativePath, pr, 'RIGHT');
+      highlightRanges = [...leftRanges, ...rightRanges];
+
+      // Apply highlights to both editors
+      if (leftRanges.length > 0) {
+        const leftEditor = activeUri.scheme === 'git' ? editor : pairedEditor;
+        commentCtrl.applyHighlights(leftEditor, leftRanges);
+      }
+      if (rightRanges.length > 0) {
+        const rightEditor = activeUri.scheme === 'file' ? editor : pairedEditor;
+        commentCtrl.applyHighlights(rightEditor, rightRanges);
+      }
     } else {
-      commentCtrl.clearHighlights(editor);
+      // Single file view: render all comments (no side filter)
+      highlightRanges = await sync.syncForDocumentCacheFirst(activeUri, relativePath, pr);
+      if (highlightRanges.length > 0) {
+        commentCtrl.applyHighlights(editor, highlightRanges);
+      } else {
+        commentCtrl.clearHighlights(editor);
+      }
     }
 
     // Update sidebar tree with all comments from this PR

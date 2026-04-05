@@ -3,7 +3,7 @@ import { parseGnComment } from '@gitnotate/core';
 import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
 import { debug, getLogger, Logger } from './logger';
-import { detectRenderingSide, normalizeSide } from './side-utils';
+import { normalizeSide, type DocumentSide } from './side-utils';
 import { showAuthError, showApiError } from './error-handler';
 import type { AnchorTracker } from './anchor-tracker';
 
@@ -46,10 +46,31 @@ export class CommentThreadSync {
     return this.renderComments(uri, relativePath, comments);
   }
 
+  /**
+   * Render comments for a specific side of a diff view.
+   * Fetches comments if not cached, then renders only matching-side comments on the given URI.
+   */
+  async renderForSide(
+    uri: vscode.Uri,
+    relativePath: string,
+    pr: PullRequestInfo,
+    side: 'LEFT' | 'RIGHT'
+  ): Promise<vscode.Range[]> {
+    let comments: ReviewComment[];
+    try {
+      comments = await this.getComments(pr);
+    } catch (err) {
+      await this.handleFetchError(err);
+      return [];
+    }
+    return this.renderComments(uri, relativePath, comments, side);
+  }
+
   private renderComments(
     uri: vscode.Uri,
     relativePath: string,
-    comments: ReviewComment[]
+    comments: ReviewComment[],
+    targetSide?: DocumentSide
   ): vscode.Range[] {
     this.commentController.clearThreads(uri);
     this.anchorTracker?.reset(uri);
@@ -57,11 +78,11 @@ export class CommentThreadSync {
     const fileComments = comments.filter((c) => c.path === relativePath);
     debug('Thread sync:', fileComments.length, 'comments for', relativePath);
 
-    const docSide = detectRenderingSide(uri);
-    const sideFiltered = docSide === 'BOTH'
+    const side = targetSide ?? 'BOTH';
+    const sideFiltered = side === 'BOTH'
       ? fileComments
-      : fileComments.filter((c) => normalizeSide(c.side) === docSide);
-    debug('Thread sync: side filter', docSide, '→', sideFiltered.length, 'of', fileComments.length);
+      : fileComments.filter((c) => normalizeSide(c.side) === side);
+    debug('Thread sync: side filter', side, '→', sideFiltered.length, 'of', fileComments.length);
 
     // Separate root comments (with ^gn metadata) from replies
     const rootComments: ReviewComment[] = [];

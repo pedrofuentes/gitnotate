@@ -96,7 +96,7 @@ export class CommentController {
       this.threadCommentIds.set(thread, commentId);
     }
 
-    const key = uri.fsPath;
+    const key = uri.toString();
     const existing = this.threads.get(key) ?? [];
     existing.push(thread);
     this.threads.set(key, existing);
@@ -154,7 +154,7 @@ export class CommentController {
 
   clearThreads(uri?: vscode.Uri): void {
     if (uri) {
-      const key = uri.fsPath;
+      const key = uri.toString();
       const threads = this.threads.get(key);
       if (threads) {
         for (const thread of threads) {
@@ -175,7 +175,7 @@ export class CommentController {
   }
 
   revealThread(uri: vscode.Uri, lineNumber: number): boolean {
-    const key = uri.fsPath;
+    const key = uri.toString();
     const threads = this.threads.get(key);
     if (!threads) return false;
 
