@@ -126,7 +126,10 @@ export class CommentThreadSync {
     for (const root of rootComments) {
       // Determine which URI this thread belongs on
       const commentSide = normalizeSide(root.side);
-      const threadUri = uriMap[commentSide] ?? uriMap.RIGHT ?? Object.values(uriMap)[0];
+      const threadUri = uriMap[commentSide];
+      // Skip comments whose side has no URI in the map
+      // (e.g., LEFT comments in single-file view where only RIGHT URI exists)
+      if (!threadUri) continue;
       const uriKey = threadUri.toString();
 
       const parsed = parseGnComment(root.body);

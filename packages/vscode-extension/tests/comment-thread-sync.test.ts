@@ -249,7 +249,7 @@ describe('CommentThreadSync', () => {
   });
 
   describe('side-aware rendering', () => {
-    it('syncForDocument should show ALL comments (no side filter) for single file view', async () => {
+    it('syncForDocument should show only RIGHT comments in single file view', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -271,7 +271,9 @@ describe('CommentThreadSync', () => {
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(2);
+      // Only RIGHT — LEFT comments are skipped in single file view
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Right side comment' });
     });
 
     it('syncForDiff should place LEFT comments on originalUri', async () => {
