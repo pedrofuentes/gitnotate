@@ -127,7 +127,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 41.3 | Resolve sets thread state | Call `resolveThread` on a comment thread. | `thread.state = CommentThreadState.Resolved`. | ✅ Passed |
 | 41.4 | Unresolve sets thread state | Call `unresolveThread` on a resolved thread. | `thread.state = CommentThreadState.Unresolved`. | ✅ Passed |
 | 41.5 | parentCommentId tracked | Create thread with `parentCommentId`. Query via `getParentCommentId(thread)`. | Returns the original root comment ID. | ✅ Passed |
-| 41.6 | Reply from VSCode → appears in GitHub | Expand a comment thread in VSCode. Type a reply, submit. | Reply appears in the thread in VSCode. On github.com (refresh PR page), the reply is visible. | ⬜ Manual |
+| 41.6 | Reply from VSCode → appears in GitHub | Expand a comment thread in VSCode. Type a reply, submit. | Reply appears in the thread in VSCode. On github.com (refresh PR page), the reply is visible. | ✅ Manual verified |
 | 41.7 | Resolve/unresolve toggle | Right-click a comment thread → "Resolve Thread". | Thread appears resolved (collapsed/dimmed). Right-click again → "Unresolve Thread" → returns to normal. Note: UI-only for now (not synced to GitHub API — GraphQL TODO). | ⬜ Manual |
 | 41.8 | Reply context menu on threads | Right-click on a Gitnotate comment thread. | Reply/resolve/unresolve options visible in context menu. | 🔍✅ Integration passed |
 

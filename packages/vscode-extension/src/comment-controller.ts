@@ -91,6 +91,7 @@ export class CommentController {
     const thread = this.controller.createCommentThread(uri, range, vscodeComments);
     thread.canReply = true;
     thread.contextValue = 'gitnotateThread';
+    thread.state = vscode.CommentThreadState.Unresolved;
     this.log?.info('CommentController', 'thread created at', `L${range.start.line + 1}`, uri.fsPath);
 
     if (commentId !== undefined) {

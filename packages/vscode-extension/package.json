@@ -128,12 +128,12 @@
       "comments/commentThread/title": [
         {
           "command": "gitnotate.resolveThread",
-          "group": "navigation",
-          "when": "commentController == gitnotate && commentThread.state != 1"
+          "group": "inline",
+          "when": "commentController == gitnotate && commentThread.state == 0"
         },
         {
           "command": "gitnotate.unresolveThread",
-          "group": "navigation",
+          "group": "inline",
           "when": "commentController == gitnotate && commentThread.state == 1"
         }
       ],
