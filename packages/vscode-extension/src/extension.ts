@@ -202,10 +202,25 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage('Gitnotate disabled for this workspace');
     }),
     vscode.commands.registerCommand('gitnotate.addComment', () =>
-      addCommentCommand(context, triggerSync)
+      addCommentCommand(context, () => {
+        // Invalidate caches so the next sync fetches fresh data
+        if (threadSync) {
+          threadSync.invalidateCache();
+        }
+        if (prService) {
+          prService.clearEtagCache();
+        }
+        triggerSync();
+      })
     ),
     vscode.commands.registerCommand('gitnotate.refreshComments', () => {
       debug('Manual refresh triggered');
+      if (threadSync) {
+        threadSync.invalidateCache();
+      }
+      if (prService) {
+        prService.clearEtagCache();
+      }
       triggerSync();
     }),
     vscode.commands.registerCommand(
