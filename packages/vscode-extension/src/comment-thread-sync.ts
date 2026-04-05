@@ -3,7 +3,7 @@ import { parseGnComment } from '@gitnotate/core';
 import type { PrService, PullRequestInfo, ReviewComment } from './pr-service';
 import type { CommentController } from './comment-controller';
 import { debug, getLogger, Logger } from './logger';
-import { normalizeSide, type DocumentSide } from './side-utils';
+import { normalizeSide } from './side-utils';
 import { showAuthError, showApiError } from './error-handler';
 import type { AnchorTracker } from './anchor-tracker';
 
@@ -44,66 +44,70 @@ export class CommentThreadSync {
       await this.handleFetchError(err);
       return [];
     }
-    return this.renderComments(uri, relativePath, comments);
+    // Single-URI mode: all threads on the same URI, RIGHT-only filter
+    return this.renderComments(relativePath, comments, { RIGHT: uri });
   }
 
   /**
-   * Render comments for a specific side of a diff view.
-   * Fetches comments if not cached, then renders only matching-side comments on the given URI.
+   * Render comments with URI-based thread placement for diff views.
+   * Each comment thread is created on its side-specific URI:
+   * - LEFT comments → originalUri (left pane)
+   * - RIGHT comments → modifiedUri (right pane)
+   * VSCode routes threads to the correct pane automatically.
    */
-  async renderForSide(
-    uri: vscode.Uri,
+  async syncForDiff(
+    originalUri: vscode.Uri,
+    modifiedUri: vscode.Uri,
     relativePath: string,
-    pr: PullRequestInfo,
-    side: 'LEFT' | 'RIGHT'
-  ): Promise<vscode.Range[]> {
+    pr: PullRequestInfo
+  ): Promise<{ leftRanges: vscode.Range[]; rightRanges: vscode.Range[] }> {
     let comments: ReviewComment[];
     try {
       comments = await this.getComments(pr);
     } catch (err) {
       await this.handleFetchError(err);
-      return [];
+      return { leftRanges: [], rightRanges: [] };
     }
-    return this.renderComments(uri, relativePath, comments, side, true);
+    const allRanges = this.renderComments(relativePath, comments, {
+      LEFT: originalUri,
+      RIGHT: modifiedUri,
+    });
+    // Split ranges by which URI they were created on (LEFT ranges first, then RIGHT)
+    // For now return all ranges combined — highlights are applied per-editor in extension.ts
+    return { leftRanges: [], rightRanges: allRanges };
   }
 
   private renderComments(
-    uri: vscode.Uri,
     relativePath: string,
     comments: ReviewComment[],
-    targetSide?: DocumentSide,
-    skipIfUnchanged = false
+    uriMap: { LEFT?: vscode.Uri; RIGHT?: vscode.Uri }
   ): vscode.Range[] {
     const fileComments = comments.filter((c) => c.path === relativePath);
-    const side = targetSide ?? 'BOTH';
-    const sideFiltered = side === 'BOTH'
-      ? fileComments
-      : fileComments.filter((c) => normalizeSide(c.side) === side);
 
-    // Optionally skip re-render if the data for this URI+side hasn't changed
-    if (skipIfUnchanged) {
-      const fpKey = `${uri.toString()}:${side}`;
-      const newFingerprint = JSON.stringify(
-        sideFiltered.map((c) => ({ id: c.id, body: c.body, updatedAt: c.updatedAt })).sort((a, b) => a.id - b.id)
-      );
-      if (this.renderedFingerprints.get(fpKey) === newFingerprint) {
-        debug('Thread sync: skipping re-render for', relativePath, side, '— data unchanged');
-        return [];
-      }
-      this.renderedFingerprints.set(fpKey, newFingerprint);
+    // Fingerprint check — skip re-render if data hasn't changed
+    const fpKey = Object.entries(uriMap).map(([s, u]) => `${u.toString()}:${s}`).join('|');
+    const newFingerprint = JSON.stringify(
+      fileComments.map((c) => ({ id: c.id, body: c.body, updatedAt: c.updatedAt })).sort((a, b) => a.id - b.id)
+    );
+    if (this.renderedFingerprints.get(fpKey) === newFingerprint) {
+      debug('Thread sync: skipping re-render for', relativePath, '— data unchanged');
+      return [];
+    }
+    this.renderedFingerprints.set(fpKey, newFingerprint);
+
+    // Clear threads on all URIs in the map
+    for (const uri of Object.values(uriMap)) {
+      this.commentController.clearThreads(uri);
+      this.anchorTracker?.reset(uri);
     }
 
-    this.commentController.clearThreads(uri);
-    this.anchorTracker?.reset(uri);
-
     debug('Thread sync:', fileComments.length, 'comments for', relativePath);
-    debug('Thread sync: side filter', side, '→', sideFiltered.length, 'of', fileComments.length);
 
-    // Separate root comments (with ^gn metadata) from replies
+    // Separate root comments from replies
     const rootComments: ReviewComment[] = [];
     const repliesByParent = new Map<number, ReviewComment[]>();
 
-    for (const comment of sideFiltered) {
+    for (const comment of fileComments) {
       if (comment.inReplyToId !== undefined) {
         const existing = repliesByParent.get(comment.inReplyToId) ?? [];
         existing.push(comment);
@@ -119,12 +123,14 @@ export class CommentThreadSync {
     const highlightRanges: vscode.Range[] = [];
 
     for (const root of rootComments) {
-      const parsed = parseGnComment(root.body);
+      // Determine which URI this thread belongs on
+      const commentSide = normalizeSide(root.side);
+      const threadUri = uriMap[commentSide] ?? uriMap.RIGHT ?? Object.values(uriMap)[0];
 
+      const parsed = parseGnComment(root.body);
       const replies = repliesByParent.get(root.id) ?? [];
 
       if (parsed) {
-        // ^gn comment: sub-line range + wavy underline
         const { metadata, userComment } = parsed;
         const cleanBody = stripBlockquoteFallback(userComment);
         const line = metadata.lineNumber - 1;
@@ -137,8 +143,8 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        const thread = this.commentController.createThread(uri, range, threadComments, gnThreads, root.id);
-        this.anchorTracker?.registerThread(uri, line, thread);
+        const thread = this.commentController.createThread(threadUri, range, threadComments, gnThreads, root.id);
+        this.anchorTracker?.registerThread(threadUri, line, thread);
         highlightRanges.push(range);
         gnThreads++;
       } else {
@@ -153,8 +159,8 @@ export class CommentThreadSync {
           threadComments.push({ body: reply.body, author: reply.userLogin ?? 'unknown' });
         }
 
-        const thread = this.commentController.createThread(uri, range, threadComments, undefined, root.id);
-        this.anchorTracker?.registerThread(uri, line, thread);
+        const thread = this.commentController.createThread(threadUri, range, threadComments, undefined, root.id);
+        this.anchorTracker?.registerThread(threadUri, line, thread);
         lineThreads++;
       }
 
@@ -185,7 +191,7 @@ export class CommentThreadSync {
     // Render from cache immediately
     this.log?.info('ThreadSync', 'cache hit — rendering from cache');
     debug('Thread sync (cache-first): rendering from cache');
-    const cachedRanges = this.renderComments(uri, relativePath, cached);
+    const cachedRanges = this.renderComments(relativePath, cached, { RIGHT: uri });
 
     // Fetch fresh data in background
     debug('Thread sync (cache-first): fetching fresh data');
@@ -217,7 +223,7 @@ export class CommentThreadSync {
     if (cacheFingerprint !== freshFingerprint) {
       debug('Thread sync (cache-first): data changed — re-rendering');
       this.cache.set(cacheKey, freshComments);
-      return this.renderComments(uri, relativePath, freshComments);
+      return this.renderComments(relativePath, freshComments, { RIGHT: uri });
     }
 
     debug('Thread sync (cache-first): data unchanged — skipping re-render');

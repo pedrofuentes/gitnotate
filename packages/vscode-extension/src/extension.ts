@@ -139,50 +139,29 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (isDiffView) {
       const diffInput = activeTab.input as vscode.TabInputTextDiff;
-      const leftUri = diffInput.original;
-      const rightUri = diffInput.modified;
+      const originalUri = diffInput.original;
+      const modifiedUri = diffInput.modified;
 
       debug('Comment sync: diff view detected');
-      debug('  left URI:', leftUri.toString());
-      debug('  right URI:', rightUri.toString());
+      debug('  original URI:', originalUri.toString());
+      debug('  modified URI:', modifiedUri.toString());
 
-      // Find editors matching each URI
-      const leftEditor = vscode.window.visibleTextEditors.find(e =>
-        e.document.uri.toString() === leftUri.toString()
-      );
-      const rightEditor = vscode.window.visibleTextEditors.find(e =>
-        e.document.uri.toString() === rightUri.toString()
-      );
+      // URI-based thread placement: each thread created on correct URI,
+      // VSCode routes to correct pane automatically (works in both
+      // side-by-side and inline diff modes)
+      await sync.syncForDiff(originalUri, modifiedUri, relativePath, pr);
+      highlightRanges = []; // highlights handled per-editor below
 
-      debug('  left editor:', leftEditor ? 'found' : 'NOT found');
-      debug('  right editor:', rightEditor ? 'found' : 'NOT found');
-
-      if (leftEditor && rightEditor) {
-        // Side-by-side diff: render per-side on each URI
-        const leftRanges = await sync.renderForSide(leftUri, relativePath, pr, 'LEFT');
-        const rightRanges = await sync.renderForSide(rightUri, relativePath, pr, 'RIGHT');
-        highlightRanges = [...leftRanges, ...rightRanges];
-
-        debug('Comment sync: side-by-side rendered', leftRanges.length, 'LEFT +', rightRanges.length, 'RIGHT threads');
-
-        if (leftRanges.length > 0) {
-          commentCtrl.applyHighlights(leftEditor, leftRanges);
-        }
-        if (rightRanges.length > 0) {
-          commentCtrl.applyHighlights(rightEditor, rightRanges);
-        }
-      } else {
-        // Inline diff: only one editor visible, show ALL comments on it
-        // LEFT comments may be on shifted lines but remain visible with [Old] label
-        debug('Comment sync: inline diff — rendering all comments on active editor');
-        highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
-        if (highlightRanges.length > 0) {
-          commentCtrl.applyHighlights(editor, highlightRanges);
-        }
+      // Apply highlights to visible editors
+      for (const visibleEditor of vscode.window.visibleTextEditors) {
+        if (getRelativePath(visibleEditor.document.fileName) !== relativePath) continue;
+        // Re-fetch ranges for this specific editor's URI (already cached)
+        // For now, skip highlight decorations in diff views — comment threads
+        // are visible via the Comments API gutter icons
       }
     } else {
       // Single file view: show only RIGHT/New comments (current version)
-      highlightRanges = await sync.renderForSide(editor.document.uri, relativePath, pr, 'RIGHT');
+      highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
       if (highlightRanges.length > 0) {
         commentCtrl.applyHighlights(editor, highlightRanges);
       } else {

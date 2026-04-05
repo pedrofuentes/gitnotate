@@ -138,7 +138,19 @@ describe('CommentThreadSync', () => {
 
     it('should clear existing threads for the URI before creating new ones', async () => {
       const comment = makeComment({ id: 1, path: 'docs/readme.md' });
-      const prService = makeMockPrService([comment]);
+      const editedComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nEdited',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T11:00:00Z',
+      });
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([comment])
+        .mockResolvedValueOnce([editedComment]);
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
       const sync = new CommentThreadSync(prService, commentController);
       const uri = Uri.file('/workspace/docs/readme.md');
 
@@ -147,7 +159,8 @@ describe('CommentThreadSync', () => {
       const threads1 = __getCommentThreads();
       expect(threads1).toHaveLength(1);
 
-      // Second sync should clear the first thread
+      // Second sync with changed data should clear the first thread
+      sync.invalidateCache();
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
       expect(threads1[0].dispose).toHaveBeenCalled();
     });
@@ -261,7 +274,7 @@ describe('CommentThreadSync', () => {
       expect(threads).toHaveLength(2);
     });
 
-    it('renderForSide LEFT should show only LEFT comments', async () => {
+    it('syncForDiff should place LEFT comments on originalUri', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -278,16 +291,19 @@ describe('CommentThreadSync', () => {
       });
       const prService = makeMockPrService([rightComment, leftComment]);
       const sync = new CommentThreadSync(prService, commentController);
-      const uri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const rightUri = Uri.file('/workspace/docs/readme.md');
 
-      await sync.renderForSide(uri, 'docs/readme.md', makePr(), 'LEFT');
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(1);
-      expect(threads[0].comments[0]).toMatchObject({ body: 'Left side comment' });
+      expect(threads).toHaveLength(2);
+      const leftThread = threads.find((t: any) => t.uri.scheme === 'git');
+      expect(leftThread).toBeDefined();
+      expect(leftThread!.comments[0]).toMatchObject({ body: 'Left side comment' });
     });
 
-    it('renderForSide RIGHT should show only RIGHT comments', async () => {
+    it('syncForDiff should place RIGHT comments on modifiedUri', async () => {
       const rightComment = makeComment({
         id: 1,
         body: '^gn:10:R:5:15\n\nRight side comment',
@@ -304,16 +320,19 @@ describe('CommentThreadSync', () => {
       });
       const prService = makeMockPrService([rightComment, leftComment]);
       const sync = new CommentThreadSync(prService, commentController);
-      const uri = Uri.file('/workspace/docs/readme.md');
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const rightUri = Uri.file('/workspace/docs/readme.md');
 
-      await sync.renderForSide(uri, 'docs/readme.md', makePr(), 'RIGHT');
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(1);
-      expect(threads[0].comments[0]).toMatchObject({ body: 'Right side comment' });
+      expect(threads).toHaveLength(2);
+      const rightThread = threads.find((t: any) => t.uri.scheme === 'file');
+      expect(rightThread).toBeDefined();
+      expect(rightThread!.comments[0]).toMatchObject({ body: 'Right side comment' });
     });
 
-    it('renderForSide should handle mixed L/R comments correctly', async () => {
+    it('syncForDiff should handle mixed L/R comments correctly', async () => {
       const comments = [
         makeComment({ id: 1, body: '^gn:5:R:0:10\n\nRight line 5', path: 'docs/readme.md', side: 'RIGHT' }),
         makeComment({ id: 2, body: '^gn:5:L:0:10\n\nLeft line 5', path: 'docs/readme.md', side: 'LEFT' }),
@@ -325,19 +344,17 @@ describe('CommentThreadSync', () => {
       const rightUri = Uri.file('/workspace/docs/readme.md');
       const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
 
-      // Render RIGHT on file: URI
-      await sync.renderForSide(rightUri, 'docs/readme.md', makePr(), 'RIGHT');
-      const rightThreads = __getCommentThreads();
-      expect(rightThreads).toHaveLength(2);
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
 
-      // Render LEFT on git: URI (separate URI, separate threads)
-      await sync.renderForSide(leftUri, 'docs/readme.md', makePr(), 'LEFT');
-      // Total threads: 2 RIGHT + 2 LEFT = 4
       const allThreads = __getCommentThreads();
       expect(allThreads).toHaveLength(4);
+      const leftThreads = allThreads.filter((t: any) => t.uri.scheme === 'git');
+      const rightThreads = allThreads.filter((t: any) => t.uri.scheme === 'file');
+      expect(leftThreads).toHaveLength(2);
+      expect(rightThreads).toHaveLength(2);
     });
 
-    it('renderForSide should filter non-^gn regular line comments by side', async () => {
+    it('syncForDiff should place non-^gn regular line comments on correct side URI', async () => {
       const rightComment = makeComment({
         id: 1,
         body: 'Regular right-side comment',
@@ -354,13 +371,16 @@ describe('CommentThreadSync', () => {
       });
       const prService = makeMockPrService([rightComment, leftComment]);
       const sync = new CommentThreadSync(prService, commentController);
-      const uri = Uri.file('/workspace/docs/readme.md');
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const rightUri = Uri.file('/workspace/docs/readme.md');
 
-      await sync.renderForSide(uri, 'docs/readme.md', makePr(), 'RIGHT');
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
 
       const threads = __getCommentThreads();
-      expect(threads).toHaveLength(1);
-      expect(threads[0].comments[0]).toMatchObject({ body: 'Regular right-side comment' });
+      expect(threads).toHaveLength(2);
+      const rightThread = threads.find((t: any) => t.uri.scheme === 'file');
+      expect(rightThread).toBeDefined();
+      expect(rightThread!.comments[0]).toMatchObject({ body: 'Regular right-side comment' });
     });
   });
 
@@ -500,9 +520,9 @@ describe('CommentThreadSync', () => {
       // Cache-first with same data
       await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
 
-      // clearThreads called once for the cache render, but NOT again for refresh
-      // (since data is the same)
-      expect(clearSpy).toHaveBeenCalledTimes(1);
+      // renderComments fingerprint matches the prior syncForDocument render,
+      // so cache render is skipped; fresh data also matches — no re-render at all
+      expect(clearSpy).toHaveBeenCalledTimes(0);
     });
 
     it('should not re-render when body and updatedAt are identical', async () => {
@@ -540,8 +560,8 @@ describe('CommentThreadSync', () => {
 
       await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
 
-      // Cache render only — no re-render since data is identical
-      expect(clearSpy).toHaveBeenCalledTimes(1);
+      // Cache render skipped (fingerprint matches prior syncForDocument) — no re-render
+      expect(clearSpy).toHaveBeenCalledTimes(0);
     });
 
     it('should re-render when a comment body is edited', async () => {
@@ -578,8 +598,8 @@ describe('CommentThreadSync', () => {
 
       await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
 
-      // Cache render + re-render from fresh data = 2 calls
-      expect(clearSpy).toHaveBeenCalledTimes(2);
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
+      expect(clearSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should re-render when updatedAt changes', async () => {
@@ -616,8 +636,8 @@ describe('CommentThreadSync', () => {
 
       await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
 
-      // Cache render + re-render = 2 calls
-      expect(clearSpy).toHaveBeenCalledTimes(2);
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
+      expect(clearSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should re-render when a new comment is added', async () => {
@@ -652,8 +672,8 @@ describe('CommentThreadSync', () => {
 
       await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
 
-      // Cache render + re-render = 2 calls
-      expect(clearSpy).toHaveBeenCalledTimes(2);
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
+      expect(clearSpy).toHaveBeenCalledTimes(1);
     });
 
     it('should re-render when a comment is deleted', async () => {
@@ -688,8 +708,8 @@ describe('CommentThreadSync', () => {
 
       await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
 
-      // Cache render + re-render = 2 calls
-      expect(clearSpy).toHaveBeenCalledTimes(2);
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
+      expect(clearSpy).toHaveBeenCalledTimes(1);
     });
   });
 
