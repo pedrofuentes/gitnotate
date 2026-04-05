@@ -186,8 +186,13 @@ export function activate(context: vscode.ExtensionContext) {
       treeProvider?.setComments(cachedComments);
     }
 
-    // Start polling for live updates
-    sync.startPolling(editor.document.uri, relativePath, pr);
+    // Start polling for live updates (single-file view only — diff views
+    // re-render on each debouncedSync; polling would clobber per-side threads)
+    if (!isDiffView) {
+      sync.startPolling(editor.document.uri, relativePath, pr);
+    } else {
+      sync.stopPolling();
+    }
   }, 300);
 
   const triggerSync = () => {
