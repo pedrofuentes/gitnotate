@@ -159,9 +159,11 @@ export class PrService {
     body: string,
     inReplyToId: number
   ): Promise<{ ok: true; id: number } | { ok: false; userMessage: string }> {
-    // GitHub REST API: POST /repos/{owner}/{repo}/pulls/comments/{comment_id}/replies
-    const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/comments/${inReplyToId}/replies`;
-    const payload = { body };
+    // GitHub REST API: POST /repos/{owner}/{repo}/pulls/{pull_number}/comments
+    // with { body, in_reply_to: commentId } — "in_reply_to" (not "in_reply_to_id")
+    // When in_reply_to is specified, all other parameters except body are ignored.
+    const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments`;
+    const payload = { body, in_reply_to: inReplyToId };
 
     try {
       console.log('[Gitnotate] POST (reply)', url);

@@ -758,7 +758,7 @@ describe('PrService', () => {
   });
 
   describe('createReplyComment', () => {
-    it('should send correct payload to replies endpoint', async () => {
+    it('should send correct payload to pull comments endpoint with in_reply_to', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 201,
@@ -770,13 +770,14 @@ describe('PrService', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [url, options] = mockFetch.mock.calls[0];
       expect(url).toBe(
-        'https://api.github.com/repos/octocat/hello-world/pulls/comments/42/replies'
+        'https://api.github.com/repos/octocat/hello-world/pulls/42/comments'
       );
       expect(options.method).toBe('POST');
       const body = JSON.parse(options.body);
       expect(body.body).toBe('Great point!');
+      expect(body.in_reply_to).toBe(42);
+      // in_reply_to_id is NOT used — GitHub rejects it
       expect(body.in_reply_to_id).toBeUndefined();
-      expect(body.path).toBeUndefined();
     });
 
     it('should return ok:true with comment ID on success', async () => {
