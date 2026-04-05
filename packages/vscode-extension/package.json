@@ -102,12 +102,12 @@
       "comments/commentThread/context": [
         {
           "command": "gitnotate.resolveThread",
-          "group": "inline",
+          "group": "navigation",
           "when": "commentController == gitnotate && commentThread.state != 1"
         },
         {
           "command": "gitnotate.unresolveThread",
-          "group": "inline",
+          "group": "navigation",
           "when": "commentController == gitnotate && commentThread.state == 1"
         }
       ],
