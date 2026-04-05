@@ -159,8 +159,9 @@ export class PrService {
     body: string,
     inReplyToId: number
   ): Promise<{ ok: true; id: number } | { ok: false; userMessage: string }> {
-    const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments`;
-    const payload = { body, in_reply_to_id: inReplyToId };
+    // GitHub REST API: POST /repos/{owner}/{repo}/pulls/comments/{comment_id}/replies
+    const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/comments/${inReplyToId}/replies`;
+    const payload = { body };
 
     try {
       console.log('[Gitnotate] POST (reply)', url);
