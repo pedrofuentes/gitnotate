@@ -157,18 +157,28 @@ export function activate(context: vscode.ExtensionContext) {
       debug('  left editor:', leftEditor ? 'found' : 'NOT found');
       debug('  right editor:', rightEditor ? 'found' : 'NOT found');
 
-      // Render per-side comments on their respective URIs
-      const leftRanges = await sync.renderForSide(leftUri, relativePath, pr, 'LEFT');
-      const rightRanges = await sync.renderForSide(rightUri, relativePath, pr, 'RIGHT');
-      highlightRanges = [...leftRanges, ...rightRanges];
+      if (leftEditor && rightEditor) {
+        // Side-by-side diff: render per-side on each URI
+        const leftRanges = await sync.renderForSide(leftUri, relativePath, pr, 'LEFT');
+        const rightRanges = await sync.renderForSide(rightUri, relativePath, pr, 'RIGHT');
+        highlightRanges = [...leftRanges, ...rightRanges];
 
-      debug('Comment sync: rendered', leftRanges.length, 'LEFT +', rightRanges.length, 'RIGHT threads');
+        debug('Comment sync: side-by-side rendered', leftRanges.length, 'LEFT +', rightRanges.length, 'RIGHT threads');
 
-      if (leftRanges.length > 0 && leftEditor) {
-        commentCtrl.applyHighlights(leftEditor, leftRanges);
-      }
-      if (rightRanges.length > 0 && rightEditor) {
-        commentCtrl.applyHighlights(rightEditor, rightRanges);
+        if (leftRanges.length > 0) {
+          commentCtrl.applyHighlights(leftEditor, leftRanges);
+        }
+        if (rightRanges.length > 0) {
+          commentCtrl.applyHighlights(rightEditor, rightRanges);
+        }
+      } else {
+        // Inline diff: only one editor visible, show ALL comments on it
+        // LEFT comments may be on shifted lines but remain visible with [Old] label
+        debug('Comment sync: inline diff — rendering all comments on active editor');
+        highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
+        if (highlightRanges.length > 0) {
+          commentCtrl.applyHighlights(editor, highlightRanges);
+        }
       }
     } else {
       // Single file view: show only RIGHT/New comments (current version)
