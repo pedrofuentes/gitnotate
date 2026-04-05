@@ -98,6 +98,12 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
+    // Skip VSCode comment input virtual documents (they're markdown but not real files)
+    if (editor.document.uri.scheme === 'comment' || editor.document.fileName.includes('commentinput-')) {
+      debug('Comment sync: comment input document — skipping');
+      return;
+    }
+
     const token = await getGitHubToken();
     if (!token) {
       debug('Comment sync: no auth token — skipping');
@@ -331,6 +337,8 @@ export function activate(context: vscode.ExtensionContext) {
   // Lifecycle: clear threads on close
   const closeDisposable = vscode.workspace.onDidCloseTextDocument((doc) => {
     if (doc.languageId !== 'markdown') return;
+    // Skip comment input virtual documents
+    if (doc.uri.scheme === 'comment' || doc.fileName.includes('commentinput-')) return;
     debug('Document closed:', doc.fileName);
     commentCtrl?.clearThreads(doc.uri);
   });
