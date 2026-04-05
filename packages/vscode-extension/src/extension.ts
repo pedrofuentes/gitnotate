@@ -171,8 +171,8 @@ export function activate(context: vscode.ExtensionContext) {
         commentCtrl.applyHighlights(rightEditor, rightRanges);
       }
     } else {
-      // Single file view: render all comments (no side filter)
-      highlightRanges = await sync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
+      // Single file view: show only RIGHT/New comments (current version)
+      highlightRanges = await sync.renderForSide(editor.document.uri, relativePath, pr, 'RIGHT');
       if (highlightRanges.length > 0) {
         commentCtrl.applyHighlights(editor, highlightRanges);
       } else {
