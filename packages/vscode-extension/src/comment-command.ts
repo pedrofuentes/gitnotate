@@ -50,9 +50,23 @@ export async function addCommentCommand(
 
   // Build ^gn comment
   const selectedText = editor.document.getText(editor.selection);
-  const docSide = detectDocumentSide(editor.document.uri);
-  // For BOTH (non-diff view), default to RIGHT since user is editing current file
-  const apiSide: 'LEFT' | 'RIGHT' = docSide === 'LEFT' ? 'LEFT' : 'RIGHT';
+
+  // Detect which side the cursor is on:
+  // In diff views, both panes may have the same scheme (e.g., git:).
+  // Use TabInputTextDiff to compare the editor's URI against original/modified.
+  let apiSide: 'LEFT' | 'RIGHT' = 'RIGHT'; // default for non-diff
+  const activeTab = vscode.window.tabGroups?.activeTabGroup?.activeTab;
+  if (activeTab?.input instanceof vscode.TabInputTextDiff) {
+    const editorUriStr = editor.document.uri.toString();
+    if (editorUriStr === activeTab.input.original.toString()) {
+      apiSide = 'LEFT';
+    } else {
+      apiSide = 'RIGHT';
+    }
+  } else {
+    const docSide = detectDocumentSide(editor.document.uri);
+    apiSide = docSide === 'LEFT' ? 'LEFT' : 'RIGHT';
+  }
   const metadataSide: 'L' | 'R' = apiSide === 'LEFT' ? 'L' : 'R';
 
   const metadata: GnMetadata = {
