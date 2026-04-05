@@ -16,6 +16,7 @@ export function stripBlockquoteFallback(text: string): string {
 
 export class CommentThreadSync {
   private cache: Map<string, ReviewComment[]> = new Map();
+  private renderedFingerprints: Map<string, string> = new Map();
   private log: Logger | undefined;
   private pollingTimer: ReturnType<typeof setInterval> | null = null;
   private currentPr: PullRequestInfo | null = null;
@@ -63,25 +64,39 @@ export class CommentThreadSync {
       await this.handleFetchError(err);
       return [];
     }
-    return this.renderComments(uri, relativePath, comments, side);
+    return this.renderComments(uri, relativePath, comments, side, true);
   }
 
   private renderComments(
     uri: vscode.Uri,
     relativePath: string,
     comments: ReviewComment[],
-    targetSide?: DocumentSide
+    targetSide?: DocumentSide,
+    skipIfUnchanged = false
   ): vscode.Range[] {
-    this.commentController.clearThreads(uri);
-    this.anchorTracker?.reset(uri);
-
     const fileComments = comments.filter((c) => c.path === relativePath);
-    debug('Thread sync:', fileComments.length, 'comments for', relativePath);
-
     const side = targetSide ?? 'BOTH';
     const sideFiltered = side === 'BOTH'
       ? fileComments
       : fileComments.filter((c) => normalizeSide(c.side) === side);
+
+    // Optionally skip re-render if the data for this URI+side hasn't changed
+    if (skipIfUnchanged) {
+      const fpKey = `${uri.toString()}:${side}`;
+      const newFingerprint = JSON.stringify(
+        sideFiltered.map((c) => ({ id: c.id, body: c.body, updatedAt: c.updatedAt })).sort((a, b) => a.id - b.id)
+      );
+      if (this.renderedFingerprints.get(fpKey) === newFingerprint) {
+        debug('Thread sync: skipping re-render for', relativePath, side, '— data unchanged');
+        return [];
+      }
+      this.renderedFingerprints.set(fpKey, newFingerprint);
+    }
+
+    this.commentController.clearThreads(uri);
+    this.anchorTracker?.reset(uri);
+
+    debug('Thread sync:', fileComments.length, 'comments for', relativePath);
     debug('Thread sync: side filter', side, '→', sideFiltered.length, 'of', fileComments.length);
 
     // Separate root comments (with ^gn metadata) from replies
@@ -242,6 +257,7 @@ export class CommentThreadSync {
 
   invalidateCache(): void {
     this.cache.clear();
+    this.renderedFingerprints.clear();
   }
 
   private async handleFetchError(err: unknown): Promise<void> {

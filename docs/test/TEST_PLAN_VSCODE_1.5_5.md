@@ -88,8 +88,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 38.6 | RIGHT-only on file: URI | Render comments with mixed L/R sides on a `file:` URI document. | Only R/RIGHT comments rendered. | ✅ Passed |
 | 38.7 | LEFT-only on git: URI | Render comments with mixed L/R sides on a `git:` URI document. | Only L/LEFT comments rendered. | ✅ Passed |
 | 38.8 | All comments in BOTH mode | Render comments on an unknown-scheme URI. | All comments rendered regardless of side. | ✅ Passed |
-| 38.9 | Diff view: LEFT comments on old pane | Open a markdown diff view (Git panel → click changed `.md` file). Click on the **left pane** (old/red content). | Only LEFT-side comments appear. RIGHT-side comments are NOT visible. | ⬜ Manual |
-| 38.10 | Diff view: RIGHT comments on new pane | In the same diff view, click on the **right pane** (new/green content). | Only RIGHT-side comments appear. LEFT-side comments are NOT visible. | ⬜ Manual |
+| 38.9 | Diff view: LEFT comments on old pane | Open a markdown diff view (Git panel → click changed `.md` file). Click on the **left pane** (old/red content). | Only LEFT-side comments appear. RIGHT-side comments are NOT visible. | ✅ Manual verified |
+| 38.10 | Diff view: RIGHT comments on new pane | In the same diff view, click on the **right pane** (new/green content). | Only RIGHT-side comments appear. LEFT-side comments are NOT visible. | ✅ Manual verified |
 | 38.11 | Single file view shows all | Open the markdown file normally (not as diff — click in Explorer). | All comments appear (both LEFT and RIGHT sides). | ⬜ Manual |
 | 38.12 | Inline diff view behavior | Set `diffEditor.renderSideBySide` to `false`. Open a markdown diff. | Observe comment behavior. Document any issues — this may need follow-up handling. | ⬜ Manual |
 
