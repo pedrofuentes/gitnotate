@@ -52,6 +52,7 @@
       {
         "command": "gitnotate.replyToThread",
         "title": "Reply",
+        "enablement": "!commentIsEmpty",
         "icon": "$(reply)"
       }
     ],
@@ -99,7 +100,32 @@
           "group": "navigation"
         }
       ],
+      "commandPalette": [
+        {
+          "command": "gitnotate.replyToThread",
+          "when": "false"
+        },
+        {
+          "command": "gitnotate.resolveThread",
+          "when": "false"
+        },
+        {
+          "command": "gitnotate.unresolveThread",
+          "when": "false"
+        },
+        {
+          "command": "gitnotate.goToComment",
+          "when": "false"
+        }
+      ],
       "comments/commentThread/context": [
+        {
+          "command": "gitnotate.replyToThread",
+          "group": "inline",
+          "when": "commentController == gitnotate && !commentThreadIsEmpty"
+        }
+      ],
+      "comments/commentThread/title": [
         {
           "command": "gitnotate.resolveThread",
           "group": "navigation",
@@ -109,13 +135,6 @@
           "command": "gitnotate.unresolveThread",
           "group": "navigation",
           "when": "commentController == gitnotate && commentThread.state == 1"
-        }
-      ],
-      "comments/commentThread/title": [
-        {
-          "command": "gitnotate.replyToThread",
-          "group": "inline",
-          "when": "commentController == gitnotate"
         }
       ],
       "editor/context": [
