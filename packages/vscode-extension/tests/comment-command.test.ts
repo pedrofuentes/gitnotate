@@ -333,6 +333,9 @@ describe('addCommentCommand', () => {
     );
   });
 
+  // These tests verify that POSTING uses detectDocumentSide (not detectRenderingSide).
+  // Rendering shows ALL comments (BOTH mode), but posting correctly detects LEFT/RIGHT
+  // from the URI scheme so the ^gn metadata and GitHub API call use the right side.
   describe('side-aware comment posting', () => {
     const prInfo = {
       owner: 'octocat',

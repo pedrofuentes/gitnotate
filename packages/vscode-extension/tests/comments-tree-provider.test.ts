@@ -494,6 +494,55 @@ describe('CommentsTreeProvider', () => {
     });
   });
 
+  describe('getParent', () => {
+    it('should return FileItem for a CommentItem', async () => {
+      provider.setComments([
+        makeComment({ id: 1, path: 'docs/proposal.md', line: 10 }),
+        makeComment({ id: 2, path: 'docs/proposal.md', line: 20 }),
+      ]);
+
+      const roots = await provider.getChildren();
+      const fileItem = roots[0] as FileItem;
+      const children = await provider.getChildren(fileItem);
+      const commentItem = children[0] as CommentItem;
+
+      const parent = provider.getParent(commentItem);
+      expect(parent).toBeInstanceOf(FileItem);
+      expect((parent as FileItem).filePath).toBe('docs/proposal.md');
+    });
+
+    it('should return undefined for a FileItem (root level)', async () => {
+      provider.setComments([makeComment({ id: 1, path: 'docs/proposal.md' })]);
+      const roots = await provider.getChildren();
+      const fileItem = roots[0] as FileItem;
+
+      const parent = provider.getParent(fileItem);
+      expect(parent).toBeUndefined();
+    });
+
+    it('should return undefined for a MessageItem', () => {
+      const messageItem = new MessageItem('Loading...');
+      const parent = provider.getParent(messageItem);
+      expect(parent).toBeUndefined();
+    });
+
+    it('should find correct parent across multiple file groups', async () => {
+      provider.setComments([
+        makeComment({ id: 1, path: 'a.md', line: 5 }),
+        makeComment({ id: 2, path: 'b.md', line: 10 }),
+      ]);
+
+      const roots = await provider.getChildren();
+      const secondFile = roots[1] as FileItem;
+      const children = await provider.getChildren(secondFile);
+      const commentItem = children[0] as CommentItem;
+
+      const parent = provider.getParent(commentItem);
+      expect(parent).toBeInstanceOf(FileItem);
+      expect((parent as FileItem).filePath).toBe('b.md');
+    });
+  });
+
   describe('dispose', () => {
     it('should clean up without errors', () => {
       expect(() => provider.dispose()).not.toThrow();
@@ -501,7 +550,7 @@ describe('CommentsTreeProvider', () => {
   });
 
   describe('revealByCommentId — bidirectional navigation', () => {
-    it('should call treeView.reveal with the matching CommentItem', () => {
+    it('should call treeView.reveal without error when getParent is implemented', () => {
       const treeView = window.createTreeView('gitnotateComments', {
         treeDataProvider: provider,
       });
@@ -564,6 +613,40 @@ describe('CommentsTreeProvider', () => {
       expect(treeView.reveal).toHaveBeenCalledOnce();
       const revealedItem = (treeView.reveal as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(revealedItem.commentId).toBe(2);
+    });
+  });
+
+  describe('contract enforcement — mock validates VSCode API requirements', () => {
+    it('should throw when reveal() is called on a provider without getParent', () => {
+      const fakeProvider = {
+        getChildren: vi.fn(),
+        getTreeItem: vi.fn(),
+        onDidChangeTreeData: vi.fn(),
+        // No getParent — violates VSCode contract
+      };
+
+      const treeView = window.createTreeView('testView', {
+        treeDataProvider: fakeProvider,
+      });
+
+      expect(() => treeView.reveal({} as any)).toThrow(
+        /getParent/
+      );
+    });
+
+    it('should not throw when reveal() is called on a provider with getParent', () => {
+      const fakeProvider = {
+        getChildren: vi.fn(),
+        getTreeItem: vi.fn(),
+        getParent: vi.fn(),
+        onDidChangeTreeData: vi.fn(),
+      };
+
+      const treeView = window.createTreeView('testView', {
+        treeDataProvider: fakeProvider,
+      });
+
+      expect(() => treeView.reveal({} as any)).not.toThrow();
     });
   });
 });

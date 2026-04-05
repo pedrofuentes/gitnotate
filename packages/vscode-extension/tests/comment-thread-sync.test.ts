@@ -328,6 +328,29 @@ describe('CommentThreadSync', () => {
       expect(threads).toHaveLength(4);
     });
 
+    describe('diff view event absence', () => {
+      it('should show all comments on git: URI without needing pane-switch event', async () => {
+        // This test models the real scenario: user opens diff view,
+        // VSCode focuses the left (git:) pane, and we must show ALL
+        // comments — not just LEFT ones — because no event fires to
+        // let us render the RIGHT ones separately.
+        const comments = [
+          makeComment({ id: 1, body: '^gn:5:R:0:10\n\nRight comment', path: 'docs/readme.md', side: 'RIGHT' }),
+          makeComment({ id: 2, body: '^gn:8:L:0:10\n\nLeft comment', path: 'docs/readme.md', side: 'LEFT' }),
+          makeComment({ id: 3, body: 'Regular right comment', path: 'docs/readme.md', line: 12, side: 'RIGHT' }),
+        ];
+        const prService = makeMockPrService(comments);
+        const sync = new CommentThreadSync(prService, commentController);
+        const gitUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+
+        await sync.syncForDocument(gitUri, 'docs/readme.md', makePr());
+
+        const threads = __getCommentThreads();
+        // All 3 comments must be visible — not just the 1 LEFT comment
+        expect(threads).toHaveLength(3);
+      });
+    });
+
     it('should show non-^gn regular line comments regardless of side', async () => {
       const rightComment = makeComment({
         id: 1,

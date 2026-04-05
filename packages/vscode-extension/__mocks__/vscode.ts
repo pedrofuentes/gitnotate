@@ -176,11 +176,20 @@ export const window = {
   })),
   createStatusBarItem: vi.fn(() => mockStatusBarItem),
   createTreeView: vi.fn((viewId: string, options: Record<string, unknown>) => {
+    const treeDataProvider = options.treeDataProvider as Record<string, unknown> | undefined;
     const treeView: MockTreeView = {
       viewId,
-      treeDataProvider: options.treeDataProvider,
+      treeDataProvider: treeDataProvider,
       options,
-      reveal: vi.fn(),
+      reveal: vi.fn().mockImplementation((_item: unknown, _options?: unknown) => {
+        // Enforce VSCode contract: reveal() requires getParent() on the provider
+        if (typeof treeDataProvider?.getParent !== 'function') {
+          throw new Error(
+            "Required registered TreeDataProvider to implement 'getParent' method to access 'reveal' method"
+          );
+        }
+        return Promise.resolve();
+      }),
       dispose: vi.fn(),
       onDidChangeVisibility: vi.fn((_listener: unknown) => ({ dispose: vi.fn() })),
     };

@@ -19,6 +19,23 @@
 
 <!-- Add new learnings below this line, most recent first -->
 
+### [2026-04-05] Three test gap patterns that let runtime bugs ship
+
+**Context**: Increment 5 shipped 341 unit tests and 22 integration tests, all passing. Manual testing found 3 major runtime bugs within minutes: (1) race condition crashing on `threadSync` being undefined, (2) `TreeView.reveal()` crashing on missing `getParent()`, (3) side filtering hiding comments in diff views. None were caught by automated tests.
+
+**Learning**: The test suite has three systemic gaps that must be addressed in all future test plans:
+
+1. **Async race conditions with shared mutable state** — Module-scope variables (`threadSync`, `prService`, `cachedToken`) are mutated by multiple event handlers (`onDidChangeActiveTextEditor`, `onDidChangeState`, `onDidChangeSessions`, `onDidChangeWindowState`). Tests only fire handlers sequentially with pre-resolved mocks. **Fix**: Write race tests using deferred promises — start handler A, let it `await`, fire handler B that resets state, then resolve A's await and verify no crash. Always capture module-scope references into local variables before `await` chains.
+
+2. **VSCode API contract compliance in mocks** — `TreeView.reveal()` mock was `vi.fn()` — it validates "method was called" but not "VSCode can actually do this." Real VSCode requires `getParent()` on the TreeDataProvider for `reveal()` to work. **Fix**: Mocks for VSCode APIs with prerequisites must enforce the same contracts. At minimum, `createTreeView` mock should verify the provider has `getParent()` when `reveal()` is called.
+
+3. **UI lifecycle scenarios — testing event absence** — Side filtering logic was correct in isolation, but relied on `onDidChangeActiveTextEditor` firing when switching diff panes. VSCode's diff editor doesn't fire this event for pane switches. **Fix**: Integration tests should model real UI flows, not just handler invocations. Test "what happens when the expected event DOESN'T fire" — this is where features break in practice.
+
+**Impact**: Every future test plan must include at minimum:
+- One race test per async handler that touches shared mutable state
+- Contract-validating mocks for VSCode APIs (not just `vi.fn()`)
+- A "negative scenario" test for each UI event dependency (what if the event never fires?)
+
 ### [2026-04-01] Never merge without Sentinel — no size exception
 **Context**: `fix/auth-change-clear-threads` (1-line production fix + 1 test) was merged to `main` without invoking Sentinel. Retroactive review (SENTINEL-2026-0331-R001) found the code correct but flagged the process violation.
 **Learning**: No fix is too small for Sentinel. The mental shortcut "it's just 1 line" bypasses the quality gate. Sentinel must be invoked before every `git merge` to `main`, regardless of change size. If you catch yourself thinking "this is too small to review," that is the exact moment you must invoke Sentinel.

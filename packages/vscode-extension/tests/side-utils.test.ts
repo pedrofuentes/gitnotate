@@ -56,4 +56,19 @@ describe('detectRenderingSide', () => {
     expect(detectRenderingSide(gitUri)).toBe('BOTH');
     expect(detectRenderingSide(unknownUri)).toBe('BOTH');
   });
+
+  it('should always return BOTH for file: scheme (no rendering filter)', () => {
+    const uri = Uri.file('/workspace/docs/readme.md');
+    expect(detectRenderingSide(uri)).toBe('BOTH');
+  });
+
+  it('should always return BOTH for git: scheme (diff old pane)', () => {
+    const uri = Object.assign(Uri.file('/workspace/docs/readme.md'), { scheme: 'git' });
+    expect(detectRenderingSide(uri)).toBe('BOTH');
+  });
+
+  it('should always return BOTH for unknown schemes', () => {
+    const uri = Object.assign(Uri.file('/something'), { scheme: 'vscode-webview' });
+    expect(detectRenderingSide(uri)).toBe('BOTH');
+  });
 });

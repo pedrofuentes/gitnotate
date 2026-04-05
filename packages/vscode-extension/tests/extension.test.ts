@@ -1003,4 +1003,155 @@ describe('extension', () => {
       expect(__mockSetState).not.toHaveBeenCalledWith('loading');
     });
   });
+
+  describe('async race conditions', () => {
+    const mockPr = {
+      owner: 'octocat',
+      repo: 'hello',
+      number: 42,
+      headSha: 'abc123',
+    };
+
+    const mkEditor = (name = 'readme.md') => ({
+      setDecorations: vi.fn(),
+      document: {
+        uri: Uri.file(`/workspace/docs/${name}`),
+        languageId: 'markdown',
+        fileName: `/workspace/docs/${name}`,
+      },
+    });
+
+    it('should not crash when git state change fires during debouncedSync await', async () => {
+      // Override GitService mock so we can capture the onDidChangeState callback
+      let gitStateCallback: (() => void) | undefined;
+      const { GitService } = await import('../src/git-service');
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(true),
+        onDidChangeState: vi.fn().mockImplementation((cb: () => void) => {
+          gitStateCallback = cb;
+          return { dispose: vi.fn() };
+        }),
+      }) as any);
+
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      expect(gitStateCallback).toBeDefined();
+
+      // Set up a deferred detectCurrentPR so we can pause mid-await
+      let resolveDetectPR!: (value: unknown) => void;
+      mockDetectCurrentPR.mockReturnValueOnce(
+        new Promise((resolve) => { resolveDetectPR = resolve; }) as any
+      );
+
+      // Trigger debouncedSync — it will pause at detectCurrentPR
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      editorHandler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Fire git state change while debouncedSync is awaiting detectCurrentPR.
+      // This sets threadSync = undefined in the extension module.
+      gitStateCallback!();
+
+      // Resolve detectCurrentPR — debouncedSync resumes with threadSync = undefined.
+      // Without the local variable fix, this would crash with a null dereference.
+      resolveDetectPR(mockPr);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Restore default GitService mock for other tests
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(false),
+        onDidChangeState: vi.fn().mockReturnValue(undefined),
+      }));
+    });
+
+    it('should not crash when auth change fires during debouncedSync await', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Set up a deferred detectCurrentPR so we can pause mid-await
+      let resolveDetectPR!: (value: unknown) => void;
+      mockDetectCurrentPR.mockReturnValueOnce(
+        new Promise((resolve) => { resolveDetectPR = resolve; }) as any
+      );
+
+      // Trigger debouncedSync — it will pause at detectCurrentPR
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      editorHandler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Fire auth change while debouncedSync is awaiting.
+      // This sets threadSync = undefined, cachedToken = undefined, prService = undefined.
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      authHandler({ provider: { id: 'github' } });
+
+      // Resolve detectCurrentPR — debouncedSync resumes with threadSync = undefined.
+      resolveDetectPR(mockPr);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('should not crash when window focus fires during debouncedSync await', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Set up a deferred detectCurrentPR so we can pause mid-await
+      let resolveDetectPR!: (value: unknown) => void;
+      mockDetectCurrentPR.mockReturnValueOnce(
+        new Promise((resolve) => { resolveDetectPR = resolve; }) as any
+      );
+
+      // Trigger debouncedSync — it will pause at detectCurrentPR
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      editorHandler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Fire window focus change while debouncedSync is awaiting.
+      // This calls triggerSync(), starting a concurrent debouncedSync.
+      const windowStateHandler = window.onDidChangeWindowState.mock.calls[0][0] as (state: { focused: boolean }) => void;
+      windowStateHandler({ focused: true });
+
+      // Resolve detectCurrentPR — original debouncedSync resumes
+      resolveDetectPR(mockPr);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('should handle rapid editor switches without crash', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Clear call counts from activation
+      mockDetectCurrentPR.mockClear();
+
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+
+      // Fire two rapid editor changes — second cancels first's debounce timer
+      editorHandler(mkEditor('file-a.md'));
+      editorHandler(mkEditor('file-b.md'));
+
+      // Advance past debounce — only the last editor's sync should execute
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Only one sync should have run (the debounced call for file-b.md)
+      expect(mockDetectCurrentPR).toHaveBeenCalledTimes(1);
+    });
+  });
 });
