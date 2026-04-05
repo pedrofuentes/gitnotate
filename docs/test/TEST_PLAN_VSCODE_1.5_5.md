@@ -102,8 +102,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 39.1 | file: URI → R/RIGHT | Post comment from `file:` scheme document. | Metadata contains `:R:`, API call uses `'RIGHT'`. | ✅ Passed |
 | 39.2 | git: URI → L/LEFT | Post comment from `git:` scheme document. | Metadata contains `:L:`, API call uses `'LEFT'`. | ✅ Passed |
 | 39.3 | Unknown URI defaults to R/RIGHT | Post comment from `untitled:` scheme document. | Defaults to `:R:` / `'RIGHT'`. | ✅ Passed |
-| 39.4 | Post from RIGHT diff pane | Open diff view, select text in the **right pane** (new/green). Run "Gitnotate: Add Comment". Enter a comment. | On github.com PR → Files Changed, the comment appears on the **RIGHT** side. `^gn` metadata contains `:R:`. | ⬜ Manual |
-| 39.5 | Post from LEFT diff pane | Open diff view, select text in the **left pane** (old/red). Run "Gitnotate: Add Comment". Enter a comment. | On github.com, the comment appears on the **LEFT** side. `^gn` metadata contains `:L:`. | ⬜ Manual |
+| 39.4 | Post from RIGHT diff pane | Open diff view, select text in the **right pane** (new/green). Run "Gitnotate: Add Comment". Enter a comment. | On github.com PR → Files Changed, the comment appears on the **RIGHT** side. `^gn` metadata contains `:R:`. | ✅ Manual verified |
+| 39.5 | Post from LEFT diff pane | Open diff view, select text in the **left pane** (old/red). Run "Gitnotate: Add Comment". Enter a comment. | On github.com, the comment appears on the **LEFT** side. `^gn` metadata contains `:L:`. | ✅ Manual verified |
 
 ---
 

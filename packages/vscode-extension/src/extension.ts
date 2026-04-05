@@ -274,6 +274,9 @@ export function activate(context: vscode.ExtensionContext) {
             body: reply.text,
             author: 'you',
           });
+          // Invalidate caches so next sync fetches fresh data with the reply
+          threadSync?.invalidateCache();
+          prService?.clearEtagCache();
           triggerSync();
         } else {
           vscode.window.showErrorMessage(`Gitnotate: ${result.userMessage}`);
