@@ -5,6 +5,7 @@ let mockWorkspaceFolders: Array<{ uri: { fsPath: string } }> | undefined =
   undefined;
 let mockGithubToken: string | undefined = undefined;
 let mockActiveTextEditor: unknown = undefined;
+let mockTabGroups: unknown = undefined;
 let mockAuthSession: { accessToken: string; id: string; scopes: string[] } | undefined = undefined;
 let mockGitRepository: unknown = undefined;
 
@@ -200,9 +201,10 @@ export const window = {
     return mockActiveTextEditor;
   },
   get visibleTextEditors() {
-    // In tests, return only the active editor (single-file view).
-    // Tests that simulate diff views should override this.
     return mockActiveTextEditor ? [mockActiveTextEditor] : [];
+  },
+  get tabGroups() {
+    return mockTabGroups;
   },
 };
 
@@ -313,6 +315,13 @@ export class EventEmitter<T> {
   dispose(): void {
     this.listeners = [];
   }
+}
+
+export class TabInputTextDiff {
+  constructor(
+    public readonly original: { scheme: string; fsPath: string; toString: () => string; query?: string },
+    public readonly modified: { scheme: string; fsPath: string; toString: () => string; query?: string }
+  ) {}
 }
 
 export const comments = {
@@ -436,6 +445,7 @@ export function __reset() {
   mockWorkspaceFolders = undefined;
   mockGithubToken = undefined;
   mockActiveTextEditor = undefined;
+  mockTabGroups = undefined;
   mockAuthSession = undefined;
   mockGitRepository = undefined;
   mockCommentControllers = [];

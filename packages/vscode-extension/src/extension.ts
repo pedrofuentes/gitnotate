@@ -128,43 +128,50 @@ export function activate(context: vscode.ExtensionContext) {
     const sync = threadSync;
     if (!sync) return;
 
-    // In diff views, find both editors by scheme from visibleTextEditors.
-    // Don't assume active editor is RIGHT — VSCode may report either side.
-    const fileEditor = vscode.window.visibleTextEditors.find(e =>
-      e.document.uri.scheme === 'file' &&
-      getRelativePath(e.document.fileName) === relativePath
-    );
-    const gitEditor = vscode.window.visibleTextEditors.find(e =>
-      e.document.uri.scheme !== 'file' &&
-      getRelativePath(e.document.fileName) === relativePath
-    );
-    const isDiffView = fileEditor !== undefined && gitEditor !== undefined;
-
-    debug('Comment sync: editors for', relativePath, '→',
-      'file:', fileEditor ? 'found' : 'none',
-      'git:', gitEditor ? `${gitEditor.document.uri.scheme}` : 'none',
-      'diff:', isDiffView);
+    // Detect diff view via TabInputTextDiff API and get the two URIs.
+    // IMPORTANT: In diff views, both editors may use the same scheme (e.g., both git:)
+    // but with different query params. We use the Tab API to get the canonical
+    // original/modified URIs, then find the matching editors.
+    const activeTab = vscode.window.tabGroups?.activeTabGroup?.activeTab;
+    const isDiffView = activeTab?.input instanceof vscode.TabInputTextDiff;
 
     let highlightRanges: vscode.Range[];
 
     if (isDiffView) {
-      const leftUri = gitEditor.document.uri;
-      const rightUri = fileEditor.document.uri;
+      const diffInput = activeTab.input as vscode.TabInputTextDiff;
+      const leftUri = diffInput.original;
+      const rightUri = diffInput.modified;
 
+      debug('Comment sync: diff view detected');
+      debug('  left URI:', leftUri.toString());
+      debug('  right URI:', rightUri.toString());
+
+      // Find editors matching each URI
+      const leftEditor = vscode.window.visibleTextEditors.find(e =>
+        e.document.uri.toString() === leftUri.toString()
+      );
+      const rightEditor = vscode.window.visibleTextEditors.find(e =>
+        e.document.uri.toString() === rightUri.toString()
+      );
+
+      debug('  left editor:', leftEditor ? 'found' : 'NOT found');
+      debug('  right editor:', rightEditor ? 'found' : 'NOT found');
+
+      // Render per-side comments on their respective URIs
       const leftRanges = await sync.renderForSide(leftUri, relativePath, pr, 'LEFT');
       const rightRanges = await sync.renderForSide(rightUri, relativePath, pr, 'RIGHT');
       highlightRanges = [...leftRanges, ...rightRanges];
 
       debug('Comment sync: rendered', leftRanges.length, 'LEFT +', rightRanges.length, 'RIGHT threads');
 
-      if (leftRanges.length > 0) {
-        commentCtrl.applyHighlights(gitEditor, leftRanges);
+      if (leftRanges.length > 0 && leftEditor) {
+        commentCtrl.applyHighlights(leftEditor, leftRanges);
       }
-      if (rightRanges.length > 0) {
-        commentCtrl.applyHighlights(fileEditor, rightRanges);
+      if (rightRanges.length > 0 && rightEditor) {
+        commentCtrl.applyHighlights(rightEditor, rightRanges);
       }
     } else {
-      // Single file view (or diff with only one editor visible): render all comments
+      // Single file view: render all comments (no side filter)
       highlightRanges = await sync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
       if (highlightRanges.length > 0) {
         commentCtrl.applyHighlights(editor, highlightRanges);
