@@ -44,8 +44,8 @@ export class CommentThreadSync {
       await this.handleFetchError(err);
       return [];
     }
-    // Single-URI mode: all threads on the same URI, RIGHT-only filter
-    return this.renderComments(relativePath, comments, { RIGHT: uri });
+    const rangesByUri = this.renderComments(relativePath, comments, { RIGHT: uri });
+    return rangesByUri.get(uri.toString()) ?? [];
   }
 
   /**
@@ -68,20 +68,21 @@ export class CommentThreadSync {
       await this.handleFetchError(err);
       return { leftRanges: [], rightRanges: [] };
     }
-    const allRanges = this.renderComments(relativePath, comments, {
-      LEFT: originalUri,
-      RIGHT: modifiedUri,
-    });
-    // Split ranges by which URI they were created on (LEFT ranges first, then RIGHT)
-    // For now return all ranges combined — highlights are applied per-editor in extension.ts
-    return { leftRanges: [], rightRanges: allRanges };
+
+    const uriMap = { LEFT: originalUri, RIGHT: modifiedUri };
+    const rangesByUri = this.renderComments(relativePath, comments, uriMap);
+
+    return {
+      leftRanges: rangesByUri.get(originalUri.toString()) ?? [],
+      rightRanges: rangesByUri.get(modifiedUri.toString()) ?? [],
+    };
   }
 
   private renderComments(
     relativePath: string,
     comments: ReviewComment[],
     uriMap: { LEFT?: vscode.Uri; RIGHT?: vscode.Uri }
-  ): vscode.Range[] {
+  ): Map<string, vscode.Range[]> {
     const fileComments = comments.filter((c) => c.path === relativePath);
 
     // Fingerprint check — skip re-render if data hasn't changed
@@ -91,7 +92,7 @@ export class CommentThreadSync {
     );
     if (this.renderedFingerprints.get(fpKey) === newFingerprint) {
       debug('Thread sync: skipping re-render for', relativePath, '— data unchanged');
-      return [];
+      return new Map();
     }
     this.renderedFingerprints.set(fpKey, newFingerprint);
 
@@ -120,12 +121,13 @@ export class CommentThreadSync {
     let threadsCreated = 0;
     let gnThreads = 0;
     let lineThreads = 0;
-    const highlightRanges: vscode.Range[] = [];
+    const rangesByUri = new Map<string, vscode.Range[]>();
 
     for (const root of rootComments) {
       // Determine which URI this thread belongs on
       const commentSide = normalizeSide(root.side);
       const threadUri = uriMap[commentSide] ?? uriMap.RIGHT ?? Object.values(uriMap)[0];
+      const uriKey = threadUri.toString();
 
       const parsed = parseGnComment(root.body);
       const replies = repliesByParent.get(root.id) ?? [];
@@ -145,10 +147,11 @@ export class CommentThreadSync {
 
         const thread = this.commentController.createThread(threadUri, range, threadComments, gnThreads, root.id);
         this.anchorTracker?.registerThread(threadUri, line, thread);
-        highlightRanges.push(range);
+        const existing = rangesByUri.get(uriKey) ?? [];
+        existing.push(range);
+        rangesByUri.set(uriKey, existing);
         gnThreads++;
       } else {
-        // Regular line comment: position at end of line, no underline highlight
         const line = (root.line ?? 1) - 1;
         const range = new vscode.Range(line, Number.MAX_SAFE_INTEGER, line, Number.MAX_SAFE_INTEGER);
 
@@ -168,7 +171,7 @@ export class CommentThreadSync {
     }
 
     debug('Thread sync: created', threadsCreated, 'threads (' + gnThreads, '^gn +', lineThreads, 'line)');
-    return highlightRanges;
+    return rangesByUri;
   }
 
   getCachedComments(pr: PullRequestInfo): ReviewComment[] | undefined {
@@ -191,7 +194,8 @@ export class CommentThreadSync {
     // Render from cache immediately
     this.log?.info('ThreadSync', 'cache hit — rendering from cache');
     debug('Thread sync (cache-first): rendering from cache');
-    const cachedRanges = this.renderComments(relativePath, cached, { RIGHT: uri });
+    const cachedMap = this.renderComments(relativePath, cached, { RIGHT: uri });
+    const cachedRanges = cachedMap.get(uri.toString()) ?? [];
 
     // Fetch fresh data in background
     debug('Thread sync (cache-first): fetching fresh data');
@@ -223,7 +227,8 @@ export class CommentThreadSync {
     if (cacheFingerprint !== freshFingerprint) {
       debug('Thread sync (cache-first): data changed — re-rendering');
       this.cache.set(cacheKey, freshComments);
-      return this.renderComments(relativePath, freshComments, { RIGHT: uri });
+      const freshMap = this.renderComments(relativePath, freshComments, { RIGHT: uri });
+      return freshMap.get(uri.toString()) ?? [];
     }
 
     debug('Thread sync (cache-first): data unchanged — skipping re-render');

@@ -147,17 +147,18 @@ export function activate(context: vscode.ExtensionContext) {
       debug('  modified URI:', modifiedUri.toString());
 
       // URI-based thread placement: each thread created on correct URI,
-      // VSCode routes to correct pane automatically (works in both
-      // side-by-side and inline diff modes)
-      await sync.syncForDiff(originalUri, modifiedUri, relativePath, pr);
-      highlightRanges = []; // highlights handled per-editor below
+      // VSCode routes to correct pane automatically
+      const { leftRanges, rightRanges } = await sync.syncForDiff(originalUri, modifiedUri, relativePath, pr);
+      highlightRanges = [...leftRanges, ...rightRanges];
 
-      // Apply highlights to visible editors
+      // Apply highlights to the matching visible editors
       for (const visibleEditor of vscode.window.visibleTextEditors) {
-        if (getRelativePath(visibleEditor.document.fileName) !== relativePath) continue;
-        // Re-fetch ranges for this specific editor's URI (already cached)
-        // For now, skip highlight decorations in diff views — comment threads
-        // are visible via the Comments API gutter icons
+        const editorUri = visibleEditor.document.uri.toString();
+        if (editorUri === originalUri.toString() && leftRanges.length > 0) {
+          commentCtrl.applyHighlights(visibleEditor, leftRanges);
+        } else if (editorUri === modifiedUri.toString() && rightRanges.length > 0) {
+          commentCtrl.applyHighlights(visibleEditor, rightRanges);
+        }
       }
     } else {
       // Single file view: show only RIGHT/New comments (current version)
