@@ -128,38 +128,44 @@ export function activate(context: vscode.ExtensionContext) {
     const sync = threadSync;
     if (!sync) return;
 
-    // Detect if we're in a diff view by checking for a paired editor
-    const activeUri = editor.document.uri;
-    const pairedEditor = vscode.window.visibleTextEditors.find(e =>
-      e !== editor &&
-      getRelativePath(e.document.fileName) === relativePath &&
-      e.document.uri.scheme !== activeUri.scheme
+    // In diff views, find both editors by scheme from visibleTextEditors.
+    // Don't assume active editor is RIGHT — VSCode may report either side.
+    const fileEditor = vscode.window.visibleTextEditors.find(e =>
+      e.document.uri.scheme === 'file' &&
+      getRelativePath(e.document.fileName) === relativePath
     );
+    const gitEditor = vscode.window.visibleTextEditors.find(e =>
+      e.document.uri.scheme !== 'file' &&
+      getRelativePath(e.document.fileName) === relativePath
+    );
+    const isDiffView = fileEditor !== undefined && gitEditor !== undefined;
+
+    debug('Comment sync: editors for', relativePath, '→',
+      'file:', fileEditor ? 'found' : 'none',
+      'git:', gitEditor ? `${gitEditor.document.uri.scheme}` : 'none',
+      'diff:', isDiffView);
 
     let highlightRanges: vscode.Range[];
 
-    if (pairedEditor) {
-      // Diff view: render LEFT comments on git: URI, RIGHT on file: URI
-      const leftUri = activeUri.scheme === 'git' ? activeUri : pairedEditor.document.uri;
-      const rightUri = activeUri.scheme === 'file' ? activeUri : pairedEditor.document.uri;
-      debug('Comment sync: diff view detected — rendering per-side', leftUri.scheme, '/', rightUri.scheme);
+    if (isDiffView) {
+      const leftUri = gitEditor.document.uri;
+      const rightUri = fileEditor.document.uri;
 
       const leftRanges = await sync.renderForSide(leftUri, relativePath, pr, 'LEFT');
       const rightRanges = await sync.renderForSide(rightUri, relativePath, pr, 'RIGHT');
       highlightRanges = [...leftRanges, ...rightRanges];
 
-      // Apply highlights to both editors
+      debug('Comment sync: rendered', leftRanges.length, 'LEFT +', rightRanges.length, 'RIGHT threads');
+
       if (leftRanges.length > 0) {
-        const leftEditor = activeUri.scheme === 'git' ? editor : pairedEditor;
-        commentCtrl.applyHighlights(leftEditor, leftRanges);
+        commentCtrl.applyHighlights(gitEditor, leftRanges);
       }
       if (rightRanges.length > 0) {
-        const rightEditor = activeUri.scheme === 'file' ? editor : pairedEditor;
-        commentCtrl.applyHighlights(rightEditor, rightRanges);
+        commentCtrl.applyHighlights(fileEditor, rightRanges);
       }
     } else {
-      // Single file view: render all comments (no side filter)
-      highlightRanges = await sync.syncForDocumentCacheFirst(activeUri, relativePath, pr);
+      // Single file view (or diff with only one editor visible): render all comments
+      highlightRanges = await sync.syncForDocumentCacheFirst(editor.document.uri, relativePath, pr);
       if (highlightRanges.length > 0) {
         commentCtrl.applyHighlights(editor, highlightRanges);
       } else {
