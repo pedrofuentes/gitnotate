@@ -143,10 +143,14 @@ export class PrService {
         console.error('[Gitnotate] createReviewWithComment failed:', response.status, response.statusText);
         console.error('[Gitnotate] Response body:', errorBody);
 
-        // If a pending review exists, add the comment to it instead
+        // If a pending review exists, we cannot add comments to it via REST API
+        // (GitHub API limitation — no endpoint for appending to pending reviews)
         if (response.status === 422 && errorBody.includes('pending review')) {
-          console.log('[Gitnotate] Pending review detected — adding comment to existing review');
-          return this.addCommentToPendingReview(pr, path, line, side, body);
+          console.log('[Gitnotate] Pending review detected — cannot post while a review is pending');
+          return {
+            ok: false,
+            userMessage: 'Cannot post comment: you have a pending review on this PR. Submit or discard it first on github.com, then try again.',
+          };
         }
 
         return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
@@ -157,63 +161,6 @@ export class PrService {
       return { ok: true, id: data.id };
     } catch (err) {
       console.error('[Gitnotate] createReviewWithComment failed:', err);
-      return { ok: false, userMessage: 'Network error — check your connection and try again.' };
-    }
-  }
-
-  private async addCommentToPendingReview(
-    pr: PullRequestInfo,
-    path: string,
-    line: number,
-    side: 'LEFT' | 'RIGHT',
-    body: string
-  ): Promise<{ ok: true; id: number } | { ok: false; userMessage: string }> {
-    try {
-      // Find the pending review
-      const reviewsUrl = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/reviews`;
-      const reviewsResponse = await fetch(reviewsUrl, {
-        headers: this.headers(),
-      });
-
-      if (!reviewsResponse.ok) {
-        return { ok: false, userMessage: 'Failed to find pending review.' };
-      }
-
-      const reviews = (await reviewsResponse.json()) as Array<{ id: number; state: string }>;
-      const pendingReview = reviews.find(r => r.state === 'PENDING');
-
-      if (!pendingReview) {
-        return { ok: false, userMessage: 'No pending review found to add the comment to.' };
-      }
-
-      // Add comment to the pending review
-      const commentUrl = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/reviews/${pendingReview.id}/comments`;
-      const commentPayload = {
-        path,
-        line,
-        side,
-        body,
-      };
-
-      console.log('[Gitnotate] POST (review comment)', commentUrl);
-      const commentResponse = await fetch(commentUrl, {
-        method: 'POST',
-        headers: this.headers(),
-        body: JSON.stringify(commentPayload),
-      });
-
-      if (!commentResponse.ok) {
-        const errorBody = await commentResponse.text().catch(() => '(could not read body)');
-        console.error('[Gitnotate] addCommentToPendingReview failed:', commentResponse.status);
-        console.error('[Gitnotate] Response body:', errorBody);
-        return { ok: false, userMessage: this.parseApiError(commentResponse.status, errorBody) };
-      }
-
-      const data = (await commentResponse.json()) as { id: number };
-      console.log('[Gitnotate] addCommentToPendingReview succeeded');
-      return { ok: true, id: data.id };
-    } catch (err) {
-      console.error('[Gitnotate] addCommentToPendingReview failed:', err);
       return { ok: false, userMessage: 'Network error — check your connection and try again.' };
     }
   }

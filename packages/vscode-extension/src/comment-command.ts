@@ -97,7 +97,8 @@ export async function addCommentCommand(
   );
 
   // If review endpoint fails, fall back to single-comment endpoint
-  if (!result.ok) {
+  // (but not for pending review errors — those fail on both endpoints)
+  if (!result.ok && !('userMessage' in result && result.userMessage?.includes('pending review'))) {
     debug('Review endpoint failed, falling back to single-comment endpoint');
     result = await client.createReviewComment(pr, filePath, line, apiSide, commentBody);
   }
