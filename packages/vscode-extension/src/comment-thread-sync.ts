@@ -16,6 +16,7 @@ export function stripBlockquoteFallback(text: string): string {
 
 export class CommentThreadSync {
   private cache: Map<string, ReviewComment[]> = new Map();
+  private staleCache: Map<string, ReviewComment[]> = new Map();
   private renderedFingerprints: Map<string, string> = new Map();
   private log: Logger | undefined;
   private pollingTimer: ReturnType<typeof setInterval> | null = null;
@@ -42,6 +43,8 @@ export class CommentThreadSync {
       comments = await this.getComments(pr);
     } catch (err) {
       await this.handleFetchError(err);
+      const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
+      if (this.staleCache.has(cacheKey)) return null;
       return [];
     }
     const rangesByUri = this.renderComments(relativePath, comments, { RIGHT: uri });
@@ -67,6 +70,8 @@ export class CommentThreadSync {
       comments = await this.getComments(pr);
     } catch (err) {
       await this.handleFetchError(err);
+      const cacheKey = `${pr.owner}/${pr.repo}#${pr.number}`;
+      if (this.staleCache.has(cacheKey)) return null;
       return { leftRanges: [], rightRanges: [] };
     }
 
@@ -310,6 +315,7 @@ export class CommentThreadSync {
       return [];
     }
     this.cache.set(cacheKey, comments);
+    this.staleCache.set(cacheKey, comments);
     return comments;
   }
 
