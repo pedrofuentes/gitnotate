@@ -241,15 +241,38 @@ export function activate(context: vscode.ExtensionContext) {
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!workspaceRoot) return;
 
-        const fullPath = `${workspaceRoot}/${filePath}`;
-        const uri = vscode.Uri.file(fullPath);
+        const zeroLine = line - 1;
+        const range = new vscode.Range(
+          zeroLine, start ?? 0,
+          zeroLine, end ?? Number.MAX_SAFE_INTEGER
+        );
+
         try {
+          // Check for an existing diff tab for this file
+          const normalizedFile = filePath.replace(/\\/g, '/');
+          const tabGroups = vscode.window.tabGroups?.all;
+          if (tabGroups) {
+            for (const group of tabGroups) {
+              for (const tab of group.tabs) {
+                if (tab.input instanceof vscode.TabInputTextDiff) {
+                  const diffInput = tab.input;
+                  const modPath = diffInput.modified.fsPath.replace(/\\/g, '/');
+                  if (modPath.endsWith(normalizedFile)) {
+                    // Found matching diff tab — open modified (right) pane
+                    const doc = await vscode.workspace.openTextDocument(diffInput.modified);
+                    await vscode.window.showTextDocument(doc, { selection: range, preserveFocus: false });
+                    commentCtrl?.revealThread(diffInput.modified, line);
+                    return;
+                  }
+                }
+              }
+            }
+          }
+
+          // No diff tab found — fall back to regular file
+          const fullPath = `${workspaceRoot}/${filePath}`;
+          const uri = vscode.Uri.file(fullPath);
           const doc = await vscode.workspace.openTextDocument(uri);
-          const zeroLine = line - 1;
-          const range = new vscode.Range(
-            zeroLine, start ?? 0,
-            zeroLine, end ?? Number.MAX_SAFE_INTEGER
-          );
           await vscode.window.showTextDocument(doc, { selection: range, preserveFocus: false });
           commentCtrl?.revealThread(uri, line);
         } catch (err) {

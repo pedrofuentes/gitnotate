@@ -1180,8 +1180,8 @@ describe('extension', () => {
       __setWorkspaceFolders([{ uri: { fsPath: '/workspace' } }]);
 
       // Set up an existing diff tab for this file
-      const diffOriginal = Uri.parse('git:/workspace/docs/readme.md?ref=old');
-      const diffModified = Uri.parse('git:/workspace/docs/readme.md?ref=new');
+      const diffOriginal = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const diffModified = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
       const diffTab = {
         input: new TabInputTextDiff(diffOriginal, diffModified),
         isActive: false,
@@ -1197,14 +1197,19 @@ describe('extension', () => {
         activeTabGroup: tabGroup,
       });
 
+      // Mock openTextDocument to return doc with matching URI
+      workspace.openTextDocument.mockResolvedValueOnce({
+        uri: diffModified,
+        languageId: 'markdown',
+        fileName: '/workspace/docs/readme.md',
+      });
+
       // Call goToComment — should prefer existing diff tab
       await goToCommentHandler('docs/readme.md', 10, 5, 15);
 
-      // Should NOT have called showTextDocument to open a regular file
-      // (instead should have activated the diff tab)
-      const showCalls = window.showTextDocument.mock.calls;
-      // Existing diff tab should be activated rather than creating a new regular editor
-      expect(showCalls.length === 0 || showCalls[0][0]?.uri?.scheme === 'git').toBe(true);
+      // Should have opened the diff tab's modified URI, not a file:// URI
+      expect(workspace.openTextDocument).toHaveBeenCalledWith(diffModified);
+      expect(window.showTextDocument).toHaveBeenCalled();
     });
 
     it('should fall back to regular file when no diff tab exists', async () => {
