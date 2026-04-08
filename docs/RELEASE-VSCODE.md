@@ -30,23 +30,30 @@ Gitnotate follows [Semantic Versioning](https://semver.org/):
    - Follow [Keep a Changelog](https://keepachangelog.com/) format
    - Use `(VSCode Extension)` scope labels for clarity
 
-3. **Commit the version bump**
+3. **Review `packages/vscode-extension/README.md`**
+   - This file is the **Overview tab** on the VS Code Marketplace page
+   - Update feature descriptions, screenshots, and commands if they changed
+   - Ensure "Getting Started" instructions are current
+
+4. **Commit the version bump**
    ```bash
-   git add packages/vscode-extension/package.json CHANGELOG.md
+   git add packages/vscode-extension/package.json \
+           packages/vscode-extension/README.md \
+           CHANGELOG.md
    git commit -m "chore(release): bump vscode extension to vX.Y.Z"
    ```
 
-4. **Create a git tag**
+5. **Create a git tag**
    ```bash
    git tag vscode-vX.Y.Z
    ```
 
-5. **Push the tag** (triggers the `release-vscode.yml` GitHub Actions workflow)
+6. **Push the tag** (triggers the `release-vscode.yml` GitHub Actions workflow)
    ```bash
    git push origin vscode-vX.Y.Z
    ```
 
-6. **Verify the GitHub Release**
+7. **Verify the GitHub Release**
    - Go to https://github.com/pedrofuentes/gitnotate/releases
    - Confirm the release was created with the correct tag
    - Confirm the `.vsix` artifact is attached
@@ -223,6 +230,7 @@ Each release should include:
 | Extension `.vsix` | GitHub Release (built by `release-vscode.yml`) |
 | Source code | GitHub Release (auto-attached) |
 | Changelog | `CHANGELOG.md` in repository root |
+| Marketplace README | `packages/vscode-extension/README.md` (Overview tab) |
 
 ---
 

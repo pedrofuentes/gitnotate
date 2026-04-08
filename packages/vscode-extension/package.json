@@ -15,6 +15,7 @@
     "vscode": "^1.85.0"
   },
   "categories": [
+    "SCM Providers",
     "Other"
   ],
   "main": "./dist/extension.js",
