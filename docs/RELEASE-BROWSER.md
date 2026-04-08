@@ -1,7 +1,11 @@
-# Release Process
+# Release Process — Browser Extension
 
-This document covers the full release process for Gitnotate, from version bump
-through store submission and post-release verification.
+This document covers the release process for the **Gitnotate browser extension**
+(Chrome & Edge), from version bump through store submission and post-release
+verification.
+
+> For the VSCode extension release process, see
+> [`RELEASE-VSCODE.md`](./RELEASE-VSCODE.md).
 
 ---
 
@@ -39,12 +43,12 @@ Gitnotate follows [Semantic Versioning](https://semver.org/):
 
 5. **Create a git tag**
    ```bash
-   git tag vX.Y.Z
+   git tag browser-vX.Y.Z
    ```
 
 6. **Push the tag** (triggers the `release.yml` GitHub Actions workflow)
    ```bash
-   git push origin vX.Y.Z
+   git push origin browser-vX.Y.Z
    ```
 
 7. **Verify the GitHub Release**
