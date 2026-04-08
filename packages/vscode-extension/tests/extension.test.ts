@@ -71,8 +71,11 @@ import {
   __getStatusBarItem,
   __getTreeViews,
   __setActiveTextEditor,
+  __setTabGroups,
+  __setWorkspaceFolders,
   __reset,
   Uri,
+  TabInputTextDiff,
 } from '../__mocks__/vscode';
 import { getGitHubToken, ensureAuthenticated } from '../src/auth';
 import { detectCurrentPR } from '../src/pr-detector';
@@ -1152,6 +1155,85 @@ describe('extension', () => {
 
       // Only one sync should have run (the debounced call for file-b.md)
       expect(mockDetectCurrentPR).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('goToComment — diff tab navigation (Bug A)', () => {
+    it('should activate existing diff tab instead of opening regular file', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Find the goToComment handler
+      const goToCommentCall = commands.registerCommand.mock.calls.find(
+        ([name]: [string]) => name === 'gitnotate.goToComment'
+      );
+      expect(goToCommentCall).toBeDefined();
+      const goToCommentHandler = goToCommentCall![1] as (
+        filePath: string,
+        line: number,
+        start?: number,
+        end?: number
+      ) => Promise<void>;
+
+      // Set up workspace
+      __setWorkspaceFolders([{ uri: { fsPath: '/workspace' } }]);
+
+      // Set up an existing diff tab for this file
+      const diffOriginal = Uri.parse('git:/workspace/docs/readme.md?ref=old');
+      const diffModified = Uri.parse('git:/workspace/docs/readme.md?ref=new');
+      const diffTab = {
+        input: new TabInputTextDiff(diffOriginal, diffModified),
+        isActive: false,
+      };
+      const tabGroup = {
+        tabs: [diffTab],
+        isActive: true,
+        activeTab: null,
+        viewColumn: 1,
+      };
+      __setTabGroups({
+        all: [tabGroup],
+        activeTabGroup: tabGroup,
+      });
+
+      // Call goToComment — should prefer existing diff tab
+      await goToCommentHandler('docs/readme.md', 10, 5, 15);
+
+      // Should NOT have called showTextDocument to open a regular file
+      // (instead should have activated the diff tab)
+      const showCalls = window.showTextDocument.mock.calls;
+      // Existing diff tab should be activated rather than creating a new regular editor
+      expect(showCalls.length === 0 || showCalls[0][0]?.uri?.scheme === 'git').toBe(true);
+    });
+
+    it('should fall back to regular file when no diff tab exists', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const goToCommentCall = commands.registerCommand.mock.calls.find(
+        ([name]: [string]) => name === 'gitnotate.goToComment'
+      );
+      const goToCommentHandler = goToCommentCall![1] as (
+        filePath: string,
+        line: number,
+        start?: number,
+        end?: number
+      ) => Promise<void>;
+
+      __setWorkspaceFolders([{ uri: { fsPath: '/workspace' } }]);
+
+      // No diff tabs — only regular tabs or no tabs
+      __setTabGroups({
+        all: [{ tabs: [], isActive: true, activeTab: null, viewColumn: 1 }],
+        activeTabGroup: { tabs: [], isActive: true, activeTab: null, viewColumn: 1 },
+      });
+
+      await goToCommentHandler('docs/readme.md', 10, 5, 15);
+
+      // Should have opened regular file via showTextDocument
+      expect(window.showTextDocument).toHaveBeenCalled();
     });
   });
 });

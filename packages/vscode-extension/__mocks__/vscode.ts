@@ -424,6 +424,10 @@ export function __setGitRepository(repo: unknown) {
   });
 }
 
+export function __setTabGroups(tabGroups: unknown) {
+  mockTabGroups = tabGroups;
+}
+
 export function __getCommentControllers(): MockCommentController[] {
   return mockCommentControllers;
 }
