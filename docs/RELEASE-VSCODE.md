@@ -57,21 +57,48 @@ Gitnotate follows [Semantic Versioning](https://semver.org/):
 
 ### First-Time Setup
 
-1. **Create a publisher** at
-   [Visual Studio Marketplace — Manage Publishers](https://marketplace.visualstudio.com/manage/publishers)
-   - Publisher ID: `pedrofuentes` (already configured in `package.json`)
+1. **Create an Azure DevOps organization** (required even for individual
+   developers — it's Microsoft's infrastructure for Marketplace auth)
+   - Go to https://dev.azure.com and sign in with your Microsoft account
+     (or create one)
+   - If prompted, create a new organization — the name doesn't matter for
+     publishing (e.g., `pedrofuentes-personal`)
+   - You won't use this organization for anything else; it just enables PAT
+     creation with Marketplace scope
 
-2. **Generate a Personal Access Token (PAT)**
-   - Go to https://dev.azure.com → User Settings → Personal Access Tokens
-   - Create a token with **Marketplace > Manage** scope
-   - Organization: **All accessible organizations**
-   - Expiration: 1 year max (set a calendar reminder to rotate)
+2. **Create a publisher** at the
+   [Visual Studio Marketplace — Manage Publishers](https://marketplace.visualstudio.com/manage)
+   page
+   - Click **"+ Create publisher"**
+   - Set the **Publisher ID** to `pedrofuentes` (must match the `publisher`
+     field in `package.json`)
+   - Fill in **Display Name** (shown on the Marketplace page)
+   - Optionally add a description, logo, and links
 
-3. **Add the PAT as a GitHub secret**
+3. **Generate a Personal Access Token (PAT)**
+   - Go to https://dev.azure.com and sign in
+   - Click your **profile avatar** (top-right) → **Personal access tokens**
+   - Click **+ New Token** and fill in:
+     - **Name:** e.g., `vsce-marketplace-publish`
+     - **Organization:** select **All accessible organizations** (required —
+       the Marketplace is not scoped to a single org)
+     - **Expiration:** choose up to 1 year (set a calendar reminder to rotate)
+     - **Scopes:** select **Custom defined**, then click **Show all scopes**,
+       then under **Marketplace** check **Manage**
+   - Click **Create** and **copy the token immediately** — it is only shown
+     once and cannot be retrieved later
+
+4. **Verify the PAT works** (optional but recommended)
+   ```bash
+   npx vsce login pedrofuentes
+   # Paste your PAT when prompted — should show "Authentication successful"
+   ```
+
+5. **Add the PAT as a GitHub secret** (for automated publishing)
    - Go to repo Settings → Secrets and variables → Actions
    - Add secret: `VSCE_PAT` with the token value
 
-4. **Prepare listing assets**
+6. **Prepare listing assets**
    - **Icon:** 128×128 PNG (currently `resources/icon.svg` — convert to PNG for
      the Marketplace listing)
    - **Screenshots:** 1280×800 PNG/JPEG (at least 1, up to 5)
