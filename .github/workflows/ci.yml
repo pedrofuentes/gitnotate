@@ -38,6 +38,9 @@ jobs:
       - name: Type-check browser-extension
         run: pnpm exec tsc --noEmit -p packages/browser-extension/tsconfig.json
 
+      - name: Type-check vscode-extension
+        run: pnpm exec tsc --noEmit -p packages/vscode-extension/tsconfig.json
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -53,8 +56,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Build core (required for workspace references)
+        run: pnpm --filter @gitnotate/core build
+
       - name: Run tests
-        run: pnpm --filter @gitnotate/core test && pnpm --filter @gitnotate/browser-extension test
+        run: pnpm --filter @gitnotate/core test && pnpm --filter @gitnotate/browser-extension test && pnpm --filter @gitnotate/vscode-extension test
 
   build:
     name: Build
@@ -80,3 +86,12 @@ jobs:
         with:
           name: browser-extension-dist
           path: packages/browser-extension/dist/
+
+      - name: Package VSCode extension
+        run: cd packages/vscode-extension && npx vsce package --no-dependencies
+
+      - name: Upload VSCode extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension-vsix
+          path: packages/vscode-extension/*.vsix
