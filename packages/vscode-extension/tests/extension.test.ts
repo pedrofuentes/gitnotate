@@ -1050,6 +1050,7 @@ describe('extension', () => {
       const { PrService } = await import('../src/pr-service');
       vi.mocked(PrService).mockImplementation(() => ({
         listReviewComments: vi.fn().mockResolvedValue(mockComments),
+        clearEtagCache: vi.fn(),
       }) as any);
 
       mockGetGitHubToken.mockResolvedValue('test-token');

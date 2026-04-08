@@ -22,6 +22,7 @@ let threadSync: CommentThreadSync | undefined;
 let cachedToken: string | undefined;
 let treeProvider: CommentsTreeProvider | undefined;
 let anchorTracker: AnchorTracker | undefined;
+let gitService: GitService | undefined;
 
 async function promptSignIn(): Promise<void> {
   const action = await vscode.window.showInformationMessage(
@@ -41,11 +42,10 @@ async function promptSignIn(): Promise<void> {
 
 async function updatePRStatusBar(): Promise<void> {
   debug('Updating PR status bar...');
-  const gitService = new GitService();
   const token = await getGitHubToken();
   debug('Auth token:', token ? 'present' : 'absent');
 
-  if (!statusBar) return;
+  if (!gitService || !statusBar) return;
 
   statusBar.setLoading();
   const pr = await detectCurrentPR(gitService, token);
@@ -78,6 +78,8 @@ export function activate(context: vscode.ExtensionContext) {
   anchorTracker = new AnchorTracker();
   anchorTracker.activate();
   context.subscriptions.push({ dispose: () => anchorTracker?.dispose() });
+
+  gitService = new GitService();
 
   treeProvider = new CommentsTreeProvider();
   const treeView = vscode.window.createTreeView('gitnotateComments', {
@@ -120,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
       debug('Comment sync: recreated PrService + CommentThreadSync (token changed)');
     }
 
-    const gitService = new GitService();
+    if (!gitService) return;
     const pr = await detectCurrentPR(gitService, token);
     if (!pr) {
       debug('Comment sync: no PR found — skipping');
@@ -316,9 +318,8 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const gitService = new GitService();
         const token = await getGitHubToken();
-        if (!token) return;
+        if (!token || !gitService) return;
         const pr = await detectCurrentPR(gitService, token);
         if (!pr) return;
 
@@ -447,9 +448,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   const tryInitialSync = () => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
+    if (!editor || !gitService) return;
 
-    const gitService = new GitService();
     if (!gitService.isAvailable()) {
       retryCount++;
       if (retryCount <= maxRetries) {
@@ -472,14 +472,12 @@ export function activate(context: vscode.ExtensionContext) {
   let gitWatcherRetries = 0;
   let gitWatcherTimer: ReturnType<typeof setTimeout> | undefined;
   const setupGitWatcher = () => {
-    const gitService = new GitService();
+    if (!gitService) return;
     const disposable = gitService.onDidChangeState(() => {
       debug('Git state changed — re-syncing');
-      // Stop polling on the old sync before replacing it
       threadSync?.stopPolling();
-      cachedToken = undefined;
-      threadSync = undefined;
-      prService = undefined;
+      threadSync?.invalidateCache();
+      prService?.clearEtagCache();
       updatePRStatusBar();
       triggerSync();
     });
@@ -512,6 +510,7 @@ export function deactivate() {
   prService = undefined;
   threadSync = undefined;
   cachedToken = undefined;
+  gitService = undefined;
   anchorTracker?.dispose();
   anchorTracker = undefined;
   statusBar?.dispose();
