@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-10B981.svg)](./LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-10B981.svg)](./CHANGELOG.md)
 
-Gitnotate lets you comment on specific words and phrases within a line — not just the whole line — directly in GitHub Pull Request reviews. It works as a Chrome/Edge browser extension that enhances GitHub's native commenting with sub-line precision.
+Gitnotate lets you comment on specific words and phrases within a line — not just the whole line — directly in GitHub Pull Request reviews. It ships as a **Chrome/Edge browser extension** and a **VSCode extension**, both enhancing GitHub's native commenting with sub-line precision.
 
 ## The Problem
 
@@ -55,9 +55,34 @@ To update: download the new zip, extract to the same folder, then click the relo
 2. Visit any PR → click "Enable" on the opt-in banner
 3. Select text in a diff to start commenting
 
+## VSCode Extension
+
+The VSCode extension brings sub-line commenting directly into your editor for GitHub PR reviews.
+
+### Key Capabilities
+- **Sub-line comment threads** — native VSCode comment threads anchored to exact character ranges in PR diffs
+- **Comments sidebar** — all PR comments grouped by file with click-to-navigate
+- **Reply & resolve** — full threading and resolution via GitHub's review API
+- **Live polling** — auto-refresh comments via ETag-based conditional requests (configurable interval)
+- **Side-aware diffs** — comments placed on the correct side (old/new) in diff views
+- **Diff-aware anchoring** — comment threads follow text through local edits
+
+### Install from Source
+1. Clone the repo: `git clone https://github.com/pedrofuentes/gitnotate.git`
+2. Install dependencies: `pnpm install`
+3. Build: `pnpm build`
+4. In VSCode: Run → Start Debugging (F5) to launch the extension development host
+
+### Setup
+1. Open a repository with an active PR
+2. Sign in to GitHub when prompted (uses VSCode's built-in GitHub auth)
+3. Open a Markdown file from the PR — comment threads appear automatically
+4. Select text and right-click → "Gitnotate: Add Comment" to post a sub-line comment
+
 ## Status
 
-🚀 **v0.1.0** — First public release. Browser extension for Chrome/Edge.
+🚀 **v0.1.0** — Browser extension for Chrome/Edge.
+🟢 **Phase 1.5** — VSCode extension (all 5 increments complete). Pre-release.
 
 ## License
 

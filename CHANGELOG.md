@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added (VSCode Extension — Phase 1.5 Increment 5)
+- **ETag-based polling for live comment updates** — auto-refresh every 30s (configurable), pause on window blur, resume on focus with immediate fetch, conditional `If-None-Match`/`304 Not Modified` requests to minimize API usage
+- **Side-aware comment placement in diff views** — respect `L`/`R` side field in `^gn` metadata and `LEFT`/`RIGHT` from GitHub API; detect diff context via document URI scheme (`git:` = old/LEFT, `file:` = new/RIGHT); filter comments to correct side; detect cursor side when posting; `[Old]`/`[New]` indicators in sidebar
+- **Reply and resolve handlers** on comment threads — full round-trip with GitHub API
+- **"Create a review" API endpoint** — avoids `pending review` conflict (GitHub API quirk: single-comment endpoint fails when a pending review exists)
+- **Status bar** — "Gitnotate: PR #N" with auto-refresh on branch/PR changes
+- **Bidirectional sidebar navigation** — clicking a comment thread in the editor reveals it in the sidebar (`treeView.reveal()`)
+- **Right-click context menu** — "Gitnotate: Add Comment" on text selection
+- **Error UX with action buttons** — e.g., "Sign in to GitHub" prompt with clickable action
+- **Output channel (`Gitnotate`)** for debugging and diagnostic logging
+- **Diff-aware anchor resolution** — track line deltas via `onDidChangeTextDocument` so `^gn` threads follow text through local edits
+- Post-comment → automatic refresh of decorations and sidebar
+
+### Fixed (VSCode Extension — Pre-release Quality)
+- Fetch timeout (15s) on all GitHub API calls
+- Multi-key error deduplication
+- Logger disposal on reinitialization
+- Cache resilience: cached data preserved on fetch errors instead of being cleared
+- Service hoisting for performance (reduced re-instantiation overhead)
+- LRU cache eviction to bound memory usage
+- `MAX_PAGES` safety bound on pagination with warning when cap is reached (closes #13)
+- Negative assertions in error-path tests for correctness
+
 ### Added (VSCode Extension — Phase 1.5 Increment 4)
 - **Comments Sidebar (TreeView)** — `gitnotateComments` view in activity bar showing all PR review comments grouped by file
 - Both `^gn` sub-line and regular line comments displayed with author, line range, and reply count
