@@ -38,6 +38,22 @@
       {
         "command": "gitnotate.goToComment",
         "title": "Go to Comment"
+      },
+      {
+        "command": "gitnotate.resolveThread",
+        "title": "Resolve Thread",
+        "icon": "$(check)"
+      },
+      {
+        "command": "gitnotate.unresolveThread",
+        "title": "Unresolve Thread",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "gitnotate.replyToThread",
+        "title": "Reply",
+        "enablement": "!commentIsEmpty",
+        "icon": "$(reply)"
       }
     ],
     "configuration": {
@@ -50,6 +66,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "gitnotate.pollInterval": {
+          "type": "number",
+          "default": 30,
+          "minimum": 10,
+          "description": "Polling interval in seconds for live comment updates from GitHub"
         }
       }
     },
@@ -76,6 +98,50 @@
           "command": "gitnotate.refreshComments",
           "when": "view == gitnotateComments",
           "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "gitnotate.replyToThread",
+          "when": "false"
+        },
+        {
+          "command": "gitnotate.resolveThread",
+          "when": "false"
+        },
+        {
+          "command": "gitnotate.unresolveThread",
+          "when": "false"
+        },
+        {
+          "command": "gitnotate.goToComment",
+          "when": "false"
+        }
+      ],
+      "comments/commentThread/context": [
+        {
+          "command": "gitnotate.replyToThread",
+          "group": "inline",
+          "when": "commentController == gitnotate && !commentThreadIsEmpty"
+        }
+      ],
+      "comments/commentThread/title": [
+        {
+          "command": "gitnotate.resolveThread",
+          "group": "inline",
+          "when": "commentController == gitnotate && commentThread.state == 0"
+        },
+        {
+          "command": "gitnotate.unresolveThread",
+          "group": "inline",
+          "when": "commentController == gitnotate && commentThread.state == 1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "gitnotate.addComment",
+          "when": "editorHasSelection && resourceLangId == markdown && gitnotate.hasPR",
+          "group": "gitnotate@1"
         }
       ]
     }

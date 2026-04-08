@@ -149,6 +149,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => mockComments,
       });
 
@@ -183,6 +184,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => [],
       });
 
@@ -222,8 +224,8 @@ describe('PrService', () => {
       ];
 
       mockFetch
-        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page1 })
-        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => page2 });
+        .mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => page1 })
+        .mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => page2 });
 
       const comments = await client.listReviewComments(pr);
 
@@ -247,7 +249,7 @@ describe('PrService', () => {
         updated_at: '2026-01-01T00:00:00Z',
       }));
 
-      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => page1 });
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => page1 });
 
       const comments = await client.listReviewComments(pr);
 
@@ -293,6 +295,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => [],
       });
 
@@ -321,6 +324,7 @@ describe('PrService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
+        headers: { get: () => null },
         json: async () => mockComments,
       });
 
@@ -348,6 +352,7 @@ describe('PrService', () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
         });
       }
@@ -375,6 +380,7 @@ describe('PrService', () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
         });
       }
@@ -407,6 +413,7 @@ describe('PrService', () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200,
+          headers: { get: () => null },
           json: async () => fullPage.map((c) => ({ ...c, id: c.id + i * 100 })),
         });
       }
@@ -418,6 +425,394 @@ describe('PrService', () => {
         expect.stringContaining('MAX_PAGES')
       );
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('listReviewComments — ETag conditional requests', () => {
+    function makeHeaders(entries: Record<string, string> = {}) {
+      return { get: (key: string) => entries[key.toLowerCase()] ?? null };
+    }
+
+    const comment1 = {
+      id: 1,
+      body: 'hello',
+      path: 'src/a.ts',
+      line: 1,
+      side: 'RIGHT',
+      in_reply_to_id: undefined,
+      user: { login: 'alice' },
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+
+    const comment2 = {
+      id: 2,
+      body: 'world',
+      path: 'src/b.ts',
+      line: 5,
+      side: 'LEFT',
+      in_reply_to_id: undefined,
+      user: { login: 'bob' },
+      created_at: '2026-01-02T00:00:00Z',
+      updated_at: '2026-01-02T00:00:00Z',
+    };
+
+    it('first call returns comments normally (no If-None-Match header sent)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"abc123"' }),
+        json: async () => [comment1],
+      });
+
+      const result = await client.listReviewComments(pr);
+
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(1);
+      expect(result![0].body).toBe('hello');
+
+      // No If-None-Match on first request
+      const [, options] = mockFetch.mock.calls[0];
+      expect(options.headers['If-None-Match']).toBeUndefined();
+    });
+
+    it('first call stores ETag from response header', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"etag-value-1"' }),
+        json: async () => [comment1],
+      });
+
+      await client.listReviewComments(pr);
+
+      // Second call should now use the stored ETag
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"etag-value-2"' }),
+        json: async () => [comment1],
+      });
+
+      await client.listReviewComments(pr);
+
+      const [, options] = mockFetch.mock.calls[1];
+      expect(options.headers['If-None-Match']).toBe('"etag-value-1"');
+    });
+
+    it('second call sends If-None-Match with stored ETag', async () => {
+      // First call — stores ETag
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"my-etag"' }),
+        json: async () => [comment1],
+      });
+      await client.listReviewComments(pr);
+
+      // Second call — should include If-None-Match
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"my-etag"' }),
+        json: async () => [comment1],
+      });
+      await client.listReviewComments(pr);
+
+      const [, secondOptions] = mockFetch.mock.calls[1];
+      expect(secondOptions.headers['If-None-Match']).toBe('"my-etag"');
+    });
+
+    it('second call with 304 response returns null', async () => {
+      // First call — stores ETag
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"unchanged"' }),
+        json: async () => [comment1],
+      });
+      await client.listReviewComments(pr);
+
+      // Second call — 304 Not Modified
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 304,
+        headers: makeHeaders(),
+      });
+      const result = await client.listReviewComments(pr);
+
+      expect(result).toBeNull();
+      // Should not fetch additional pages
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('second call with 200 response (new ETag) returns new comments', async () => {
+      // First call
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"old-etag"' }),
+        json: async () => [comment1],
+      });
+      await client.listReviewComments(pr);
+
+      // Second call — new content, new ETag
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"new-etag"' }),
+        json: async () => [comment1, comment2],
+      });
+      const result = await client.listReviewComments(pr);
+
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(2);
+
+      // Third call should use the new ETag
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 304,
+        headers: makeHeaders(),
+      });
+      const result3 = await client.listReviewComments(pr);
+      expect(result3).toBeNull();
+
+      const [, thirdOptions] = mockFetch.mock.calls[2];
+      expect(thirdOptions.headers['If-None-Match']).toBe('"new-etag"');
+    });
+
+    it('clearEtagCache clears all stored ETags', async () => {
+      // First call stores an ETag
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"cached-etag"' }),
+        json: async () => [comment1],
+      });
+      await client.listReviewComments(pr);
+
+      // Clear the cache
+      client.clearEtagCache();
+
+      // Next call should NOT send If-None-Match
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"fresh-etag"' }),
+        json: async () => [comment1],
+      });
+      await client.listReviewComments(pr);
+
+      const [, options] = mockFetch.mock.calls[1];
+      expect(options.headers['If-None-Match']).toBeUndefined();
+    });
+
+    it('error responses still throw normally', async () => {
+      // First call — stores ETag
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: makeHeaders({ etag: '"some-etag"' }),
+        json: async () => [comment1],
+      });
+      await client.listReviewComments(pr);
+
+      // Second call — server error (not 304)
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: makeHeaders(),
+      });
+      const result = await client.listReviewComments(pr);
+
+      // Should return empty array (existing error behavior), not null
+      expect(result).toEqual([]);
+    });
+
+    it('pagination still works when ETag is fresh (200 on page 1)', async () => {
+      const page1 = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 1,
+        body: `comment ${i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+      const page2 = [comment2];
+
+      // First call — page 1 returns full page with ETag
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: makeHeaders({ etag: '"paginated-etag"' }),
+          json: async () => page1,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: makeHeaders(),
+          json: async () => page2,
+        });
+
+      const result = await client.listReviewComments(pr);
+
+      expect(result).toHaveLength(101);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      // Verify page 2 was fetched without If-None-Match (ETag only on page 1)
+      const [, page2Options] = mockFetch.mock.calls[1];
+      expect(page2Options.headers['If-None-Match']).toBeUndefined();
+    });
+  });
+
+  describe('createReviewWithComment', () => {
+    it('should POST to /pulls/{number}/reviews', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      await client.createReviewWithComment(pr, 'src/index.ts', 10, 'RIGHT', 'Nice!');
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        'https://api.github.com/repos/octocat/hello-world/pulls/42/reviews'
+      );
+      expect(options.method).toBe('POST');
+    });
+
+    it('should send event: COMMENT and comments array in request body', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      await client.createReviewWithComment(pr, 'src/index.ts', 10, 'RIGHT', 'Nice!');
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.event).toBe('COMMENT');
+      expect(body.comments).toBeInstanceOf(Array);
+      expect(body.comments).toHaveLength(1);
+    });
+
+    it('should include correct commit_id, path, line, side, body in request', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      await client.createReviewWithComment(pr, 'src/app.ts', 25, 'LEFT', 'Fix this');
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.commit_id).toBe('abc123def456');
+      expect(body.comments[0]).toEqual({
+        path: 'src/app.ts',
+        line: 25,
+        side: 'LEFT',
+        body: 'Fix this',
+      });
+    });
+
+    it('should return ok:true with review ID on success', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 777 }),
+      });
+
+      const result = await client.createReviewWithComment(pr, 'src/index.ts', 10, 'RIGHT', 'Nice!');
+
+      expect(result).toEqual({ ok: true, id: 777 });
+    });
+
+    it('should return ok:false with userMessage on API error', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        text: async () => JSON.stringify({ message: 'Validation Failed', errors: [] }),
+      });
+
+      const result = await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
+    });
+
+    it('should return ok:false with userMessage on network error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
+    });
+  });
+
+  describe('createReplyComment', () => {
+    it('should send correct payload to pull comments endpoint with in_reply_to', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 999, body: 'reply text' }),
+      });
+
+      await client.createReplyComment(pr, 'Great point!', 42);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        'https://api.github.com/repos/octocat/hello-world/pulls/42/comments'
+      );
+      expect(options.method).toBe('POST');
+      const body = JSON.parse(options.body);
+      expect(body.body).toBe('Great point!');
+      expect(body.in_reply_to).toBe(42);
+      // in_reply_to_id is NOT used — GitHub rejects it
+      expect(body.in_reply_to_id).toBeUndefined();
+    });
+
+    it('should return ok:true with comment ID on success', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: 555, body: 'reply' }),
+      });
+
+      const result = await client.createReplyComment(pr, 'reply', 100);
+
+      expect(result).toEqual({ ok: true, id: 555 });
+    });
+
+    it('should return ok:false with userMessage on API failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        text: async () => JSON.stringify({ message: 'Validation Failed', errors: [] }),
+      });
+
+      const result = await client.createReplyComment(pr, 'reply', 100);
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
+    });
+
+    it('should return ok:false with userMessage on network error', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await client.createReplyComment(pr, 'reply', 100);
+
+      expect(result.ok).toBe(false);
+      expect('userMessage' in result && result.userMessage).toBeTruthy();
     });
   });
 });

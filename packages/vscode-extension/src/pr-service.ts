@@ -1,3 +1,5 @@
+import { getLogger, Logger } from './logger';
+
 export interface PullRequestInfo {
   owner: string;
   repo: string;
@@ -22,7 +24,12 @@ const PER_PAGE = 100;
 const MAX_PAGES = 10;
 
 export class PrService {
-  constructor(private token: string) {}
+  private log: Logger | undefined;
+  private etagCache: Map<string, string> = new Map();
+
+  constructor(private token: string) {
+    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+  }
 
   private headers(): Record<string, string> {
     return {
@@ -30,6 +37,10 @@ export class PrService {
       Accept: 'application/vnd.github+json',
       'Content-Type': 'application/json',
     };
+  }
+
+  clearEtagCache(): void {
+    this.etagCache.clear();
   }
 
   async createReviewComment(
@@ -49,6 +60,7 @@ export class PrService {
     };
 
     try {
+      this.log?.info('PrService', 'POST', url);
       console.log('[Gitnotate] POST', url);
       console.log('[Gitnotate] Payload:', JSON.stringify(payload, null, 2));
 
@@ -62,13 +74,16 @@ export class PrService {
         const errorBody = await response.text().catch(() => '(could not read body)');
         console.error('[Gitnotate] createReviewComment failed:', response.status, response.statusText);
         console.error('[Gitnotate] Response body:', errorBody);
+        this.log?.error('PrService', 'createReviewComment failed:', response.status, response.statusText);
         return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
       }
 
       console.log('[Gitnotate] createReviewComment succeeded:', response.status);
+      this.log?.info('PrService', 'createReviewComment succeeded:', response.status);
       return { ok: true };
     } catch (err) {
       console.error('[Gitnotate] createReviewComment failed:', err);
+      this.log?.error('PrService', 'createReviewComment network error:', err);
       return { ok: false, userMessage: 'Network error — check your connection and try again.' };
     }
   }
@@ -101,24 +116,134 @@ export class PrService {
     }
   }
 
+  async createReviewWithComment(
+    pr: PullRequestInfo,
+    path: string,
+    line: number,
+    side: 'LEFT' | 'RIGHT',
+    body: string
+  ): Promise<{ ok: true; id: number } | { ok: false; userMessage: string }> {
+    const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/reviews`;
+    const payload = {
+      commit_id: pr.headSha,
+      event: 'COMMENT',
+      comments: [{ path, line, side, body }],
+    };
+
+    try {
+      console.log('[Gitnotate] POST (review)', url);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '(could not read body)');
+        console.error('[Gitnotate] createReviewWithComment failed:', response.status, response.statusText);
+        console.error('[Gitnotate] Response body:', errorBody);
+
+        // If a pending review exists, we cannot add comments to it via REST API
+        // (GitHub API limitation — no endpoint for appending to pending reviews)
+        if (response.status === 422 && errorBody.includes('pending review')) {
+          console.log('[Gitnotate] Pending review detected — cannot post while a review is pending');
+          return {
+            ok: false,
+            userMessage: 'Cannot post comment: you have a pending review on this PR. Submit or discard it first on github.com, then try again.',
+          };
+        }
+
+        return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
+      }
+
+      const data = (await response.json()) as { id: number };
+      console.log('[Gitnotate] createReviewWithComment succeeded:', response.status);
+      return { ok: true, id: data.id };
+    } catch (err) {
+      console.error('[Gitnotate] createReviewWithComment failed:', err);
+      return { ok: false, userMessage: 'Network error — check your connection and try again.' };
+    }
+  }
+
+  async createReplyComment(
+    pr: PullRequestInfo,
+    body: string,
+    inReplyToId: number
+  ): Promise<{ ok: true; id: number } | { ok: false; userMessage: string }> {
+    // GitHub REST API: POST /repos/{owner}/{repo}/pulls/{pull_number}/comments
+    // with { body, in_reply_to: commentId } — "in_reply_to" (not "in_reply_to_id")
+    // When in_reply_to is specified, all other parameters except body are ignored.
+    const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments`;
+    const payload = { body, in_reply_to: inReplyToId };
+
+    try {
+      console.log('[Gitnotate] POST (reply)', url);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text().catch(() => '(could not read body)');
+        console.error('[Gitnotate] createReplyComment failed:', response.status, response.statusText);
+        console.error('[Gitnotate] Response body:', errorBody);
+        return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
+      }
+
+      const data = (await response.json()) as { id: number };
+      console.log('[Gitnotate] createReplyComment succeeded:', response.status);
+      return { ok: true, id: data.id };
+    } catch (err) {
+      console.error('[Gitnotate] createReplyComment failed:', err);
+      return { ok: false, userMessage: 'Network error — check your connection and try again.' };
+    }
+  }
+
   async listReviewComments(
     pr: PullRequestInfo
-  ): Promise<ReviewComment[]> {
+  ): Promise<ReviewComment[] | null> {
     const allComments: ReviewComment[] = [];
     let page = 1;
+    const cacheKey = `comments:${pr.owner}/${pr.repo}#${pr.number}`;
 
     try {
       while (page <= MAX_PAGES) {
         const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=${PER_PAGE}&page=${page}`;
+        this.log?.info('PrService', 'GET', url);
         console.log('[Gitnotate] GET', url);
+
+        const reqHeaders: Record<string, string> = this.headers();
+
+        // Only send If-None-Match on page 1
+        if (page === 1) {
+          const cachedEtag = this.etagCache.get(cacheKey);
+          if (cachedEtag) {
+            reqHeaders['If-None-Match'] = cachedEtag;
+          }
+        }
+
         const response = await fetch(url, {
           method: 'GET',
-          headers: this.headers(),
+          headers: reqHeaders,
         });
+
+        if (page === 1 && response.status === 304) {
+          return null;
+        }
 
         if (!response.ok) {
           console.error('[Gitnotate] listReviewComments failed:', response.status, response.statusText);
+          this.log?.error('PrService', 'listReviewComments failed:', response.status);
           return allComments;
+        }
+
+        // Store ETag from page 1
+        if (page === 1) {
+          const etag = response.headers.get('ETag') ?? response.headers.get('etag');
+          if (etag) {
+            this.etagCache.set(cacheKey, etag);
+          }
         }
 
         const data = (await response.json()) as Array<{
@@ -158,6 +283,7 @@ export class PrService {
       return allComments;
     } catch (err) {
       console.error('[Gitnotate] listReviewComments failed:', err);
+      this.log?.error('PrService', 'listReviewComments network error:', err);
       return [];
     }
   }

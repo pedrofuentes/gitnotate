@@ -298,6 +298,8 @@ Full round-trip polish, live sync, side-aware rendering, and GH PR extension coe
 
 - **Overlapping highlight support**: When multiple comments highlight overlapping text ranges on the same line, implement character-level painting instead of `surroundContents`. Each character position would be painted with the union of all highlights covering it, with overlapping regions showing a slightly darker highlight and multiple comment IDs.
 
+- **Hide `^gn` metadata from VSCode Comments panel preview**: The built-in Comments panel (View → Comments) aggregates threads from all extensions. The GitHub PR extension shows raw `^gn:LINE:SIDE:START:END` metadata in its thread previews because it doesn't parse our format. Options: move metadata to last line (so first-line preview is clean), use HTML comments (`<!-- ^gn:... -->`), or coordinate with GH PR extension. Our Gitnotate sidebar already shows clean labels.
+
 ---
 
 ## Feature Comparison Matrix

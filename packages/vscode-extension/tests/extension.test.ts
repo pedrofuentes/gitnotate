@@ -36,6 +36,8 @@ vi.mock('../src/comments-tree-provider', () => {
   const mockRefresh = vi.fn();
   const mockDispose = vi.fn();
   const mockOnDidChangeTreeData = vi.fn();
+  const mockRegisterTreeView = vi.fn();
+  const mockRevealByCommentId = vi.fn();
 
   return {
     CommentsTreeProvider: vi.fn().mockImplementation(() => ({
@@ -47,6 +49,8 @@ vi.mock('../src/comments-tree-provider', () => {
       onDidChangeTreeData: mockOnDidChangeTreeData,
       getChildren: vi.fn().mockResolvedValue([]),
       getTreeItem: vi.fn((el: unknown) => el),
+      registerTreeView: mockRegisterTreeView,
+      revealByCommentId: mockRevealByCommentId,
     })),
     __mockSetComments: mockSetComments,
     __mockSetState: mockSetState,
@@ -67,8 +71,11 @@ import {
   __getStatusBarItem,
   __getTreeViews,
   __setActiveTextEditor,
+  __setTabGroups,
+  __setWorkspaceFolders,
   __reset,
   Uri,
+  TabInputTextDiff,
 } from '../__mocks__/vscode';
 import { getGitHubToken, ensureAuthenticated } from '../src/auth';
 import { detectCurrentPR } from '../src/pr-detector';
@@ -125,7 +132,19 @@ describe('extension', () => {
       'gitnotate.goToComment',
       expect.any(Function)
     );
-    expect(commands.registerCommand).toHaveBeenCalledTimes(5);
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.replyToThread',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.resolveThread',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledWith(
+      'gitnotate.unresolveThread',
+      expect.any(Function)
+    );
+    expect(commands.registerCommand).toHaveBeenCalledTimes(8);
   });
 
   it('should call enableWorkspace when gitnotate.enable is invoked', async () => {
@@ -985,6 +1004,277 @@ describe('extension', () => {
 
       // Should NOT have called setState('loading') — no markdown editor to sync
       expect(__mockSetState).not.toHaveBeenCalledWith('loading');
+    });
+  });
+
+  describe('async race conditions', () => {
+    const mockPr = {
+      owner: 'octocat',
+      repo: 'hello',
+      number: 42,
+      headSha: 'abc123',
+    };
+
+    const mkEditor = (name = 'readme.md') => ({
+      setDecorations: vi.fn(),
+      document: {
+        uri: Uri.file(`/workspace/docs/${name}`),
+        languageId: 'markdown',
+        fileName: `/workspace/docs/${name}`,
+      },
+    });
+
+    it('should not crash when git state change fires during debouncedSync await', async () => {
+      // Override GitService mock so we can capture the onDidChangeState callback
+      let gitStateCallback: (() => void) | undefined;
+      const { GitService } = await import('../src/git-service');
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(true),
+        onDidChangeState: vi.fn().mockImplementation((cb: () => void) => {
+          gitStateCallback = cb;
+          return { dispose: vi.fn() };
+        }),
+      }) as any);
+
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      expect(gitStateCallback).toBeDefined();
+
+      // Set up a deferred detectCurrentPR so we can pause mid-await
+      let resolveDetectPR!: (value: unknown) => void;
+      mockDetectCurrentPR.mockReturnValueOnce(
+        new Promise((resolve) => { resolveDetectPR = resolve; }) as any
+      );
+
+      // Trigger debouncedSync — it will pause at detectCurrentPR
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      editorHandler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Fire git state change while debouncedSync is awaiting detectCurrentPR.
+      // This sets threadSync = undefined in the extension module.
+      gitStateCallback!();
+
+      // Resolve detectCurrentPR — debouncedSync resumes with threadSync = undefined.
+      // Without the local variable fix, this would crash with a null dereference.
+      resolveDetectPR(mockPr);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Restore default GitService mock for other tests
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(false),
+        onDidChangeState: vi.fn().mockReturnValue(undefined),
+      }));
+    });
+
+    it('should not crash when auth change fires during debouncedSync await', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Set up a deferred detectCurrentPR so we can pause mid-await
+      let resolveDetectPR!: (value: unknown) => void;
+      mockDetectCurrentPR.mockReturnValueOnce(
+        new Promise((resolve) => { resolveDetectPR = resolve; }) as any
+      );
+
+      // Trigger debouncedSync — it will pause at detectCurrentPR
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      editorHandler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Fire auth change while debouncedSync is awaiting.
+      // This sets threadSync = undefined, cachedToken = undefined, prService = undefined.
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      authHandler({ provider: { id: 'github' } });
+
+      // Resolve detectCurrentPR — debouncedSync resumes with threadSync = undefined.
+      resolveDetectPR(mockPr);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('should not crash when window focus fires during debouncedSync await', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Set up a deferred detectCurrentPR so we can pause mid-await
+      let resolveDetectPR!: (value: unknown) => void;
+      mockDetectCurrentPR.mockReturnValueOnce(
+        new Promise((resolve) => { resolveDetectPR = resolve; }) as any
+      );
+
+      // Trigger debouncedSync — it will pause at detectCurrentPR
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      editorHandler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Fire window focus change while debouncedSync is awaiting.
+      // This calls triggerSync(), starting a concurrent debouncedSync.
+      const windowStateHandler = window.onDidChangeWindowState.mock.calls[0][0] as (state: { focused: boolean }) => void;
+      windowStateHandler({ focused: true });
+
+      // Resolve detectCurrentPR — original debouncedSync resumes
+      resolveDetectPR(mockPr);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    it('should handle rapid editor switches without crash', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Clear call counts from activation
+      mockDetectCurrentPR.mockClear();
+
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+
+      // Fire two rapid editor changes — second cancels first's debounce timer
+      editorHandler(mkEditor('file-a.md'));
+      editorHandler(mkEditor('file-b.md'));
+
+      // Advance past debounce — only the last editor's sync should execute
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Only one sync should have run (the debounced call for file-b.md)
+      expect(mockDetectCurrentPR).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('goToComment — diff tab navigation (Bug A)', () => {
+    it('should activate existing diff tab instead of opening regular file', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Find the goToComment handler
+      const goToCommentCall = commands.registerCommand.mock.calls.find(
+        ([name]: [string]) => name === 'gitnotate.goToComment'
+      );
+      expect(goToCommentCall).toBeDefined();
+      const goToCommentHandler = goToCommentCall![1] as (
+        filePath: string,
+        line: number,
+        start?: number,
+        end?: number
+      ) => Promise<void>;
+
+      // Set up workspace
+      __setWorkspaceFolders([{ uri: { fsPath: '/workspace' } }]);
+
+      // Set up an existing diff tab for this file
+      const diffOriginal = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const diffModified = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const diffTab = {
+        input: new TabInputTextDiff(diffOriginal, diffModified),
+        isActive: false,
+      };
+      const tabGroup = {
+        tabs: [diffTab],
+        isActive: true,
+        activeTab: null,
+        viewColumn: 1,
+      };
+      __setTabGroups({
+        all: [tabGroup],
+        activeTabGroup: tabGroup,
+      });
+
+      // Mock activeTextEditor after diff opens
+      const mockEditor = {
+        selection: null as unknown,
+        revealRange: vi.fn(),
+        document: { uri: diffModified, languageId: 'markdown', fileName: '/workspace/docs/readme.md' },
+        setDecorations: vi.fn(),
+      };
+      __setActiveTextEditor(mockEditor);
+
+      // Clear executeCommand calls from activation setup
+      commands.executeCommand.mockClear();
+
+      // Call goToComment — should prefer existing diff tab
+      await goToCommentHandler('docs/readme.md', 10, 5, 15);
+
+      // Should have used vscode.diff command, NOT openTextDocument + showTextDocument
+      expect(commands.executeCommand).toHaveBeenCalledWith(
+        'vscode.diff',
+        diffOriginal,
+        diffModified,
+        undefined
+      );
+      // Should NOT have opened a regular file
+      expect(workspace.openTextDocument).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to regular file when no diff tab exists', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const goToCommentCall = commands.registerCommand.mock.calls.find(
+        ([name]: [string]) => name === 'gitnotate.goToComment'
+      );
+      const goToCommentHandler = goToCommentCall![1] as (
+        filePath: string,
+        line: number,
+        start?: number,
+        end?: number
+      ) => Promise<void>;
+
+      __setWorkspaceFolders([{ uri: { fsPath: '/workspace' } }]);
+
+      // No diff tabs — only regular tabs or no tabs
+      __setTabGroups({
+        all: [{ tabs: [], isActive: true, activeTab: null, viewColumn: 1 }],
+        activeTabGroup: { tabs: [], isActive: true, activeTab: null, viewColumn: 1 },
+      });
+
+      await goToCommentHandler('docs/readme.md', 10, 5, 15);
+
+      // Should have opened regular file via showTextDocument
+      expect(window.showTextDocument).toHaveBeenCalled();
+    });
+
+    it('should reject path traversal attempts in filePath', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const goToCommentCall = commands.registerCommand.mock.calls.find(
+        ([name]: [string]) => name === 'gitnotate.goToComment'
+      );
+      const goToCommentHandler = goToCommentCall![1] as (
+        filePath: string,
+        line: number,
+        start?: number,
+        end?: number
+      ) => Promise<void>;
+
+      __setWorkspaceFolders([{ uri: { fsPath: '/workspace' } }]);
+
+      // Try path traversal
+      await goToCommentHandler('../../.ssh/id_rsa', 1);
+
+      // Should NOT have opened any file
+      expect(workspace.openTextDocument).not.toHaveBeenCalled();
+      expect(window.showTextDocument).not.toHaveBeenCalled();
     });
   });
 });

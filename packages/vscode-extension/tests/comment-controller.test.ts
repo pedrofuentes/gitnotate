@@ -4,9 +4,11 @@ import {
   __getCommentControllers,
   __getCommentThreads,
   CommentMode,
+  CommentThreadState,
   Uri,
   Range,
   window,
+  commands,
 } from '../__mocks__/vscode';
 import { CommentController } from '../src/comment-controller';
 
@@ -177,6 +179,38 @@ describe('CommentController', () => {
 
       controller.dispose();
     });
+    it('should clean up parentCommentIds when clearing threads by uri', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/a.md');
+
+      const thread = controller.createThread(uri, new Range(0, 0, 0, 5), [
+        { body: 'comment', author: 'user' },
+      ], undefined, 99);
+
+      expect(controller.getParentCommentId(thread)).toBe(99);
+
+      controller.clearThreads(uri);
+
+      // parentCommentId should be cleaned up
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
+      controller.dispose();
+    });
+
+    it('should clean up parentCommentIds when clearing all threads', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/a.md');
+
+      const thread = controller.createThread(uri, new Range(0, 0, 0, 5), [
+        { body: 'comment', author: 'user' },
+      ], undefined, 77);
+
+      expect(controller.getParentCommentId(thread)).toBe(77);
+
+      controller.clearThreads();
+
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
+      controller.dispose();
+    });
   });
 
   describe('dispose', () => {
@@ -195,6 +229,21 @@ describe('CommentController', () => {
 
       const controllers = __getCommentControllers();
       expect(controllers[0].dispose).toHaveBeenCalled();
+    });
+
+    it('should clear parentCommentIds on dispose', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/a.md');
+
+      const thread = controller.createThread(uri, new Range(0, 0, 0, 5), [
+        { body: 'comment', author: 'user' },
+      ], undefined, 55);
+
+      expect(controller.getParentCommentId(thread)).toBe(55);
+
+      controller.dispose();
+
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
     });
 
     it('should dispose the underline decoration types', () => {
@@ -374,6 +423,157 @@ describe('CommentController', () => {
       const result = controller.revealThread(uri, 10);
       expect(result).toBe(false);
 
+      controller.dispose();
+    });
+  });
+
+  describe('createThread with parentCommentId', () => {
+    it('should store parentCommentId when provided', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }],
+        undefined,
+        42
+      );
+
+      expect(controller.getParentCommentId(thread)).toBe(42);
+      controller.dispose();
+    });
+
+    it('should return undefined parentCommentId when not provided', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }]
+      );
+
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
+      controller.dispose();
+    });
+  });
+
+  describe('addReplyToThread', () => {
+    it('should append a reply comment to the thread', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'Original', author: 'alice' }]
+      );
+
+      controller.addReplyToThread(thread, { body: 'Reply text', author: 'bob' });
+
+      expect(thread.comments).toHaveLength(2);
+      expect(thread.comments[1]).toMatchObject({
+        body: 'Reply text',
+        mode: CommentMode.Preview,
+        author: { name: 'bob' },
+      });
+
+      controller.dispose();
+    });
+  });
+
+  describe('resolve/unresolve thread', () => {
+    it('should set thread state to Resolved', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }]
+      );
+
+      controller.resolveThread(thread);
+
+      expect(thread.state).toBe(CommentThreadState.Resolved);
+      controller.dispose();
+    });
+
+    it('should set thread state to Unresolved', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const range = new Range(5, 10, 5, 25);
+
+      const thread = controller.createThread(
+        uri,
+        range,
+        [{ body: 'A comment', author: 'octocat' }]
+      );
+
+      controller.resolveThread(thread);
+      controller.unresolveThread(thread);
+
+      expect(thread.state).toBe(CommentThreadState.Unresolved);
+      controller.dispose();
+    });
+  });
+
+  describe('onThreadRevealed callback', () => {
+    it('should fire callback from revealThread with stored commentId', () => {
+      const controller = new CommentController();
+      const callback = vi.fn();
+      controller.onThreadRevealed = callback;
+
+      const uri = Uri.file('/workspace/docs/test.md');
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment on line 10', author: 'pedro' }],
+        undefined,
+        99
+      );
+
+      controller.revealThread(uri, 10);
+
+      expect(callback).toHaveBeenCalledWith(99);
+      controller.dispose();
+    });
+
+    it('should not fire callback from revealThread when no commentId stored', () => {
+      const controller = new CommentController();
+      const callback = vi.fn();
+      controller.onThreadRevealed = callback;
+
+      const uri = Uri.file('/workspace/docs/test.md');
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment', author: 'user' }]
+      );
+
+      controller.revealThread(uri, 10);
+
+      expect(callback).not.toHaveBeenCalled();
+      controller.dispose();
+    });
+
+    it('should not throw when revealThread fires without callback set', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/docs/test.md');
+      controller.createThread(
+        uri,
+        new Range(9, 5, 9, 20),
+        [{ body: 'Comment', author: 'user' }],
+        undefined,
+        99
+      );
+
+      expect(() => controller.revealThread(uri, 10)).not.toThrow();
       controller.dispose();
     });
   });

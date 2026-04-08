@@ -5,6 +5,7 @@ let mockWorkspaceFolders: Array<{ uri: { fsPath: string } }> | undefined =
   undefined;
 let mockGithubToken: string | undefined = undefined;
 let mockActiveTextEditor: unknown = undefined;
+let mockTabGroups: unknown = undefined;
 let mockAuthSession: { accessToken: string; id: string; scopes: string[] } | undefined = undefined;
 let mockGitRepository: unknown = undefined;
 
@@ -17,6 +18,7 @@ interface MockCommentThread {
   canReply: boolean;
   contextValue: string;
   collapsibleState: number;
+  state?: number;
   dispose: ReturnType<typeof vi.fn>;
 }
 
@@ -119,12 +121,25 @@ export class Range {
 }
 
 export class Uri {
-  constructor(public readonly fsPath: string) {}
+  public readonly scheme: string;
+
+  constructor(public readonly fsPath: string, scheme?: string) {
+    this.scheme = scheme ?? 'file';
+  }
   static file(path: string): Uri {
-    return new Uri(path);
+    return new Uri(path, 'file');
   }
   static parse(value: string): Uri {
-    return new Uri(value);
+    // Extract scheme from URI string (e.g., "git:/path" → scheme "git")
+    const colonIndex = value.indexOf(':');
+    const scheme = colonIndex > 0 ? value.slice(0, colonIndex) : 'file';
+    return new Uri(value, scheme);
+  }
+  static from(components: { scheme: string; path: string }): Uri {
+    return new Uri(components.path, components.scheme);
+  }
+  toString(): string {
+    return `file://${this.fsPath}`;
   }
 }
 
@@ -149,13 +164,33 @@ export const window = {
   onDidChangeActiveTextEditor: vi.fn((_listener: unknown) => ({
     dispose: vi.fn(),
   })),
+  createOutputChannel: vi.fn((_name: string) => ({
+    appendLine: vi.fn(),
+    append: vi.fn(),
+    clear: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    dispose: vi.fn(),
+  })),
+  onDidChangeWindowState: vi.fn((_listener: unknown) => ({
+    dispose: vi.fn(),
+  })),
   createStatusBarItem: vi.fn(() => mockStatusBarItem),
   createTreeView: vi.fn((viewId: string, options: Record<string, unknown>) => {
+    const treeDataProvider = options.treeDataProvider as Record<string, unknown> | undefined;
     const treeView: MockTreeView = {
       viewId,
-      treeDataProvider: options.treeDataProvider,
+      treeDataProvider: treeDataProvider,
       options,
-      reveal: vi.fn(),
+      reveal: vi.fn().mockImplementation((_item: unknown, _options?: unknown) => {
+        // Enforce VSCode contract: reveal() requires getParent() on the provider
+        if (typeof treeDataProvider?.getParent !== 'function') {
+          throw new Error(
+            "Required registered TreeDataProvider to implement 'getParent' method to access 'reveal' method"
+          );
+        }
+        return Promise.resolve();
+      }),
       dispose: vi.fn(),
       onDidChangeVisibility: vi.fn((_listener: unknown) => ({ dispose: vi.fn() })),
     };
@@ -164,6 +199,12 @@ export const window = {
   }),
   get activeTextEditor() {
     return mockActiveTextEditor;
+  },
+  get visibleTextEditors() {
+    return mockActiveTextEditor ? [mockActiveTextEditor] : [];
+  },
+  get tabGroups() {
+    return mockTabGroups;
   },
 };
 
@@ -204,6 +245,11 @@ export const extensions = {
 export enum CommentThreadCollapsibleState {
   Collapsed = 0,
   Expanded = 1,
+}
+
+export enum CommentThreadState {
+  Unresolved = 0,
+  Resolved = 1,
 }
 
 export enum CommentMode {
@@ -269,6 +315,13 @@ export class EventEmitter<T> {
   dispose(): void {
     this.listeners = [];
   }
+}
+
+export class TabInputTextDiff {
+  constructor(
+    public readonly original: { scheme: string; fsPath: string; toString: () => string; query?: string },
+    public readonly modified: { scheme: string; fsPath: string; toString: () => string; query?: string }
+  ) {}
 }
 
 export const comments = {
@@ -371,6 +424,10 @@ export function __setGitRepository(repo: unknown) {
   });
 }
 
+export function __setTabGroups(tabGroups: unknown) {
+  mockTabGroups = tabGroups;
+}
+
 export function __getCommentControllers(): MockCommentController[] {
   return mockCommentControllers;
 }
@@ -392,11 +449,15 @@ export function __reset() {
   mockWorkspaceFolders = undefined;
   mockGithubToken = undefined;
   mockActiveTextEditor = undefined;
+  mockTabGroups = undefined;
   mockAuthSession = undefined;
   mockGitRepository = undefined;
   mockCommentControllers = [];
   mockTreeViews = [];
   mockContextKeys.clear();
+  mockStatusBarItem.text = '';
+  mockStatusBarItem.tooltip = '';
+  delete (mockStatusBarItem as Record<string, unknown>).command;
   vi.clearAllMocks();
   authentication.getSession.mockImplementation(async () => undefined);
   authentication.onDidChangeSessions.mockImplementation((_listener: unknown) => ({

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { __reset, __getCommentThreads, Uri, Range } from '../__mocks__/vscode';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { __reset, __getCommentThreads, Uri, Range, workspace } from '../__mocks__/vscode';
 import { CommentThreadSync } from '../src/comment-thread-sync';
 import { CommentController } from '../src/comment-controller';
 import type { PrService, PullRequestInfo, ReviewComment } from '../src/pr-service';
@@ -138,7 +138,19 @@ describe('CommentThreadSync', () => {
 
     it('should clear existing threads for the URI before creating new ones', async () => {
       const comment = makeComment({ id: 1, path: 'docs/readme.md' });
-      const prService = makeMockPrService([comment]);
+      const editedComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nEdited',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T11:00:00Z',
+      });
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([comment])
+        .mockResolvedValueOnce([editedComment]);
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
       const sync = new CommentThreadSync(prService, commentController);
       const uri = Uri.file('/workspace/docs/readme.md');
 
@@ -147,7 +159,8 @@ describe('CommentThreadSync', () => {
       const threads1 = __getCommentThreads();
       expect(threads1).toHaveLength(1);
 
-      // Second sync should clear the first thread
+      // Second sync with changed data should clear the first thread
+      sync.invalidateCache();
       await sync.syncForDocument(uri, 'docs/readme.md', makePr());
       expect(threads1[0].dispose).toHaveBeenCalled();
     });
@@ -232,6 +245,144 @@ describe('CommentThreadSync', () => {
       await sync.syncForDocument(uri, 'docs/readme.md', pr);
 
       expect(prService.listReviewComments).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('side-aware rendering', () => {
+    it('syncForDocument should show only RIGHT comments in single file view', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nRight side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: '^gn:10:L:5:15\n\nLeft side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      // Only RIGHT — LEFT comments are skipped in single file view
+      expect(threads).toHaveLength(1);
+      expect(threads[0].comments[0]).toMatchObject({ body: 'Right side comment' });
+    });
+
+    it('syncForDiff should place LEFT comments on originalUri', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nRight side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: '^gn:10:L:5:15\n\nLeft side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const rightUri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(2);
+      const leftThread = threads.find((t: any) => t.uri.scheme === 'git');
+      expect(leftThread).toBeDefined();
+      expect(leftThread!.comments[0]).toMatchObject({ body: 'Left side comment' });
+    });
+
+    it('syncForDiff should place RIGHT comments on modifiedUri', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nRight side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: '^gn:10:L:5:15\n\nLeft side comment',
+        path: 'docs/readme.md',
+        line: 10,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const rightUri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(2);
+      const rightThread = threads.find((t: any) => t.uri.scheme === 'file');
+      expect(rightThread).toBeDefined();
+      expect(rightThread!.comments[0]).toMatchObject({ body: 'Right side comment' });
+    });
+
+    it('syncForDiff should handle mixed L/R comments correctly', async () => {
+      const comments = [
+        makeComment({ id: 1, body: '^gn:5:R:0:10\n\nRight line 5', path: 'docs/readme.md', side: 'RIGHT' }),
+        makeComment({ id: 2, body: '^gn:5:L:0:10\n\nLeft line 5', path: 'docs/readme.md', side: 'LEFT' }),
+        makeComment({ id: 3, body: '^gn:12:R:3:20\n\nRight line 12', path: 'docs/readme.md', side: 'RIGHT' }),
+        makeComment({ id: 4, body: '^gn:8:L:2:18\n\nLeft line 8', path: 'docs/readme.md', side: 'LEFT' }),
+      ];
+      const prService = makeMockPrService(comments);
+      const sync = new CommentThreadSync(prService, commentController);
+      const rightUri = Uri.file('/workspace/docs/readme.md');
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
+
+      const allThreads = __getCommentThreads();
+      expect(allThreads).toHaveLength(4);
+      const leftThreads = allThreads.filter((t: any) => t.uri.scheme === 'git');
+      const rightThreads = allThreads.filter((t: any) => t.uri.scheme === 'file');
+      expect(leftThreads).toHaveLength(2);
+      expect(rightThreads).toHaveLength(2);
+    });
+
+    it('syncForDiff should place non-^gn regular line comments on correct side URI', async () => {
+      const rightComment = makeComment({
+        id: 1,
+        body: 'Regular right-side comment',
+        path: 'docs/readme.md',
+        line: 5,
+        side: 'RIGHT',
+      });
+      const leftComment = makeComment({
+        id: 2,
+        body: 'Regular left-side comment',
+        path: 'docs/readme.md',
+        line: 5,
+        side: 'LEFT',
+      });
+      const prService = makeMockPrService([rightComment, leftComment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const leftUri = Uri.from({ scheme: 'git', path: '/workspace/docs/readme.md' });
+      const rightUri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDiff(leftUri, rightUri, 'docs/readme.md', makePr());
+
+      const threads = __getCommentThreads();
+      expect(threads).toHaveLength(2);
+      const rightThread = threads.find((t: any) => t.uri.scheme === 'file');
+      expect(rightThread).toBeDefined();
+      expect(rightThread!.comments[0]).toMatchObject({ body: 'Regular right-side comment' });
     });
   });
 
@@ -371,9 +522,495 @@ describe('CommentThreadSync', () => {
       // Cache-first with same data
       await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
 
-      // clearThreads called once for the cache render, but NOT again for refresh
-      // (since data is the same)
+      // renderComments fingerprint matches the prior syncForDocument render,
+      // so cache render is skipped; fresh data also matches — no re-render at all
+      expect(clearSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('should not re-render when body and updatedAt are identical', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nOriginal text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+      // Fresh data returns identical comment
+      const freshComment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nOriginal text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([comment])
+        .mockResolvedValueOnce([freshComment]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render skipped (fingerprint matches prior syncForDocument) — no re-render
+      expect(clearSpy).toHaveBeenCalledTimes(0);
+    });
+
+    it('should re-render when a comment body is edited', async () => {
+      const original = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nOriginal text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+      const edited = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nEdited text',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T11:00:00Z',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([original])
+        .mockResolvedValueOnce([edited]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
       expect(clearSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should re-render when updatedAt changes', async () => {
+      const original = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nSame body',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T10:00:00Z',
+      });
+      const touched = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nSame body',
+        path: 'docs/readme.md',
+        updatedAt: '2026-03-29T12:00:00Z',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([original])
+        .mockResolvedValueOnce([touched]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
+      expect(clearSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should re-render when a new comment is added', async () => {
+      const existing = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nFirst comment',
+        path: 'docs/readme.md',
+      });
+      const added = makeComment({
+        id: 2,
+        body: '^gn:12:R:0:10\n\nSecond comment',
+        path: 'docs/readme.md',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([existing])
+        .mockResolvedValueOnce([existing, added]);
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
+      expect(clearSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should re-render when a comment is deleted', async () => {
+      const comment1 = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n\nFirst',
+        path: 'docs/readme.md',
+      });
+      const comment2 = makeComment({
+        id: 2,
+        body: '^gn:12:R:0:10\n\nSecond',
+        path: 'docs/readme.md',
+      });
+
+      const listMock = vi.fn()
+        .mockResolvedValueOnce([comment1, comment2])
+        .mockResolvedValueOnce([comment1]); // comment2 deleted
+
+      const prService = {
+        listReviewComments: listMock,
+        createReviewComment: vi.fn(),
+      } as unknown as PrService;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      const clearSpy = vi.spyOn(commentController, 'clearThreads');
+      clearSpy.mockClear();
+
+      await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+
+      // Cache render skipped (fingerprint matches); fresh data differs → 1 re-render
+      expect(clearSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('reveal callback integration', () => {
+    it('should NOT call onThreadRevealed during bulk sync (avoids reveal spam)', async () => {
+      const comment1 = makeComment({
+        id: 10,
+        body: '^gn:5:R:0:10\n\nFirst comment',
+        path: 'docs/readme.md',
+        line: 5,
+      });
+      const comment2 = makeComment({
+        id: 20,
+        body: '^gn:12:R:3:20\n\nSecond comment',
+        path: 'docs/readme.md',
+        line: 12,
+      });
+      const prService = makeMockPrService([comment1, comment2]);
+      const callback = vi.fn();
+      commentController.onThreadRevealed = callback;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should NOT call onThreadRevealed for regular line comments during sync', async () => {
+      const comment = makeComment({
+        id: 30,
+        body: 'A regular line comment',
+        path: 'docs/readme.md',
+        line: 7,
+      });
+      const prService = makeMockPrService([comment]);
+      const callback = vi.fn();
+      commentController.onThreadRevealed = callback;
+
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      await sync.syncForDocument(uri, 'docs/readme.md', makePr());
+
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('polling', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should set up interval timer when startPolling is called', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+    });
+
+    it('should clear interval timer when stopPolling is called', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      sync.stopPolling();
+
+      expect(sync.isPolling).toBe(false);
+    });
+
+    it('should return true from isPolling when polling, false when not', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+
+      expect(sync.isPolling).toBe(false);
+
+      sync.startPolling(Uri.file('/workspace/docs/readme.md'), 'docs/readme.md', makePr());
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+      expect(sync.isPolling).toBe(false);
+    });
+
+    it('should call syncForDocumentCacheFirst on each tick', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache so syncForDocumentCacheFirst doesn't fall back
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockClear();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      // Default interval: 30s = 30000ms
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(2);
+
+      sync.stopPolling();
+    });
+
+    it('should handle errors silently during polling', async () => {
+      const prService = makeMockPrService([]);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      // Should not throw
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      // Still polling after error
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+    });
+
+    it('should stop previous timer when starting polling again', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      const firstIsPolling = sync.isPolling;
+
+      // Start again — should clear previous timer
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      expect(firstIsPolling).toBe(true);
+      expect(sync.isPolling).toBe(true);
+
+      sync.stopPolling();
+    });
+
+    it('should only have one active timer after restarting polling', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockClear();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      // Should only fire once (not twice from two timers)
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+
+      sync.stopPolling();
+    });
+
+    it('should stop polling on dispose', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+      expect(sync.isPolling).toBe(true);
+
+      sync.dispose();
+
+      expect(sync.isPolling).toBe(false);
+    });
+
+    it('should read pollInterval from config with default of 30s', () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      expect(workspace.getConfiguration).toHaveBeenCalledWith('gitnotate');
+
+      sync.stopPolling();
+    });
+
+    it('should enforce minimum polling interval of 10 seconds', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockClear();
+
+      // Set pollInterval to 5 (below minimum)
+      const mockConfig = workspace.getConfiguration();
+      (mockConfig.get as ReturnType<typeof vi.fn>).mockImplementation(
+        (key: string, defaultValue?: unknown) => {
+          if (key === 'pollInterval') return 5;
+          return defaultValue;
+        }
+      );
+
+      sync.startPolling(uri, 'docs/readme.md', pr);
+
+      // At 9s: should NOT have fired yet (minimum is 10s)
+      await vi.advanceTimersByTimeAsync(9_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(0);
+
+      // At 10s: should fire (clamped to minimum)
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(prService.listReviewComments).toHaveBeenCalledTimes(1);
+
+      sync.stopPolling();
+    });
+  });
+
+  describe('fingerprint skip returns null (Bug B: highlights disappear)', () => {
+    it('syncForDocument should return null when data is unchanged (fingerprint skip)', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nLooks good',
+        path: 'docs/readme.md',
+      });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // First sync: should return ranges
+      const firstResult = await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      expect(firstResult).not.toBeNull();
+      expect(firstResult!.length).toBeGreaterThan(0);
+
+      // Second sync with same data: should return null (not empty array)
+      const secondResult = await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      expect(secondResult).toBeNull();
+    });
+
+    it('syncForDiff should return null when data is unchanged (fingerprint skip)', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nLooks good',
+        path: 'docs/readme.md',
+        side: 'RIGHT',
+      });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const originalUri = Uri.parse('git:/workspace/docs/readme.md?ref=old');
+      const modifiedUri = Uri.parse('git:/workspace/docs/readme.md?ref=new');
+      const pr = makePr();
+
+      // First sync: should return ranges object
+      const firstResult = await sync.syncForDiff(originalUri, modifiedUri, 'docs/readme.md', pr);
+      expect(firstResult).not.toBeNull();
+
+      // Second sync with same data: should return null (not empty ranges)
+      const secondResult = await sync.syncForDiff(originalUri, modifiedUri, 'docs/readme.md', pr);
+      expect(secondResult).toBeNull();
+    });
+
+    it('syncForDocumentCacheFirst should return null when cache-render fingerprint skips', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nLooks good',
+        path: 'docs/readme.md',
+      });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // First sync: populates cache + fingerprint
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      // Cache-first with same data: fingerprint should match, return null
+      const result = await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+      expect(result).toBeNull();
     });
   });
 });
