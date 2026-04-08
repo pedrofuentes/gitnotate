@@ -249,15 +249,9 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 
 All manual tests have been verified. ✅
 
-**Remaining edge-case tests (optional, low priority):**
-
-| # | Test | What to check |
-|---|------|---------------|
-| 37.11 | Edited comment updates | Edit comment on github.com, wait 30s → VSCode updates. |
-| 37.12 | New reply via polling | Reply on github.com, wait 30s → reply appears in VSCode. |
-| 37.14 | Poll interval setting | Change `gitnotate.pollInterval` to 15 → polling cadence changes. |
-| 38.12 | Inline diff behavior | Set `diffEditor.renderSideBySide: false`. Document behavior. |
-| 42.4 | Pending review coexistence | Start GH PR extension review, then post Gitnotate comment. No 422 error. |
+No remaining tests. Two known limitations deferred to follow-up:
+- **38.12** — Inline diff mode: URI-based thread placement may not work correctly
+- **42.4** — Pending review coexistence: GitHub API limitation, clear error shown
 
 ---
 
