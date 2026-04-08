@@ -114,7 +114,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 40.1 | LEFT comment shows [Old] | Comment with `side: 'LEFT'` or `^gn` with `:L:`. | Sidebar description ends with `[Old]`. | ✅ Passed |
 | 40.2 | RIGHT comment shows [New] | Comment with `side: 'RIGHT'` or `^gn` with `:R:`. | Sidebar description ends with `[New]`. | ✅ Passed |
 | 40.3 | Missing side → no indicator | Comment without side field. | No `[Old]`/`[New]` suffix. | ✅ Passed |
-| 40.4 | Side indicators visible in sidebar | Open the Gitnotate sidebar (activity bar icon). | Comments on old/LEFT side show `[Old]`, comments on new/RIGHT side show `[New]`. | 🔍✅ Integration passed |
+| 40.4 | Side indicators visible in sidebar | Open the Gitnotate sidebar (activity bar icon). | Comments on old/LEFT side show `[Old]`, comments on new/RIGHT side show `[New]`. | ✅ Manual Passed |
 
 ---
 
@@ -129,7 +129,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 41.5 | parentCommentId tracked | Create thread with `parentCommentId`. Query via `getParentCommentId(thread)`. | Returns the original root comment ID. | ✅ Passed |
 | 41.6 | Reply from VSCode → appears in GitHub | Expand a comment thread in VSCode. Type a reply, submit. | Reply appears in the thread in VSCode. On github.com (refresh PR page), the reply is visible. | ✅ Manual verified |
 | 41.7 | Resolve/unresolve toggle | Right-click a comment thread → "Resolve Thread". | Thread appears resolved (collapsed/dimmed). Right-click again → "Unresolve Thread" → returns to normal. Note: UI-only for now (not synced to GitHub API — GraphQL TODO). | ⚠️ Known limitation: resolve button not visible in thread UI. Defer to follow-up. |
-| 41.8 | Reply context menu on threads | Right-click on a Gitnotate comment thread. | Reply/resolve/unresolve options visible in context menu. | 🔍✅ Integration passed |
+| 41.8 | Reply context menu on threads | Right-click on a Gitnotate comment thread. | Reply/resolve/unresolve options visible in context menu. | ✅ Manual Passed | Note: Resolve/unresolve is a follow-up (UI-only, not synced to GitHub — see 41.7). Reply works. |
 
 ---
 
@@ -287,8 +287,6 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 
 | Category | Test | What to verify |
 |----------|------|----------------|
-| Sidebar side | 40.4 | Open sidebar → `[Old]`/`[New]` labels visible on comments |
-| Reply menu | 41.8 | Right-click thread → reply/resolve options in context menu |
 | Status bar | 43.6 | Open PR file → `Gitnotate: PR #N` in bottom-right status bar |
 | Status bar hidden | 43.7 | Open non-PR file → no Gitnotate status bar item |
 | Context menu negative | 45.4 | Open `.ts` file, select text, right-click → no "Add Comment" |
