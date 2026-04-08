@@ -174,7 +174,7 @@ my-repo/
 
 **Tech stack:** TypeScript, Manifest V3 (Chrome/Edge), Vite, pure DOM manipulation (no GitHub API, no OAuth)
 
-### Phase 1.5: PR Comment Mode — VSCode Extension 🟡 IN PROGRESS
+### Phase 1.5: PR Comment Mode — VSCode Extension ✅ COMPLETE
 
 **Deliverable:** VSCode extension with `^gn` sub-line commenting via GitHub PR review comments
 
@@ -239,21 +239,21 @@ Implement the contributed `gitnotateComments` view.
 - Sentinel: ⚠️ CONDITIONAL APPROVE (SENTINEL-20250713-CSB-001), ⚠️ CONDITIONAL APPROVE (SENTINEL-20250720-TST-001)
 - Bugs found during testing: comment thread not revealed on navigate (fixed), auth always set noAuth (fixed), no re-sync on branch switch (fixed), Loading stuck without markdown editor (fixed)
 
-#### Increment 5: UX Polish & Integration 🔮 PLANNED
+#### Increment 5: UX Polish & Integration ✅ COMPLETE
 
 Full round-trip polish, live sync, side-aware rendering, and GH PR extension coexistence.
 
-- Live comment updates via ETag-based polling: auto-refresh comments when new comments or replies are posted on github.com — poll every 30s (configurable) while a PR file is active, pause on window blur, resume on focus with immediate fetch; use `If-None-Match`/`304 Not Modified` conditional requests to minimize API usage
-- Side-aware comment placement in diff views: respect the `L`/`R` side field in `^gn` metadata and `LEFT`/`RIGHT` from GitHub API — detect diff context via document URI scheme (`git:` = old/LEFT, `file:` = new/RIGHT), filter comments to the correct side; detect cursor side when posting instead of hardcoding RIGHT; add `[Old]`/`[New]` indicators in sidebar
-- Post-comment → refresh decorations + sidebar
-- Reply/resolve handlers on comment threads
-- Use "create a review" API endpoint to avoid `pending review` conflict (GitHub API quirk: single-comment endpoint fails when a pending review exists; the reviews endpoint handles this correctly)
-- Status bar: "Gitnotate: PR #N" with auto-refresh
-- Bidirectional sidebar navigation: clicking a comment thread in the editor reveals it in the sidebar (`treeView.reveal()`)
-- Right-click context menu: "Gitnotate: Add Comment" on text selection
-- Error UX with action buttons ("Sign in to GitHub")
-- Output channel (`Gitnotate`) for debugging
-- Diff-aware anchor resolution: track line deltas via `onDidChangeTextDocument` so `^gn` threads follow text through local edits (moved from Phase 3 — critical for usable save-after-edit experience)
+- ✅ Live comment updates via ETag-based polling: auto-refresh comments when new comments or replies are posted on github.com — poll every 30s (configurable) while a PR file is active, pause on window blur, resume on focus with immediate fetch; use `If-None-Match`/`304 Not Modified` conditional requests to minimize API usage
+- ✅ Side-aware comment placement in diff views: respect the `L`/`R` side field in `^gn` metadata and `LEFT`/`RIGHT` from GitHub API — detect diff context via document URI scheme (`git:` = old/LEFT, `file:` = new/RIGHT), filter comments to the correct side; detect cursor side when posting instead of hardcoding RIGHT; add `[Old]`/`[New]` indicators in sidebar
+- ✅ Post-comment → refresh decorations + sidebar
+- ✅ Reply/resolve handlers on comment threads
+- ✅ Use "create a review" API endpoint to avoid `pending review` conflict (GitHub API quirk: single-comment endpoint fails when a pending review exists; the reviews endpoint handles this correctly)
+- ✅ Status bar: "Gitnotate: PR #N" with auto-refresh
+- ✅ Bidirectional sidebar navigation: clicking a comment thread in the editor reveals it in the sidebar (`treeView.reveal()`)
+- ✅ Right-click context menu: "Gitnotate: Add Comment" on text selection
+- ✅ Error UX with action buttons ("Sign in to GitHub")
+- ✅ Output channel (`Gitnotate`) for debugging
+- ✅ Diff-aware anchor resolution: track line deltas via `onDidChangeTextDocument` so `^gn` threads follow text through local edits (moved from Phase 3 — critical for usable save-after-edit experience)
 
 ### Phase 2: Full Sidecar Mode (persistent comments outside PRs) 🔮 PLANNED
 
