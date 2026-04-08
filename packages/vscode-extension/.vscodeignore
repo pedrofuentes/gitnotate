@@ -2,8 +2,14 @@
 src/**
 tests/**
 node_modules/**
+coverage/**
+out/**
+__mocks__/**
+integration-tests/**
 .gitignore
+.vscode-test.cjs
 tsconfig.json
+tsconfig.integration.json
 vitest.config.ts
 **/*.map
 **/*.ts
