@@ -162,6 +162,7 @@ export class CommentController {
       if (threads) {
         for (const thread of threads) {
           this.threadCommentIds.delete(thread);
+          this.parentCommentIds.delete(thread);
           thread.dispose();
         }
         this.threads.delete(key);
@@ -170,6 +171,7 @@ export class CommentController {
       for (const threads of this.threads.values()) {
         for (const thread of threads) {
           this.threadCommentIds.delete(thread);
+          this.parentCommentIds.delete(thread);
           thread.dispose();
         }
       }
@@ -200,6 +202,7 @@ export class CommentController {
     this.log?.info('CommentController', 'disposing');
     this.clearThreads();
     this.threadCommentIds.clear();
+    this.parentCommentIds.clear();
     for (const decorationType of this.decorationTypes) {
       decorationType.dispose();
     }

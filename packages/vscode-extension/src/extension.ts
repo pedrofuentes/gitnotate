@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { enableWorkspace, disableWorkspace } from './settings';
 import { addCommentCommand } from './comment-command';
 import { detectCurrentPR } from './pr-detector';
@@ -248,6 +249,14 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
         try {
+          // Validate filePath stays within workspace (prevent path traversal)
+          const resolvedPath = path.resolve(workspaceRoot, filePath);
+          const normalizedRoot = path.resolve(workspaceRoot);
+          if (!resolvedPath.startsWith(normalizedRoot + path.sep) && resolvedPath !== normalizedRoot) {
+            debug('goToComment: path traversal blocked —', filePath);
+            return;
+          }
+
           // Check for an existing diff tab for this file
           const normalizedFile = filePath.replace(/\\/g, '/');
           const tabGroups = vscode.window.tabGroups?.all;
