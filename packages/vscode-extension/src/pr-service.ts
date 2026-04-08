@@ -28,7 +28,7 @@ export class PrService {
   private etagCache: Map<string, string> = new Map();
 
   constructor(private token: string) {
-    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+    try { this.log = getLogger(); } catch (e) { console.warn('Gitnotate: logger initialization failed', e); }
   }
 
   private headers(): Record<string, string> {

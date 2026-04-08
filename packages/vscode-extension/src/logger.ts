@@ -72,6 +72,7 @@ export class Logger {
 let singleton: Logger | undefined;
 
 export function createLogger(): Logger {
+  singleton?.dispose();
   const channel = vscode.window.createOutputChannel('Gitnotate');
   singleton = new Logger(channel);
   return singleton;

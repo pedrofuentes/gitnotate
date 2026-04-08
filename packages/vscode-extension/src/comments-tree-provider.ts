@@ -81,7 +81,7 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   constructor() {
-    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+    try { this.log = getLogger(); } catch (e) { console.warn('Gitnotate: logger initialization failed', e); }
   }
 
   setComments(comments: ReviewComment[]): void {
