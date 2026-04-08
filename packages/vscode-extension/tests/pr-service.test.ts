@@ -815,4 +815,146 @@ describe('PrService', () => {
       expect('userMessage' in result && result.userMessage).toBeTruthy();
     });
   });
+
+  describe('fetch timeout — Issue #24', () => {
+    it('should pass AbortSignal to createReviewComment fetch', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 201, json: async () => ({ id: 1 }) });
+      await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+      expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('should pass AbortSignal to createReviewWithComment fetch', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: 1 }) });
+      await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+      expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('should pass AbortSignal to createReplyComment fetch', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 201, json: async () => ({ id: 1 }) });
+      await client.createReplyComment(pr, 'reply', 42);
+      expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('should pass AbortSignal to listReviewComments fetch', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => [] });
+      await client.listReviewComments(pr);
+      expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('should return timeout userMessage when createReviewComment times out', async () => {
+      mockFetch.mockRejectedValueOnce(new DOMException('signal timed out', 'TimeoutError'));
+      const result = await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+      expect(result.ok).toBe(false);
+      expect(result.userMessage).toMatch(/timed out/i);
+    });
+
+    it('should return timeout userMessage when createReviewWithComment times out', async () => {
+      mockFetch.mockRejectedValueOnce(new DOMException('signal timed out', 'TimeoutError'));
+      const result = await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.userMessage).toMatch(/timed out/i);
+    });
+
+    it('should return timeout userMessage when createReplyComment times out', async () => {
+      mockFetch.mockRejectedValueOnce(new DOMException('signal timed out', 'TimeoutError'));
+      const result = await client.createReplyComment(pr, 'reply', 42);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.userMessage).toMatch(/timed out/i);
+    });
+
+    it('should return empty array when listReviewComments times out', async () => {
+      mockFetch.mockRejectedValueOnce(new DOMException('signal timed out', 'TimeoutError'));
+      const result = await client.listReviewComments(pr);
+      expect(result).toEqual([]);
+    });
+
+    it('should handle AbortError the same as TimeoutError', async () => {
+      mockFetch.mockRejectedValueOnce(new DOMException('aborted', 'AbortError'));
+      const result = await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'comment');
+      expect(result.ok).toBe(false);
+      expect(result.userMessage).toMatch(/timed out/i);
+    });
+  });
+
+  describe('payload logging — Issue #23', () => {
+    it('should not call console.log in createReviewComment', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 201, json: async () => ({ id: 1 }) });
+      await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'secret body');
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should not call console.log in createReviewWithComment', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ id: 1 }) });
+      await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'body');
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should not call console.log in createReplyComment', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 201, json: async () => ({ id: 1 }) });
+      await client.createReplyComment(pr, 'reply', 42);
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should not call console.log in listReviewComments', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => [] });
+      await client.listReviewComments(pr);
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should not call console.log on error response paths', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockFetch.mockResolvedValueOnce({
+        ok: false, status: 422, statusText: 'Error',
+        text: async () => '{"message":"fail"}',
+      });
+      await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'body');
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should not call console.log on pending review error path', async () => {
+      const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockFetch.mockResolvedValueOnce({
+        ok: false, status: 422, statusText: 'Unprocessable',
+        text: async () => JSON.stringify({ message: 'pending review exists' }),
+      });
+      await client.createReviewWithComment(pr, 'file.ts', 1, 'RIGHT', 'body');
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should call logger.debug for verbose output when logger is available', async () => {
+      const mockLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), dispose: vi.fn() };
+      (client as unknown as { log: unknown }).log = mockLog;
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 201, json: async () => ({ id: 1 }) });
+      await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'body');
+      expect(mockLog.debug).toHaveBeenCalled();
+    });
+
+    it('should truncate errorBody to at most 200 chars in debug logs', async () => {
+      const mockLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), dispose: vi.fn() };
+      (client as unknown as { log: unknown }).log = mockLog;
+      const longBody = 'x'.repeat(500);
+      mockFetch.mockResolvedValueOnce({
+        ok: false, status: 422, statusText: 'Error',
+        text: async () => longBody,
+      });
+      await client.createReviewComment(pr, 'file.ts', 1, 'RIGHT', 'body');
+      const bodyCall = mockLog.debug.mock.calls.find((args: unknown[]) =>
+        args.some((a: unknown) => typeof a === 'string' && (a as string).includes('Response body'))
+      );
+      expect(bodyCall).toBeDefined();
+      const allText = (bodyCall as unknown[]).map(String).join(' ');
+      expect(allText).not.toContain('x'.repeat(500));
+      expect(allText).toContain('x'.repeat(200));
+    });
+  });
 });
