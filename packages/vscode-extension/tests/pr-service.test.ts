@@ -1070,4 +1070,86 @@ describe('PrService', () => {
       expect(window.showInformationMessage).not.toHaveBeenCalled();
     });
   });
+
+  describe('listReviewComments — pagination toast deduplication (#35)', () => {
+    function makeFullPage(pageIndex: number) {
+      return Array.from({ length: 100 }, (_, i) => ({
+        id: pageIndex * 100 + i + 1,
+        body: `comment ${pageIndex * 100 + i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+    }
+
+    function mockFullPages(count: number) {
+      for (let i = 0; i < count; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => makeFullPage(i),
+        });
+      }
+    }
+
+    it('should show toast only once when listReviewComments hits pagination cap twice', async () => {
+      const { window } = await import('../__mocks__/vscode');
+
+      // First call — hits MAX_PAGES
+      mockFullPages(10);
+      window.showInformationMessage.mockClear();
+      await client.listReviewComments(pr);
+      expect(window.showInformationMessage).toHaveBeenCalledTimes(1);
+
+      // Second call — hits MAX_PAGES again on same instance
+      mockFullPages(10);
+      window.showInformationMessage.mockClear();
+      await client.listReviewComments(pr);
+      expect(window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    it('should still log warn every time pagination cap is hit even when toast is suppressed', async () => {
+      const { createLogger, _resetForTesting } = await import('../src/logger');
+      _resetForTesting();
+      const logger = createLogger();
+      const warnSpy = vi.spyOn(logger, 'warn');
+
+      const loggedClient = new PrService(token);
+
+      // First call
+      mockFullPages(10);
+      await loggedClient.listReviewComments(pr);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      // Second call — toast suppressed but log.warn should still fire
+      mockFullPages(10);
+      await loggedClient.listReviewComments(pr);
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+
+      warnSpy.mockRestore();
+      _resetForTesting();
+    });
+
+    it('should show toast again after creating a new PrService instance (reset)', async () => {
+      const { window } = await import('../__mocks__/vscode');
+
+      // First instance — first call shows toast
+      mockFullPages(10);
+      window.showInformationMessage.mockClear();
+      await client.listReviewComments(pr);
+      expect(window.showInformationMessage).toHaveBeenCalledTimes(1);
+
+      // Second instance — should show toast again
+      const newClient = new PrService(token);
+      mockFullPages(10);
+      window.showInformationMessage.mockClear();
+      await newClient.listReviewComments(pr);
+      expect(window.showInformationMessage).toHaveBeenCalledTimes(1);
+    });
+  });
 });

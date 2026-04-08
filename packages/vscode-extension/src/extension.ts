@@ -23,6 +23,7 @@ let cachedToken: string | undefined;
 let treeProvider: CommentsTreeProvider | undefined;
 let anchorTracker: AnchorTracker | undefined;
 let gitService: GitService | undefined;
+let gitServiceWarningShown = false;
 
 async function promptSignIn(): Promise<void> {
   const action = await vscode.window.showInformationMessage(
@@ -126,6 +127,10 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     if (!gitService) {
+      if (!gitServiceWarningShown) {
+        gitServiceWarningShown = true;
+        console.warn('Gitnotate: gitService not available — comment sync skipped');
+      }
       debug('Comment sync: gitService not available — skipping');
       return;
     }
@@ -531,6 +536,7 @@ export function deactivate() {
   threadSync = undefined;
   cachedToken = undefined;
   gitService = undefined;
+  gitServiceWarningShown = false;
   anchorTracker?.dispose();
   anchorTracker = undefined;
   statusBar?.dispose();

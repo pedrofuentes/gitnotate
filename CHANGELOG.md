@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - LRU cache eviction to bound memory usage
 - `MAX_PAGES` safety bound on pagination with warning when cap is reached (closes #13)
 - Negative assertions in error-path tests for correctness
+- Pagination notification deduplicated (toast shown once per session, not every poll cycle)
+- Guard branch logging upgraded to `console.warn` for production visibility
 
 ### Added (VSCode Extension — Phase 1.5 Increment 4)
 - **Comments Sidebar (TreeView)** — `gitnotateComments` view in activity bar showing all PR review comments grouped by file

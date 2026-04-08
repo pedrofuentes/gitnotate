@@ -1617,4 +1617,81 @@ describe('extension', () => {
       // No crash means the guard worked correctly
     });
   });
+
+  describe('gitService guard console.warn visibility (#41)', () => {
+    const mkEditor = (name = 'readme.md') => ({
+      setDecorations: vi.fn(),
+      document: {
+        uri: Uri.file(`/workspace/docs/${name}`),
+        languageId: 'markdown',
+        fileName: `/workspace/docs/${name}`,
+      },
+    });
+
+    it('should console.warn the first time a gitService guard fires', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockGetGitHubToken.mockResolvedValue('test-token');
+
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger sync to populate cachedToken, prService, threadSync
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      handler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Clear gitService — simulate unexpected undefined
+      __testResetGitService();
+
+      // Trigger sync again — should hit the !gitService guard
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const gitnotateWarns = consoleSpy.mock.calls.filter(
+        (call) => call.some((arg) => typeof arg === 'string' && arg.includes('gitService'))
+      );
+      expect(gitnotateWarns.length).toBeGreaterThanOrEqual(1);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should NOT fire console.warn on subsequent gitService guard hits (once-per-session)', async () => {
+      deactivate(); // Reset gitServiceWarningShown from prior test
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockGetGitHubToken.mockResolvedValue('test-token');
+
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger initial sync
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      handler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      __testResetGitService();
+
+      // First guard hit
+      handler(mkEditor('file-a.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const warnsAfterFirst = consoleSpy.mock.calls.filter(
+        (call) => call.some((arg) => typeof arg === 'string' && arg.includes('gitService'))
+      ).length;
+
+      // Second guard hit — should NOT add more console.warn calls
+      handler(mkEditor('file-c.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const warnsAfterSecond = consoleSpy.mock.calls.filter(
+        (call) => call.some((arg) => typeof arg === 'string' && arg.includes('gitService'))
+      ).length;
+
+      expect(warnsAfterFirst).toBeGreaterThanOrEqual(1);
+      expect(warnsAfterSecond).toBe(warnsAfterFirst);
+
+      consoleSpy.mockRestore();
+    });
+  });
 });
