@@ -94,7 +94,7 @@ Pre-Merge Checklist:
 2. Create a **full-capability** sub-agent with `docs/SENTINEL.md` as system prompt — this IS the Sentinel. It must be able to spawn its own sub-agents (e.g., `general-purpose` in Copilot CLI, `Task` in Claude Code).
 3. Provide: PR diff (`git diff main...HEAD`), branch name, changed files
 4. **Do NOT review your own code** — Sentinel is independent
-5. If **REJECTED**: fix, re-commit, re-invoke (max 3 cycles — then escalate)
+5. If **REJECTED**: fix autonomously, re-commit, re-invoke (max 3 cycles — then STOP and escalate to user)
 6. If **APPROVED**: include Report ID + SHA in PR description, merge
 
 > No sub-agents? Run SENTINEL.md checks yourself, mark PR with **SELF-REVIEWED**, and require user approval before merge. Cannot run at all? **Do not merge** — escalate.
@@ -103,7 +103,7 @@ Pre-Merge Checklist:
 
 - **APPROVED**: Record Report ID + SHA in merge commit. Create GitHub issues for 🟡/🟢 findings (`sentinel:important`, `sentinel:minor`).
 - **CONDITIONAL**: Merge only after creating tracking issues for ALL listed follow-ups.
-- **REJECTED → fixed**: Fix commits must also be re-audited. Re-invoke until APPROVED.
+- **REJECTED → fixed**: Fix autonomously — no user interaction needed. Re-commit, re-invoke until APPROVED. Fix commits must also be re-audited.
 - **Quality ratchet**: Record violation-correction pairs in `LEARNINGS.md`. Coverage, test count, lint errors — **can never decrease**.
 - **Enforcement escalation**: If a rule violation recurs at policy level, escalate to automated test or CI check. Record in `LEARNINGS.md`.
 
@@ -174,7 +174,7 @@ Auth/crypto/PII · DB migrations · AGENTS.md/SENTINEL.md changes · production 
 ## When Stuck
 
 - **Tests fail 3×**: STOP. Analyze. Revert to green if needed.
-- **Sentinel rejects 3×**: STOP. Escalate — don't retry same approach.
+- **Sentinel rejects 3×**: STOP. Escalate to user — don't retry same approach. Three failures means human judgment needed.
 - **Lost context**: Re-read this file → `git status` → resume from last increment.
 
 ## Associated Documentation
