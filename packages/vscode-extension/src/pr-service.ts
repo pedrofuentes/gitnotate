@@ -39,6 +39,7 @@ function truncateBody(body: string, max = 200): string {
 export class PrService {
   private log: Logger | undefined;
   private etagCache: Map<string, string> = new Map();
+  private paginationWarningShown = false;
 
   constructor(private token: string) {
     try { this.log = getLogger(); } catch (e) { console.warn('Gitnotate: logger initialization failed', e); }
@@ -307,7 +308,10 @@ export class PrService {
         const msg = `PR has more than ${MAX_PAGES * PER_PAGE} comments. Some comments may not be displayed.`;
         console.warn('[Gitnotate]', `MAX_PAGES (${MAX_PAGES}) reached — returning ${allComments.length} comments, some may be missing`);
         this.log?.warn('PrService', msg);
-        vscode.window.showInformationMessage(`Gitnotate: ${msg}`);
+        if (!this.paginationWarningShown) {
+          this.paginationWarningShown = true;
+          vscode.window.showInformationMessage(`Gitnotate: ${msg}`);
+        }
       }
 
       return allComments;
