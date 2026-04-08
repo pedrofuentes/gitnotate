@@ -140,7 +140,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 42.1 | Review endpoint payload | Call `createReviewWithComment(pr, path, line, side, body)`. | POST to `/pulls/{n}/reviews` with `{ event: 'COMMENT', comments: [{ path, line, side, body }], commit_id }`. | ✅ Passed |
 | 42.2 | Review-first strategy | Post a comment via `addCommentCommand`. | Tries `createReviewWithComment` first. On success, does NOT call `createReviewComment`. | ✅ Passed |
 | 42.3 | Fallback to single-comment | `createReviewWithComment` fails. | Falls back to `createReviewComment`. Comment still posts. | ✅ Passed |
-| 42.4 | Works with GH PR pending review | Install GitHub Pull Requests extension. Start a review (don't submit — leave pending). Try to add a Gitnotate comment. | Comment posts successfully via review endpoint. No 422 error. | ⬜ Manual |
+| 42.4 | Works with GH PR pending review | Install GitHub Pull Requests extension. Start a review (don't submit — leave pending). Try to add a Gitnotate comment. | Comment posts successfully via review endpoint. No 422 error. | ⚠️ GitHub API limitation: cannot post when a pending review exists. Shows clear error: "Submit or discard your pending review first." |
 
 ---
 

@@ -356,6 +356,8 @@ export function activate(context: vscode.ExtensionContext) {
     if (editor && commentCtrl) {
       commentCtrl.clearHighlights(editor);
     }
+    // Stop polling on the old sync before replacing it
+    threadSync?.stopPolling();
     cachedToken = undefined;
     threadSync = undefined;
     prService = undefined;
@@ -418,6 +420,8 @@ export function activate(context: vscode.ExtensionContext) {
     const gitService = new GitService();
     const disposable = gitService.onDidChangeState(() => {
       debug('Git state changed — re-syncing');
+      // Stop polling on the old sync before replacing it
+      threadSync?.stopPolling();
       cachedToken = undefined;
       threadSync = undefined;
       prService = undefined;
