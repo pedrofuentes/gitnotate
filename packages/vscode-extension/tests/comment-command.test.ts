@@ -76,6 +76,10 @@ describe('addCommentCommand', () => {
     expect(window.showInformationMessage).toHaveBeenCalledWith(
       expect.stringContaining('Select text first')
     );
+    expect(mockGetGitHubToken).not.toHaveBeenCalled();
+    expect(mockDetectCurrentPR).not.toHaveBeenCalled();
+    expect(mockBuildGnComment).not.toHaveBeenCalled();
+    expect(window.showInputBox).not.toHaveBeenCalled();
   });
 
   it('should show error if no selection', async () => {
@@ -94,6 +98,10 @@ describe('addCommentCommand', () => {
     expect(window.showInformationMessage).toHaveBeenCalledWith(
       expect.stringContaining('Select text first')
     );
+    expect(mockGetGitHubToken).not.toHaveBeenCalled();
+    expect(mockDetectCurrentPR).not.toHaveBeenCalled();
+    expect(mockBuildGnComment).not.toHaveBeenCalled();
+    expect(window.showInputBox).not.toHaveBeenCalled();
   });
 
   it('should show error if no PR is detected', async () => {
@@ -114,6 +122,8 @@ describe('addCommentCommand', () => {
     expect(window.showWarningMessage).toHaveBeenCalledWith(
       expect.stringContaining('No pull request')
     );
+    expect(mockBuildGnComment).not.toHaveBeenCalled();
+    expect(window.showInputBox).not.toHaveBeenCalled();
   });
 
   it('should show error if no GitHub token configured', async () => {
@@ -133,6 +143,9 @@ describe('addCommentCommand', () => {
     expect(window.showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('GitHub authentication')
     );
+    expect(mockDetectCurrentPR).not.toHaveBeenCalled();
+    expect(mockBuildGnComment).not.toHaveBeenCalled();
+    expect(window.showInputBox).not.toHaveBeenCalled();
   });
 
   it('should prompt for comment text via input box', async () => {
@@ -187,6 +200,7 @@ describe('addCommentCommand', () => {
     expect(window.showInformationMessage).not.toHaveBeenCalledWith(
       expect.stringContaining('Comment posted')
     );
+    expect(mockBuildGnComment).not.toHaveBeenCalled();
   });
 
   it('should build ^gn comment body from selection', async () => {
