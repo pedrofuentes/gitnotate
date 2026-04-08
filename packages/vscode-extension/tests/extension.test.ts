@@ -1251,5 +1251,30 @@ describe('extension', () => {
       // Should have opened regular file via showTextDocument
       expect(window.showTextDocument).toHaveBeenCalled();
     });
+
+    it('should reject path traversal attempts in filePath', async () => {
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const goToCommentCall = commands.registerCommand.mock.calls.find(
+        ([name]: [string]) => name === 'gitnotate.goToComment'
+      );
+      const goToCommentHandler = goToCommentCall![1] as (
+        filePath: string,
+        line: number,
+        start?: number,
+        end?: number
+      ) => Promise<void>;
+
+      __setWorkspaceFolders([{ uri: { fsPath: '/workspace' } }]);
+
+      // Try path traversal
+      await goToCommentHandler('../../.ssh/id_rsa', 1);
+
+      // Should NOT have opened any file
+      expect(workspace.openTextDocument).not.toHaveBeenCalled();
+      expect(window.showTextDocument).not.toHaveBeenCalled();
+    });
   });
 });

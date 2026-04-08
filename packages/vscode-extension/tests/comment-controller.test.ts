@@ -179,6 +179,38 @@ describe('CommentController', () => {
 
       controller.dispose();
     });
+    it('should clean up parentCommentIds when clearing threads by uri', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/a.md');
+
+      const thread = controller.createThread(uri, new Range(0, 0, 0, 5), [
+        { body: 'comment', author: 'user' },
+      ], undefined, 99);
+
+      expect(controller.getParentCommentId(thread)).toBe(99);
+
+      controller.clearThreads(uri);
+
+      // parentCommentId should be cleaned up
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
+      controller.dispose();
+    });
+
+    it('should clean up parentCommentIds when clearing all threads', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/a.md');
+
+      const thread = controller.createThread(uri, new Range(0, 0, 0, 5), [
+        { body: 'comment', author: 'user' },
+      ], undefined, 77);
+
+      expect(controller.getParentCommentId(thread)).toBe(77);
+
+      controller.clearThreads();
+
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
+      controller.dispose();
+    });
   });
 
   describe('dispose', () => {
@@ -197,6 +229,21 @@ describe('CommentController', () => {
 
       const controllers = __getCommentControllers();
       expect(controllers[0].dispose).toHaveBeenCalled();
+    });
+
+    it('should clear parentCommentIds on dispose', () => {
+      const controller = new CommentController();
+      const uri = Uri.file('/workspace/a.md');
+
+      const thread = controller.createThread(uri, new Range(0, 0, 0, 5), [
+        { body: 'comment', author: 'user' },
+      ], undefined, 55);
+
+      expect(controller.getParentCommentId(thread)).toBe(55);
+
+      controller.dispose();
+
+      expect(controller.getParentCommentId(thread)).toBeUndefined();
     });
 
     it('should dispose the underline decoration types', () => {
