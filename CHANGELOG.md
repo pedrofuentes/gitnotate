@@ -96,7 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Privacy policy and landing page (GitHub Pages)
 - Store listing content for Chrome Web Store and Edge Add-ons
 - Build & packaging script (`pnpm package`) — creates versioned zip for store submission
-- Release process documentation (`docs/RELEASE.md`)
+- Release process documentation (`docs/RELEASE-BROWSER.md`)
 - 15 manual test cases documented in `docs/TESTING-STRATEGY.md`
 
 ### Changed
