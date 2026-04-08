@@ -141,8 +141,6 @@ export function activate(context: vscode.ExtensionContext) {
     const activeTab = vscode.window.tabGroups?.activeTabGroup?.activeTab;
     const isDiffView = activeTab?.input instanceof vscode.TabInputTextDiff;
 
-    let highlightRanges: vscode.Range[];
-
     if (isDiffView) {
       const diffInput = activeTab.input as vscode.TabInputTextDiff;
       const originalUri = diffInput.original;
@@ -154,25 +152,33 @@ export function activate(context: vscode.ExtensionContext) {
 
       // URI-based thread placement: each thread created on correct URI,
       // VSCode routes to correct pane automatically
-      const { leftRanges, rightRanges } = await sync.syncForDiff(originalUri, modifiedUri, relativePath, pr);
-      highlightRanges = [...leftRanges, ...rightRanges];
+      const diffResult = await sync.syncForDiff(originalUri, modifiedUri, relativePath, pr);
 
-      // Apply highlights to the matching visible editors
-      for (const visibleEditor of vscode.window.visibleTextEditors) {
-        const editorUri = visibleEditor.document.uri.toString();
-        if (editorUri === originalUri.toString() && leftRanges.length > 0) {
-          commentCtrl.applyHighlights(visibleEditor, leftRanges);
-        } else if (editorUri === modifiedUri.toString() && rightRanges.length > 0) {
-          commentCtrl.applyHighlights(visibleEditor, rightRanges);
+      // null means data unchanged — preserve current highlights
+      if (diffResult !== null) {
+        const { leftRanges, rightRanges } = diffResult;
+
+        // Apply highlights to the matching visible editors
+        for (const visibleEditor of vscode.window.visibleTextEditors) {
+          const editorUri = visibleEditor.document.uri.toString();
+          if (editorUri === originalUri.toString() && leftRanges.length > 0) {
+            commentCtrl.applyHighlights(visibleEditor, leftRanges);
+          } else if (editorUri === modifiedUri.toString() && rightRanges.length > 0) {
+            commentCtrl.applyHighlights(visibleEditor, rightRanges);
+          }
         }
       }
     } else {
       // Single file view: show only RIGHT/New comments (current version)
-      highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
-      if (highlightRanges.length > 0) {
-        commentCtrl.applyHighlights(editor, highlightRanges);
-      } else {
-        commentCtrl.clearHighlights(editor);
+      const highlightRanges = await sync.syncForDocument(editor.document.uri, relativePath, pr);
+
+      // null means data unchanged — preserve current highlights
+      if (highlightRanges !== null) {
+        if (highlightRanges.length > 0) {
+          commentCtrl.applyHighlights(editor, highlightRanges);
+        } else {
+          commentCtrl.clearHighlights(editor);
+        }
       }
     }
 

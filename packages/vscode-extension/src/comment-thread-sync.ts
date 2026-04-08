@@ -35,7 +35,7 @@ export class CommentThreadSync {
     uri: vscode.Uri,
     relativePath: string,
     pr: PullRequestInfo
-  ): Promise<vscode.Range[]> {
+  ): Promise<vscode.Range[] | null> {
     this.log?.info('ThreadSync', 'syncing', relativePath, `PR #${pr.number}`);
     let comments: ReviewComment[];
     try {
@@ -45,6 +45,7 @@ export class CommentThreadSync {
       return [];
     }
     const rangesByUri = this.renderComments(relativePath, comments, { RIGHT: uri });
+    if (rangesByUri === null) return null;
     return rangesByUri.get(uri.toString()) ?? [];
   }
 
@@ -60,7 +61,7 @@ export class CommentThreadSync {
     modifiedUri: vscode.Uri,
     relativePath: string,
     pr: PullRequestInfo
-  ): Promise<{ leftRanges: vscode.Range[]; rightRanges: vscode.Range[] }> {
+  ): Promise<{ leftRanges: vscode.Range[]; rightRanges: vscode.Range[] } | null> {
     let comments: ReviewComment[];
     try {
       comments = await this.getComments(pr);
@@ -71,6 +72,7 @@ export class CommentThreadSync {
 
     const uriMap = { LEFT: originalUri, RIGHT: modifiedUri };
     const rangesByUri = this.renderComments(relativePath, comments, uriMap);
+    if (rangesByUri === null) return null;
 
     return {
       leftRanges: rangesByUri.get(originalUri.toString()) ?? [],
@@ -92,7 +94,7 @@ export class CommentThreadSync {
     );
     if (this.renderedFingerprints.get(fpKey) === newFingerprint) {
       debug('Thread sync: skipping re-render for', relativePath, '— data unchanged');
-      return new Map();
+      return null;
     }
     this.renderedFingerprints.set(fpKey, newFingerprint);
 
@@ -186,7 +188,7 @@ export class CommentThreadSync {
     uri: vscode.Uri,
     relativePath: string,
     pr: PullRequestInfo
-  ): Promise<vscode.Range[]> {
+  ): Promise<vscode.Range[] | null> {
     const cached = this.getCachedComments(pr);
     if (!cached) {
       this.log?.info('ThreadSync', 'cache miss — fetching from API');
@@ -194,11 +196,12 @@ export class CommentThreadSync {
       return this.syncForDocument(uri, relativePath, pr);
     }
 
-    // Render from cache immediately
+    // Render from cache immediately (may return null if fingerprint matches)
     this.log?.info('ThreadSync', 'cache hit — rendering from cache');
     debug('Thread sync (cache-first): rendering from cache');
     const cachedMap = this.renderComments(relativePath, cached, { RIGHT: uri });
-    const cachedRanges = cachedMap.get(uri.toString()) ?? [];
+    const cacheSkipped = cachedMap === null;
+    const cachedRanges = cacheSkipped ? null : (cachedMap.get(uri.toString()) ?? []);
 
     // Fetch fresh data in background
     debug('Thread sync (cache-first): fetching fresh data');
@@ -217,7 +220,7 @@ export class CommentThreadSync {
       return cachedRanges;
     }
 
-    // Compare: if data changed, re-render
+    // Compare: if data changed, re-render (clear fingerprint for the new data)
     const fingerprint = (comments: ReviewComment[]) =>
       JSON.stringify(
         comments
@@ -230,7 +233,11 @@ export class CommentThreadSync {
     if (cacheFingerprint !== freshFingerprint) {
       debug('Thread sync (cache-first): data changed — re-rendering');
       this.cache.set(cacheKey, freshComments);
+      // Clear fingerprint so renderComments will re-render with new data
+      const fpKey = `${uri.toString()}:RIGHT`;
+      this.renderedFingerprints.delete(fpKey);
       const freshMap = this.renderComments(relativePath, freshComments, { RIGHT: uri });
+      if (freshMap === null) return null;
       return freshMap.get(uri.toString()) ?? [];
     }
 
