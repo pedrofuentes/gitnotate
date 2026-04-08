@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
-let lastErrorKey: string | null = null;
-let lastErrorTime = 0;
+const recentErrors = new Map<string, number>();
 const DEDUP_INTERVAL_MS = 30_000;
 
 export async function showAuthError(): Promise<void> {
@@ -50,15 +49,22 @@ export async function showConfigError(message: string): Promise<void> {
 
 function isDuplicate(key: string): boolean {
   const now = Date.now();
-  if (key === lastErrorKey && now - lastErrorTime < DEDUP_INTERVAL_MS) {
+
+  // Clean up stale entries to prevent unbounded growth
+  for (const [k, t] of recentErrors) {
+    if (now - t >= DEDUP_INTERVAL_MS) {
+      recentErrors.delete(k);
+    }
+  }
+
+  const lastTime = recentErrors.get(key);
+  if (lastTime !== undefined && now - lastTime < DEDUP_INTERVAL_MS) {
     return true;
   }
-  lastErrorKey = key;
-  lastErrorTime = now;
+  recentErrors.set(key, now);
   return false;
 }
 
 export function __resetErrorState(): void {
-  lastErrorKey = null;
-  lastErrorTime = 0;
+  recentErrors.clear();
 }

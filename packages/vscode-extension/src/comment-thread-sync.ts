@@ -28,7 +28,7 @@ export class CommentThreadSync {
     private commentController: CommentController,
     private anchorTracker?: AnchorTracker
   ) {
-    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+    try { this.log = getLogger(); } catch (e) { console.warn('Gitnotate: logger initialization failed', e); }
   }
 
   async syncForDocument(

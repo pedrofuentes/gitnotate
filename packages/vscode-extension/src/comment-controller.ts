@@ -34,7 +34,7 @@ export class CommentController {
   onThreadRevealed?: (commentId: number) => void;
 
   constructor() {
-    try { this.log = getLogger(); } catch { /* logger not initialized */ }
+    try { this.log = getLogger(); } catch (e) { console.warn('Gitnotate: logger initialization failed', e); }
     this.controller = vscode.comments.createCommentController(
       'gitnotate',
       'Gitnotate Sub-line Comments'

@@ -158,5 +158,31 @@ describe('error-handler', () => {
 
       expect(window.showErrorMessage).toHaveBeenCalledTimes(2);
     });
+
+    it('deduplicates key A even after key B fires (multi-key tracking)', async () => {
+      vi.useFakeTimers();
+      window.showErrorMessage.mockResolvedValue(undefined);
+
+      await showAuthError();        // key 'auth' → shown
+      await showApiError('fail');   // key 'api:fail' → shown (different key)
+      await showAuthError();        // key 'auth' within 30s → should be deduped
+
+      expect(window.showErrorMessage).toHaveBeenCalledTimes(2);
+      vi.useRealTimers();
+    });
+
+    it('__resetErrorState clears all tracked error keys', async () => {
+      vi.useFakeTimers();
+      window.showErrorMessage.mockResolvedValue(undefined);
+
+      await showAuthError();
+      await showApiError('test');
+      __resetErrorState();
+      await showAuthError();
+      await showApiError('test');
+
+      expect(window.showErrorMessage).toHaveBeenCalledTimes(4);
+      vi.useRealTimers();
+    });
   });
 });

@@ -103,4 +103,15 @@ describe('Logger', () => {
       expect(channel.dispose).toHaveBeenCalled();
     });
   });
+
+  describe('createLogger re-initialization', () => {
+    it('disposes the previous logger when creating a new one', () => {
+      createLogger();
+      const channel1 = window.createOutputChannel.mock.results[0].value;
+
+      createLogger();
+
+      expect(channel1.dispose).toHaveBeenCalled();
+    });
+  });
 });
