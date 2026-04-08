@@ -949,4 +949,68 @@ describe('CommentThreadSync', () => {
       sync.stopPolling();
     });
   });
+
+  describe('fingerprint skip returns null (Bug B: highlights disappear)', () => {
+    it('syncForDocument should return null when data is unchanged (fingerprint skip)', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nLooks good',
+        path: 'docs/readme.md',
+      });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // First sync: should return ranges
+      const firstResult = await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      expect(firstResult).not.toBeNull();
+      expect(firstResult!.length).toBeGreaterThan(0);
+
+      // Second sync with same data: should return null (not empty array)
+      const secondResult = await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      expect(secondResult).toBeNull();
+    });
+
+    it('syncForDiff should return null when data is unchanged (fingerprint skip)', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nLooks good',
+        path: 'docs/readme.md',
+        side: 'RIGHT',
+      });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const originalUri = Uri.parse('git:/workspace/docs/readme.md?ref=old');
+      const modifiedUri = Uri.parse('git:/workspace/docs/readme.md?ref=new');
+      const pr = makePr();
+
+      // First sync: should return ranges object
+      const firstResult = await sync.syncForDiff(originalUri, modifiedUri, 'docs/readme.md', pr);
+      expect(firstResult).not.toBeNull();
+
+      // Second sync with same data: should return null (not empty ranges)
+      const secondResult = await sync.syncForDiff(originalUri, modifiedUri, 'docs/readme.md', pr);
+      expect(secondResult).toBeNull();
+    });
+
+    it('syncForDocumentCacheFirst should return null when cache-render fingerprint skips', async () => {
+      const comment = makeComment({
+        id: 1,
+        body: '^gn:10:R:5:15\n> 📌 **"some text"** (chars 5–15)\n\nLooks good',
+        path: 'docs/readme.md',
+      });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // First sync: populates cache + fingerprint
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      // Cache-first with same data: fingerprint should match, return null
+      const result = await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
+      expect(result).toBeNull();
+    });
+  });
 });
