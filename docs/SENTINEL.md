@@ -72,7 +72,7 @@ Spawn **one sub-agent per dimension** (A–F) in parallel. Each sub-agent receiv
 
 Each sub-agent returns findings classified as 🔴/🟡/🟢 with evidence (file+line).
 
-> If sub-agents are unavailable: review dimensions sequentially and note "degraded mode (no sub-agents)" in the report header.
+> If sub-agents are unavailable: review dimensions sequentially and **you MUST note "Mode: degraded (no sub-agents)"** in the report header. Omitting this note is a violation.
 
 #### A) Security, privacy, and correctness (🔴 if violated)
 - Injection: SQL/NoSQL, XSS, command injection, path traversal, SSRF, deserialization
@@ -157,6 +157,9 @@ Status: APPROVED | CONDITIONAL | REJECTED
 
 ### Conditional-approval follow-ups (only if Status=CONDITIONAL)
 - [ ] … (owner + tracking link or explicit task)
+
+### Action required
+Create GitHub issues for all 🟡 and 🟢 findings (labels: `sentinel:important`, `sentinel:minor`).
 
 ### Decision rationale
 - … (1–5 bullets)

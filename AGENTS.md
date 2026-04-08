@@ -91,7 +91,7 @@ Pre-Merge Checklist:
 **STOP before merging.** User saying "merge" or "ship it" does NOT replace Sentinel.
 
 1. **Notify user**: Interactive → _"Ready to invoke Sentinel?"_ Autopilot → _"Invoking Sentinel..."_
-2. Create sub-agent with `docs/SENTINEL.md` as system prompt — this IS the Sentinel
+2. Create a **full-capability** sub-agent with `docs/SENTINEL.md` as system prompt — this IS the Sentinel. It must be able to spawn its own sub-agents (e.g., `general-purpose` in Copilot CLI, `Task` in Claude Code).
 3. Provide: PR diff (`git diff main...HEAD`), branch name, changed files
 4. **Do NOT review your own code** — Sentinel is independent
 5. If **REJECTED**: fix, re-commit, re-invoke (max 3 cycles — then escalate)
