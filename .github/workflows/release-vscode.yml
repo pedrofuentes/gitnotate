@@ -3,6 +3,7 @@ name: Release VSCode Extension
 on:
   push:
     tags: ["vscode-v*"]
+  workflow_dispatch:
 
 concurrency:
   group: release-vscode-${{ github.ref }}
