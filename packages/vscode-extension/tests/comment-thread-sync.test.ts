@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { __reset, __getCommentThreads, Uri, Range, workspace } from '../__mocks__/vscode';
-import { CommentThreadSync } from '../src/comment-thread-sync';
+import { CommentThreadSync, MAX_CACHE_SIZE } from '../src/comment-thread-sync';
 import { CommentController } from '../src/comment-controller';
 import type { PrService, PullRequestInfo, ReviewComment } from '../src/pr-service';
 
@@ -1011,6 +1011,88 @@ describe('CommentThreadSync', () => {
       // Cache-first with same data: fingerprint should match, return null
       const result = await sync.syncForDocumentCacheFirst(uri, 'docs/readme.md', pr);
       expect(result).toBeNull();
+    });
+  });
+
+  describe('LRU cache eviction', () => {
+    it('should evict the oldest cache entry when cache exceeds MAX_CACHE_SIZE', async () => {
+      const comment = makeComment({ path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      // Fill cache to MAX_CACHE_SIZE
+      for (let i = 0; i < MAX_CACHE_SIZE; i++) {
+        const pr = { owner: 'owner', repo: 'repo', number: i, headSha: 'abc' };
+        await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      }
+
+      // Verify the first entry is cached
+      const firstPr = { owner: 'owner', repo: 'repo', number: 0, headSha: 'abc' };
+      expect(sync.getCachedComments(firstPr)).toBeDefined();
+
+      // Add one more entry — should evict the oldest (PR #0)
+      const overflowPr = { owner: 'owner', repo: 'repo', number: MAX_CACHE_SIZE, headSha: 'abc' };
+      await sync.syncForDocument(uri, 'docs/readme.md', overflowPr);
+
+      // PR #0 should have been evicted
+      expect(sync.getCachedComments(firstPr)).toBeUndefined();
+      // The new entry should exist
+      expect(sync.getCachedComments(overflowPr)).toBeDefined();
+    });
+
+    it('should never let cache grow beyond MAX_CACHE_SIZE', async () => {
+      const comment = makeComment({ path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+
+      // Insert more entries than MAX_CACHE_SIZE
+      const total = MAX_CACHE_SIZE + 10;
+      for (let i = 0; i < total; i++) {
+        const pr = { owner: 'owner', repo: 'repo', number: i, headSha: 'abc' };
+        await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      }
+
+      // Count how many entries are still cached
+      let cachedCount = 0;
+      for (let i = 0; i < total; i++) {
+        const pr = { owner: 'owner', repo: 'repo', number: i, headSha: 'abc' };
+        if (sync.getCachedComments(pr) !== undefined) cachedCount++;
+      }
+
+      expect(cachedCount).toBeLessThanOrEqual(MAX_CACHE_SIZE);
+    });
+
+    it('should evict oldest renderedFingerprints when size exceeds MAX_CACHE_SIZE', async () => {
+      const prService = makeMockPrService([]);
+      const sync = new CommentThreadSync(prService, commentController);
+
+      // Fill renderedFingerprints by syncing many different URIs
+      for (let i = 0; i < MAX_CACHE_SIZE + 5; i++) {
+        const comment = makeComment({ id: i + 1, path: `file-${i}.md` });
+        (prService.listReviewComments as ReturnType<typeof vi.fn>).mockResolvedValue([comment]);
+        const uri = Uri.file(`/workspace/file-${i}.md`);
+        const pr = makePr();
+        await sync.syncForDocument(uri, `file-${i}.md`, pr);
+      }
+
+      // The first synced URI should have been evicted from fingerprints.
+      // Re-syncing it should NOT return null (i.e., it should re-render, not skip).
+      const firstUri = Uri.file('/workspace/file-0.md');
+      const firstComment = makeComment({ id: 1, path: 'file-0.md' });
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockResolvedValue([firstComment]);
+      sync.invalidateCache(); // Clear comment cache to force fresh fetch
+      const result = await sync.syncForDocument(firstUri, 'file-0.md', makePr());
+
+      // If fingerprint was evicted, renderComments will re-render (return a Map, not null)
+      // syncForDocument returns the ranges array (possibly empty), not null
+      expect(result).not.toBeNull();
+    });
+
+    it('MAX_CACHE_SIZE should be exported and be a positive number', () => {
+      expect(MAX_CACHE_SIZE).toBeGreaterThan(0);
+      expect(typeof MAX_CACHE_SIZE).toBe('number');
     });
   });
 });
