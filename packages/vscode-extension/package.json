@@ -5,6 +5,12 @@
   "version": "0.1.0",
   "publisher": "pedrofuentes",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pedrofuentes/gitnotate",
+    "directory": "packages/vscode-extension"
+  },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
