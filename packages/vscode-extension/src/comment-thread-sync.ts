@@ -322,8 +322,8 @@ export class CommentThreadSync {
         this.currentRelativePath,
         this.currentPr
       );
-    } catch {
-      // Silent failure during polling — don't spam user
+    } catch (err) {
+      debug('Polling error (suppressed):', err instanceof Error ? err.message : err);
     }
   }
 

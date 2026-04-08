@@ -398,6 +398,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (doc.uri.scheme === 'comment' || doc.fileName.includes('commentinput-')) return;
     debug('Document closed:', doc.fileName);
     commentCtrl?.clearThreads(doc.uri);
+    anchorTracker?.reset(doc.uri);
   });
   context.subscriptions.push(closeDisposable);
 
