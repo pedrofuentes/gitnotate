@@ -616,6 +616,80 @@ describe('CommentsTreeProvider', () => {
     });
   });
 
+  describe('commentItemCache cleared on state transitions (#29)', () => {
+    it('should clear commentItemCache when setState("loading") is called', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+
+      // Populate cache via setComments
+      provider.setComments([makeComment({ id: 99, path: 'docs/proposal.md', line: 5 })]);
+      provider.revealByCommentId(99);
+      expect(treeView.reveal).toHaveBeenCalledOnce();
+
+      (treeView.reveal as ReturnType<typeof vi.fn>).mockClear();
+
+      // Transition to loading state — cache should be cleared
+      provider.setState('loading');
+      provider.revealByCommentId(99);
+      expect(treeView.reveal).not.toHaveBeenCalled();
+    });
+
+    it('should clear commentItemCache when setState("noPr") is called', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+
+      provider.setComments([makeComment({ id: 50, path: 'docs/proposal.md', line: 3 })]);
+      provider.revealByCommentId(50);
+      expect(treeView.reveal).toHaveBeenCalledOnce();
+
+      (treeView.reveal as ReturnType<typeof vi.fn>).mockClear();
+
+      provider.setState('noPr');
+      provider.revealByCommentId(50);
+      expect(treeView.reveal).not.toHaveBeenCalled();
+    });
+
+    it('should clear commentItemCache when setState("noAuth") is called', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+
+      provider.setComments([makeComment({ id: 77, path: 'docs/proposal.md', line: 8 })]);
+      provider.revealByCommentId(77);
+      expect(treeView.reveal).toHaveBeenCalledOnce();
+
+      (treeView.reveal as ReturnType<typeof vi.fn>).mockClear();
+
+      provider.setState('noAuth');
+      provider.revealByCommentId(77);
+      expect(treeView.reveal).not.toHaveBeenCalled();
+    });
+
+    it('should not clear commentItemCache when setComments provides valid data', () => {
+      const treeView = window.createTreeView('gitnotateComments', {
+        treeDataProvider: provider,
+      });
+      provider.registerTreeView(treeView as any);
+
+      // Set comments (rebuilds cache)
+      provider.setComments([makeComment({ id: 10, path: 'docs/proposal.md', line: 1 })]);
+      provider.revealByCommentId(10);
+      expect(treeView.reveal).toHaveBeenCalledOnce();
+
+      (treeView.reveal as ReturnType<typeof vi.fn>).mockClear();
+
+      // Set new comments — cache should be rebuilt, not just cleared
+      provider.setComments([makeComment({ id: 10, path: 'docs/proposal.md', line: 1 })]);
+      provider.revealByCommentId(10);
+      expect(treeView.reveal).toHaveBeenCalledOnce();
+    });
+  });
+
   describe('contract enforcement — mock validates VSCode API requirements', () => {
     it('should throw when reveal() is called on a provider without getParent', () => {
       const fakeProvider = {
