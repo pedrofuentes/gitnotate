@@ -220,8 +220,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 48.6 | Multiple threads shift correctly | Two threads at lines 5 and 10. Insert 2 lines at line 3. | Thread at 5 → 7, thread at 10 → 12. | ✅ Passed |
 | 48.7 | reset() clears all anchors | Call `reset(uri)`. | `getAnchorCount(uri)` returns 0. | ✅ Passed |
 | 48.8 | dispose() cleans up | Call `dispose()`. | Event subscription removed, anchors cleared. | ✅ Passed |
-| 48.9 | Comment follows text after insertion | Open a markdown file with a `^gn` comment on line 10 in **regular file view** (not diff — the anchor tracker only works on editable documents). Go to line 5, insert 3 blank lines (press Enter 3×). | Comment thread moves to line 13 (shifted down by 3). Highlight stays on correct text. | ⬜ Manual |
-| 48.10 | Comment follows text after deletion | Delete 2 lines above the comment. | Comment thread shifts up by 2. | ⬜ Manual |
+| 48.9 | Comment follows text after insertion | Open a markdown file with a `^gn` comment on line 10 in **regular file view** (not diff — the anchor tracker only works on editable documents). Go to line 5, insert 3 blank lines (press Enter 3×). | Comment thread moves to line 13 (shifted down by 3). Highlight stays on correct text. | ✅ Manual Passed |
+| 48.10 | Comment follows text after deletion | Delete 2 lines above the comment. | Comment thread shifts up by 2. | ✅ Manual Passed |
 
 ---
 
@@ -240,8 +240,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 45. Context Menu | 4 | 1 | 1 | 0 | 0 | ✅ All manual passed |
 | 46. Error UX | 7 | 5 | 1 | 0 | 1 |
 | 47. Output Channel | 5 | 4 | 1 | 0 | 0 | ✅ 47.5 manual passed |
-| 48. Anchor Resolution | 10 | 8 | 0 | 2 | 0 |
-| **TOTAL** | **86** | **57 ✅** | **7 ✅** | **12** | **1** |
+| 48. Anchor Resolution | 10 | 8 | 0 | 0 | 0 | ✅ All passed |
+| **TOTAL** | **86** | **57 ✅** | **7 ✅** | **10** | **1** |
 
 ---
 
@@ -278,7 +278,6 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 37.14 | Poll interval setting | Change `gitnotate.pollInterval` to 15 → polling cadence changes. |
 | 38.12 | Inline diff behavior | Set `diffEditor.renderSideBySide: false`. Document behavior. |
 | 42.4 | Pending review coexistence | Start GH PR extension review, then post Gitnotate comment. No 422 error. |
-| 48.10 | Anchor: delete lines above | Delete 2 lines above comment → thread shifts up by 2. |
 
 ---
 
