@@ -1657,6 +1657,7 @@ describe('extension', () => {
     });
 
     it('should NOT fire console.warn on subsequent gitService guard hits (once-per-session)', async () => {
+      deactivate(); // Reset gitServiceWarningShown from prior test
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       mockGetGitHubToken.mockResolvedValue('test-token');
 
@@ -1687,6 +1688,7 @@ describe('extension', () => {
         (call) => call.some((arg) => typeof arg === 'string' && arg.includes('gitService'))
       ).length;
 
+      expect(warnsAfterFirst).toBeGreaterThanOrEqual(1);
       expect(warnsAfterSecond).toBe(warnsAfterFirst);
 
       consoleSpy.mockRestore();
