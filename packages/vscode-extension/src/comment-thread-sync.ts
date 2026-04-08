@@ -10,6 +10,8 @@ import type { AnchorTracker } from './anchor-tracker';
 // Matches the > 📌 **"quoted text"** (chars N–M) blockquote line
 const BLOCKQUOTE_FALLBACK_RE = /^>\s*📌\s*\*\*".*?"\*\*\s*\(chars\s*\d+[–-]\d+\)\s*\n*/;
 
+export const MAX_CACHE_SIZE = 50;
+
 export function stripBlockquoteFallback(text: string): string {
   return text.replace(BLOCKQUOTE_FALLBACK_RE, '').trim();
 }
@@ -102,6 +104,7 @@ export class CommentThreadSync {
       return null;
     }
     this.renderedFingerprints.set(fpKey, newFingerprint);
+    this.evictIfNeeded(this.renderedFingerprints);
 
     // Clear threads on all URIs in the map
     for (const uri of Object.values(uriMap)) {
@@ -238,7 +241,7 @@ export class CommentThreadSync {
     if (cacheFingerprint !== freshFingerprint) {
       debug('Thread sync (cache-first): data changed — re-rendering');
       this.cache.set(cacheKey, freshComments);
-      // Clear fingerprint so renderComments will re-render with new data
+      this.evictIfNeeded(this.cache);
       const fpKey = `${uri.toString()}:RIGHT`;
       this.renderedFingerprints.delete(fpKey);
       const freshMap = this.renderComments(relativePath, freshComments, { RIGHT: uri });
@@ -248,6 +251,7 @@ export class CommentThreadSync {
 
     debug('Thread sync (cache-first): data unchanged — skipping re-render');
     this.cache.set(cacheKey, freshComments);
+    this.evictIfNeeded(this.cache);
     return cachedRanges;
   }
 
@@ -316,6 +320,7 @@ export class CommentThreadSync {
     }
     this.cache.set(cacheKey, comments);
     this.staleCache.set(cacheKey, comments);
+    this.evictIfNeeded(this.cache);
     return comments;
   }
 
@@ -337,5 +342,12 @@ export class CommentThreadSync {
     const config = vscode.workspace.getConfiguration('gitnotate');
     const seconds = config.get<number>('pollInterval', 30);
     return Math.max(10, seconds) * 1000;
+  }
+
+  private evictIfNeeded<V>(map: Map<string, V>): void {
+    while (map.size > MAX_CACHE_SIZE) {
+      const oldest = map.keys().next().value;
+      if (oldest !== undefined) map.delete(oldest);
+    }
   }
 }

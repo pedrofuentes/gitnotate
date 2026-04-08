@@ -957,4 +957,117 @@ describe('PrService', () => {
       expect(allText).toContain('x'.repeat(200));
     });
   });
+
+  describe('listReviewComments — pagination cap warning', () => {
+    function makeFullPage(pageIndex: number) {
+      return Array.from({ length: 100 }, (_, i) => ({
+        id: pageIndex * 100 + i + 1,
+        body: `comment ${pageIndex * 100 + i + 1}`,
+        path: 'src/a.ts',
+        line: 1,
+        side: 'RIGHT',
+        in_reply_to_id: undefined,
+        user: { login: 'user' },
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      }));
+    }
+
+    function mockFullPages(count: number) {
+      for (let i = 0; i < count; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => makeFullPage(i),
+        });
+      }
+    }
+
+    it('should log via this.log.warn when MAX_PAGES is reached', async () => {
+      // Set up the logger singleton so PrService can find it
+      const { createLogger, _resetForTesting } = await import('../src/logger');
+      _resetForTesting();
+      const logger = createLogger();
+      const warnSpy = vi.spyOn(logger, 'warn');
+
+      // Create a new client so it picks up the logger
+      const loggedClient = new PrService(token);
+      mockFullPages(10);
+
+      await loggedClient.listReviewComments(pr);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'PrService',
+        expect.stringContaining('more than')
+      );
+
+      warnSpy.mockRestore();
+      _resetForTesting();
+    });
+
+    it('should NOT log a pagination warning when fewer pages are fetched', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Only 2 pages — well under MAX_PAGES
+      mockFullPages(1);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: async () => Array.from({ length: 50 }, (_, i) => ({
+          id: 100 + i + 1,
+          body: `comment ${100 + i + 1}`,
+          path: 'src/a.ts',
+          line: 1,
+          side: 'RIGHT',
+          in_reply_to_id: undefined,
+          user: { login: 'user' },
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        })),
+      });
+
+      await client.listReviewComments(pr);
+
+      // console.warn should NOT have been called with MAX_PAGES message
+      const warningCalls = consoleSpy.mock.calls.filter(
+        (call) => call.some((arg) => typeof arg === 'string' && arg.includes('MAX_PAGES'))
+      );
+      expect(warningCalls).toHaveLength(0);
+      consoleSpy.mockRestore();
+    });
+
+    it('should show a vscode info message when pagination cap is hit', async () => {
+      mockFullPages(10);
+
+      const { window } = await import('../__mocks__/vscode');
+      window.showInformationMessage.mockClear();
+
+      await client.listReviewComments(pr);
+
+      expect(window.showInformationMessage).toHaveBeenCalledWith(
+        expect.stringContaining('1000')
+      );
+    });
+
+    it('should NOT show vscode info message when pagination cap is NOT hit', async () => {
+      // Only 3 pages worth of comments (< MAX_PAGES)
+      for (let i = 0; i < 3; i++) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: async () => i < 2 ? makeFullPage(i) : makeFullPage(i).slice(0, 50),
+        });
+      }
+
+      const { window } = await import('../__mocks__/vscode');
+      window.showInformationMessage.mockClear();
+
+      await client.listReviewComments(pr);
+
+      expect(window.showInformationMessage).not.toHaveBeenCalled();
+    });
+  });
 });
