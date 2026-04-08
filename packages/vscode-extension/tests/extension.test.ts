@@ -1197,19 +1197,30 @@ describe('extension', () => {
         activeTabGroup: tabGroup,
       });
 
-      // Mock openTextDocument to return doc with matching URI
-      workspace.openTextDocument.mockResolvedValueOnce({
-        uri: diffModified,
-        languageId: 'markdown',
-        fileName: '/workspace/docs/readme.md',
-      });
+      // Mock activeTextEditor after diff opens
+      const mockEditor = {
+        selection: null as unknown,
+        revealRange: vi.fn(),
+        document: { uri: diffModified, languageId: 'markdown', fileName: '/workspace/docs/readme.md' },
+        setDecorations: vi.fn(),
+      };
+      __setActiveTextEditor(mockEditor);
+
+      // Clear executeCommand calls from activation setup
+      commands.executeCommand.mockClear();
 
       // Call goToComment — should prefer existing diff tab
       await goToCommentHandler('docs/readme.md', 10, 5, 15);
 
-      // Should have opened the diff tab's modified URI, not a file:// URI
-      expect(workspace.openTextDocument).toHaveBeenCalledWith(diffModified);
-      expect(window.showTextDocument).toHaveBeenCalled();
+      // Should have used vscode.diff command, NOT openTextDocument + showTextDocument
+      expect(commands.executeCommand).toHaveBeenCalledWith(
+        'vscode.diff',
+        diffOriginal,
+        diffModified,
+        undefined
+      );
+      // Should NOT have opened a regular file
+      expect(workspace.openTextDocument).not.toHaveBeenCalled();
     });
 
     it('should fall back to regular file when no diff tab exists', async () => {

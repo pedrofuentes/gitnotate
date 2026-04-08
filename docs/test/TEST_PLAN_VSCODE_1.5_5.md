@@ -153,8 +153,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 43.3 | setLoading() shows spinner | Call `statusBar.setLoading()`. | Text: `$(sync~spin) Gitnotate: Loading...`. | ✅ Passed |
 | 43.4 | setError() shows error | Call `statusBar.setError('msg')`. | Text: `$(error) Gitnotate: Error`. Tooltip: `msg`. | ✅ Passed |
 | 43.5 | Click triggers refresh | Click status bar item. | `gitnotate.refreshComments` command executes. | ✅ Passed |
-| 43.6 | Status bar shows PR number | Open a markdown file from a PR branch. | Bottom-right status bar shows `Gitnotate: PR #N`. Click → comments refresh. | 🔍✅ Integration passed |
-| 43.7 | Status bar hidden without PR | Open a markdown file on a branch with no PR (e.g., main). | No Gitnotate status bar item visible. | 🔍✅ Integration passed |
+| 43.6 | Status bar shows PR number | Open a markdown file from a PR branch. | Bottom-right status bar shows `Gitnotate: PR #N`. Click → comments refresh. | ✅ Manual Passed |
+| 43.7 | Status bar hidden without PR | Open a markdown file on a branch with no PR (e.g., main). | No Gitnotate status bar item visible. | ✅ Manual Passed |
 
 ---
 
@@ -287,8 +287,6 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 
 | Category | Test | What to verify |
 |----------|------|----------------|
-| Status bar | 43.6 | Open PR file → `Gitnotate: PR #N` in bottom-right status bar |
-| Status bar hidden | 43.7 | Open non-PR file → no Gitnotate status bar item |
 | Context menu negative | 45.4 | Open `.ts` file, select text, right-click → no "Add Comment" |
 | Error retry | 46.7 | Lose network → error with "Retry" button → restore → click works |
 | Output channel | 47.5 | View → Output → "Gitnotate" → structured log lines appear |

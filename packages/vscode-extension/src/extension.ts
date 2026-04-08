@@ -251,16 +251,31 @@ export function activate(context: vscode.ExtensionContext) {
           // Check for an existing diff tab for this file
           const normalizedFile = filePath.replace(/\\/g, '/');
           const tabGroups = vscode.window.tabGroups?.all;
+          debug('goToComment: looking for diff tab, filePath =', normalizedFile, 'tabGroups count =', tabGroups?.length ?? 'undefined');
           if (tabGroups) {
             for (const group of tabGroups) {
               for (const tab of group.tabs) {
                 if (tab.input instanceof vscode.TabInputTextDiff) {
                   const diffInput = tab.input;
                   const modPath = diffInput.modified.fsPath.replace(/\\/g, '/');
+                  debug('goToComment: found diff tab, modified.fsPath =', modPath);
                   if (modPath.endsWith(normalizedFile)) {
-                    // Found matching diff tab — open modified (right) pane
-                    const doc = await vscode.workspace.openTextDocument(diffInput.modified);
-                    await vscode.window.showTextDocument(doc, { selection: range, preserveFocus: false });
+                    debug('goToComment: matched! Re-opening diff view');
+                    // Re-open diff to activate the existing tab
+                    await vscode.commands.executeCommand(
+                      'vscode.diff',
+                      diffInput.original,
+                      diffInput.modified,
+                      tab.label
+                    );
+                    // Set selection on the now-active editor
+                    const editor = vscode.window.activeTextEditor;
+                    if (editor) {
+                      editor.selection = new vscode.Selection(
+                        range.start, range.end
+                      );
+                      editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+                    }
                     commentCtrl?.revealThread(diffInput.modified, line);
                     return;
                   }
@@ -268,6 +283,7 @@ export function activate(context: vscode.ExtensionContext) {
               }
             }
           }
+          debug('goToComment: no matching diff tab — opening regular file');
 
           // No diff tab found — fall back to regular file
           const fullPath = `${workspaceRoot}/${filePath}`;
