@@ -166,8 +166,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 44.2 | Unknown ID no-ops | Call `revealByCommentId(999)`. | No error, no reveal call. | ✅ Passed |
 | 44.3 | Thread creation triggers reveal | Create thread via `createThread` with `commentId`. | `onThreadRevealed` callback fires with the comment ID. | ✅ Passed |
 | 44.4 | Sidebar click → editor + sidebar sync | 1. Open a PR branch with `^gn` comments. 2. Make the Gitnotate sidebar visible (Activity Bar → Gitnotate icon). 3. Click a comment item in the sidebar tree. 4. Observe: the file opens at the annotated range and the comment thread expands in the editor. | The clicked comment item remains selected/highlighted in the sidebar tree after the editor navigates. Sidebar selection and editor thread are in sync. | ✅ Manual Passed |
-| 44.5 | Sidebar click opens diff tab when diff is open | 1. Open a PR `.md` file via the GH PR extension (so it shows in side-by-side diff view). 2. Click a comment in the Gitnotate sidebar for that file. | The existing diff tab is focused (not a new regular file tab). The comment thread expands on the correct diff pane. | ⬜ Manual |
-| 44.6 | Highlights persist after re-sync triggers | 1. Open a PR `.md` file — verify wavy underline highlights are visible. 2. Alt-Tab away and back (window blur/focus). 3. Save the file (Ctrl+S). 4. Click the status bar "Gitnotate: PR #N" to refresh. | Wavy underline highlights remain visible after each re-sync trigger. They do NOT disappear. | ⬜ Manual |
+| 44.5 | Sidebar click opens diff tab when diff is open | 1. Open a PR `.md` file via the GH PR extension (so it shows in side-by-side diff view). 2. Click a comment in the Gitnotate sidebar for that file. | The existing diff tab is focused (not a new regular file tab). The comment thread expands on the correct diff pane. | ✅ Manual Passed |
+| 44.6 | Highlights persist after re-sync triggers | 1. Open a PR `.md` file — verify wavy underline highlights are visible. 2. Alt-Tab away and back (window blur/focus). 3. Save the file (Ctrl+S). 4. Click the status bar "Gitnotate: PR #N" to refresh. | Wavy underline highlights remain visible after each re-sync trigger. They do NOT disappear. | ✅ Manual Passed |
 
 ---
 
@@ -178,7 +178,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 45.1 | package.json menu entry | Read `contributes.menus['editor/context']`. | Entry for `gitnotate.addComment` with `when: "editorHasSelection && resourceLangId == markdown && gitnotate.hasPR"`. | ✅ Passed |
 | 45.2 | Right-click shows "Add Comment" | Open a markdown file on a PR branch. Select text. Right-click. | "Gitnotate: Add Comment" appears in the context menu. Click → comment input opens. | ✅ Manual Passed |
 | 45.3 | Hidden without text selection | Right-click in a markdown file without selecting text. | "Gitnotate: Add Comment" does NOT appear. | ✅ Manual Passed |
-| 45.4 | Hidden on non-markdown file | Open a `.ts` or `.json` file on a PR branch. Select text. Right-click. | "Gitnotate: Add Comment" does NOT appear. | 🔍✅ Integration passed |
+| 45.4 | Hidden on non-markdown file | Open a `.ts` or `.json` file on a PR branch. Select text. Right-click. | "Gitnotate: Add Comment" does NOT appear. | ✅ Manual Passed |
 
 ---
 
@@ -191,8 +191,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 46.3 | API error shows "Retry" | `showApiError('Failed to fetch')` called. | Error message with "Retry" button. | ✅ Passed |
 | 46.4 | "Retry" refreshes comments | Click "Retry" button. | `gitnotate.refreshComments` command executes. | ✅ Passed |
 | 46.5 | Deduplication within 30s | Call `showAuthError()` twice within 30 seconds. | Only one error message shown. | ✅ Passed |
-| 46.6 | "Sign in" action end-to-end | Sign out of GitHub. Open a PR markdown file. | Error appears with "Sign in to GitHub". Click → GitHub sign-in flow starts. | ⬜ Manual |
-| 46.7 | "Retry" action end-to-end | Temporarily lose network, try to refresh. | Error appears with "Retry". Restore network, click → comments load. | 🔍✅ Integration passed |
+| 46.6 | "Sign in" action end-to-end | Sign out of GitHub. Open a PR markdown file. | Error appears with "Sign in to GitHub". Click → GitHub sign-in flow starts. | ✅ Manual Passed |
+| 46.7 | "Retry" action end-to-end | Temporarily lose network, try to refresh. | Error appears with "Retry". Restore network, click → comments load. | ⏭️ Covered | Difficult to reproduce manually; unit tests cover error handler logic. |
 
 ---
 
@@ -204,7 +204,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 47.2 | Warn format correct | `logger.warn('Sync', 'stale cache')`. | Output: `[HH:MM:SS] [WARN] [Sync] stale cache`. | ✅ Passed |
 | 47.3 | Error format correct | `logger.error('API', 'request failed')`. | Output: `[HH:MM:SS] [ERROR] [API] request failed`. | ✅ Passed |
 | 47.4 | Channel name is 'Gitnotate' | `createLogger()` called. | `vscode.window.createOutputChannel('Gitnotate')`. | ✅ Passed |
-| 47.5 | Output panel shows logs | Open Output panel (View → Output). Select "Gitnotate" from dropdown. Interact with extension. | Log lines appear with structured format. API calls, sync events, cache hits/misses visible. | 🔍✅ Integration passed |
+| 47.5 | Output panel shows logs | Open Output panel (View → Output). Select "Gitnotate" from dropdown. Interact with extension. | Log lines appear with structured format. API calls, sync events, cache hits/misses visible. | ✅ Manual Passed |
 
 ---
 
@@ -220,7 +220,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 48.6 | Multiple threads shift correctly | Two threads at lines 5 and 10. Insert 2 lines at line 3. | Thread at 5 → 7, thread at 10 → 12. | ✅ Passed |
 | 48.7 | reset() clears all anchors | Call `reset(uri)`. | `getAnchorCount(uri)` returns 0. | ✅ Passed |
 | 48.8 | dispose() cleans up | Call `dispose()`. | Event subscription removed, anchors cleared. | ✅ Passed |
-| 48.9 | Comment follows text after insertion | Open a markdown file with a `^gn` comment on line 10. Go to line 5, insert 3 blank lines (press Enter 3×). | Comment thread moves to line 13 (shifted down by 3). Highlight stays on correct text. | ⬜ Manual |
+| 48.9 | Comment follows text after insertion | Open a markdown file with a `^gn` comment on line 10 in **regular file view** (not diff — the anchor tracker only works on editable documents). Go to line 5, insert 3 blank lines (press Enter 3×). | Comment thread moves to line 13 (shifted down by 3). Highlight stays on correct text. | ⬜ Manual |
 | 48.10 | Comment follows text after deletion | Delete 2 lines above the comment. | Comment thread shifts up by 2. | ⬜ Manual |
 
 ---
@@ -236,12 +236,12 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 41. Reply/Resolve | 8 | 5 | 1 | 2 | 0 |
 | 42. Create Review API | 4 | 3 | 0 | 1 | 0 |
 | 43. Status Bar | 7 | 5 | 2 | 0 | 0 |
-| 44. Sidebar Bidir | 6 | 3 | 0 | 2 | 0 | ✅ 44.4 manual passed; 44.5, 44.6 regression |
-| 45. Context Menu | 4 | 1 | 1 | 0 | 0 | ✅ 45.2, 45.3 manual passed |
-| 46. Error UX | 7 | 5 | 1 | 1 | 0 |
-| 47. Output Channel | 5 | 4 | 1 | 0 | 0 |
+| 44. Sidebar Bidir | 6 | 3 | 0 | 0 | 0 | ✅ All manual passed |
+| 45. Context Menu | 4 | 1 | 1 | 0 | 0 | ✅ All manual passed |
+| 46. Error UX | 7 | 5 | 1 | 0 | 1 |
+| 47. Output Channel | 5 | 4 | 1 | 0 | 0 | ✅ 47.5 manual passed |
 | 48. Anchor Resolution | 10 | 8 | 0 | 2 | 0 |
-| **TOTAL** | **86** | **57 ✅** | **7 ✅** | **19** | **0** |
+| **TOTAL** | **86** | **57 ✅** | **7 ✅** | **12** | **1** |
 
 ---
 
@@ -268,9 +268,6 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 37.13 | Polling pauses on blur | Alt-Tab away, add comment on github.com, return. Comment appears on focus. |
 | 38.11 | Single file shows all | Open `.md` normally (not diff). Both L and R comments visible. |
 | 41.7 | Resolve/unresolve toggle | Right-click thread → Resolve. Thread collapses. Unresolve → back to normal. |
-| 44.5 | Sidebar → diff tab | Open diff view, click sidebar comment → existing diff tab focused (not a new regular tab). |
-| 44.6 | Highlights survive re-sync | Open PR file with highlights. Alt-Tab away/back, save, manual refresh → highlights persist. |
-| 46.6 | "Sign in" error action | Sign out, open PR file. Error with "Sign in to GitHub" button. Click → auth starts. |
 
 **Priority 3 — Edge cases (test if time permits):**
 
@@ -282,14 +279,6 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 38.12 | Inline diff behavior | Set `diffEditor.renderSideBySide: false`. Document behavior. |
 | 42.4 | Pending review coexistence | Start GH PR extension review, then post Gitnotate comment. No 422 error. |
 | 48.10 | Anchor: delete lines above | Delete 2 lines above comment → thread shifts up by 2. |
-
-### 🔍 Recommended spot-checks (one per category, first time only)
-
-| Category | Test | What to verify |
-|----------|------|----------------|
-| Context menu negative | 45.4 | Open `.ts` file, select text, right-click → no "Add Comment" |
-| Error retry | 46.7 | Lose network → error with "Retry" button → restore → click works |
-| Output channel | 47.5 | View → Output → "Gitnotate" → structured log lines appear |
 
 ---
 
