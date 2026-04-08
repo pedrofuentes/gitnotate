@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-04-08 (VSCode Extension)
+
 ### Added (VSCode Extension — Phase 1.5 Increment 5)
 - **ETag-based polling for live comment updates** — auto-refresh every 30s (configurable), pause on window blur, resume on focus with immediate fetch, conditional `If-None-Match`/`304 Not Modified` requests to minimize API usage
 - **Side-aware comment placement in diff views** — respect `L`/`R` side field in `^gn` metadata and `LEFT`/`RIGHT` from GitHub API; detect diff context via document URI scheme (`git:` = old/LEFT, `file:` = new/RIGHT); filter comments to correct side; detect cursor side when posting; `[Old]`/`[New]` indicators in sidebar
