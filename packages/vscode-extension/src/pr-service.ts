@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { getLogger, Logger } from './logger';
 
 export interface PullRequestInfo {
@@ -277,7 +278,10 @@ export class PrService {
       }
 
       if (page > MAX_PAGES) {
+        const msg = `PR has more than ${MAX_PAGES * PER_PAGE} comments. Some comments may not be displayed.`;
         console.warn('[Gitnotate]', `MAX_PAGES (${MAX_PAGES}) reached — returning ${allComments.length} comments, some may be missing`);
+        this.log?.warn('PrService', msg);
+        vscode.window.showInformationMessage(`Gitnotate: ${msg}`);
       }
 
       return allComments;
