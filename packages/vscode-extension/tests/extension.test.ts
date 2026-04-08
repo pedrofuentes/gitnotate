@@ -26,7 +26,30 @@ vi.mock('../src/pr-detector', () => ({
 vi.mock('../src/pr-service', () => ({
   PrService: vi.fn().mockImplementation(() => ({
     listReviewComments: vi.fn().mockResolvedValue([]),
+    clearEtagCache: vi.fn(),
   })),
+}));
+
+vi.mock('../src/comment-thread-sync', () => ({
+  CommentThreadSync: vi.fn().mockImplementation((prService: any) => {
+    let cachedComments: any[] | undefined;
+    return {
+      syncForDocument: vi.fn().mockImplementation(async (_uri: any, _path: any, pr: any) => {
+        try {
+          cachedComments = await prService.listReviewComments(pr);
+        } catch {
+          cachedComments = [];
+        }
+        return [];
+      }),
+      syncForDiff: vi.fn().mockResolvedValue(null),
+      getCachedComments: vi.fn().mockImplementation(() => cachedComments),
+      startPolling: vi.fn(),
+      stopPolling: vi.fn(),
+      invalidateCache: vi.fn().mockImplementation(() => { cachedComments = undefined; }),
+    };
+  }),
+  stripBlockquoteFallback: (text: string) => text,
 }));
 
 vi.mock('../src/comments-tree-provider', () => {
@@ -59,7 +82,7 @@ vi.mock('../src/comments-tree-provider', () => {
   };
 });
 
-import { activate, deactivate } from '../src/extension';
+import { activate, deactivate, __testResetGitService } from '../src/extension';
 import {
   commands,
   window,
@@ -781,6 +804,183 @@ describe('extension', () => {
     });
   });
 
+  describe('service hoisting — GitService and lifecycle (Issues #11, #12)', () => {
+    const mockPr = {
+      owner: 'octocat',
+      repo: 'hello',
+      number: 42,
+      headSha: 'abc123',
+    };
+
+    const mkEditor = (name = 'readme.md') => ({
+      setDecorations: vi.fn(),
+      document: {
+        uri: Uri.file(`/workspace/docs/${name}`),
+        languageId: 'markdown',
+        fileName: `/workspace/docs/${name}`,
+      },
+    });
+
+    it('should NOT re-instantiate GitService on every editor change (#12)', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const { GitService } = await import('../src/git-service');
+      const callsAfterActivation = vi.mocked(GitService).mock.calls.length;
+
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      handler(mkEditor('file-a.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      // GitService should NOT have been re-constructed for editor syncs
+      expect(vi.mocked(GitService).mock.calls.length).toBe(callsAfterActivation);
+    });
+
+    it('should reuse CommentThreadSync instance across editor syncs (#11)', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const { CommentThreadSync } = await import('../src/comment-thread-sync');
+
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      handler(mkEditor('file-a.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const ctorCount1 = vi.mocked(CommentThreadSync).mock.calls.length;
+
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Same token → CommentThreadSync should NOT be reconstructed
+      expect(vi.mocked(CommentThreadSync).mock.calls.length).toBe(ctorCount1);
+    });
+
+    it('should NOT destroy services on git state change — only clear cache (#11)', async () => {
+      let gitStateCallback: (() => void) | undefined;
+      const { GitService } = await import('../src/git-service');
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(true),
+        onDidChangeState: vi.fn().mockImplementation((cb: () => void) => {
+          gitStateCallback = cb;
+          return { dispose: vi.fn() };
+        }),
+      }) as any);
+
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger first editor sync → creates PrService + CommentThreadSync
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      handler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      const { PrService } = await import('../src/pr-service');
+      const prServiceCountAfterSync = vi.mocked(PrService).mock.calls.length;
+      const { CommentThreadSync } = await import('../src/comment-thread-sync');
+      const ctsCountAfterSync = vi.mocked(CommentThreadSync).mock.calls.length;
+
+      // Fire git state change (branch change)
+      expect(gitStateCallback).toBeDefined();
+      gitStateCallback!();
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Trigger another sync — services should NOT be reconstructed
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(vi.mocked(PrService).mock.calls.length).toBe(prServiceCountAfterSync);
+      expect(vi.mocked(CommentThreadSync).mock.calls.length).toBe(ctsCountAfterSync);
+
+      // Restore default GitService mock
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(false),
+        onDidChangeState: vi.fn().mockReturnValue(undefined),
+      }));
+    });
+
+    it('should recreate PrService and CommentThreadSync when auth token changes (#11)', async () => {
+      mockGetGitHubToken.mockResolvedValue('token-A');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const { PrService } = await import('../src/pr-service');
+      const { CommentThreadSync } = await import('../src/comment-thread-sync');
+
+      // Trigger first sync
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      handler(mkEditor('file-a.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      const prCount1 = vi.mocked(PrService).mock.calls.length;
+      const ctsCount1 = vi.mocked(CommentThreadSync).mock.calls.length;
+
+      // Simulate auth change — token changes
+      mockGetGitHubToken.mockResolvedValue('token-B');
+      const authHandler = authentication.onDidChangeSessions.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor('file-a.md'));
+      authHandler({ provider: { id: 'github' } });
+      await vi.runAllTimersAsync();
+
+      // Both should have been recreated with the new token
+      expect(vi.mocked(PrService).mock.calls.length).toBe(prCount1 + 1);
+      expect(vi.mocked(CommentThreadSync).mock.calls.length).toBe(ctsCount1 + 1);
+    });
+
+    it('should preserve cache across editor switches with same CommentThreadSync (#11)', async () => {
+      const mockComments = [
+        { id: 1, body: 'cached', path: 'docs/file-a.md', line: 1, side: 'RIGHT', createdAt: '', updatedAt: '' },
+      ];
+
+      const { PrService } = await import('../src/pr-service');
+      vi.mocked(PrService).mockImplementation(() => ({
+        listReviewComments: vi.fn().mockResolvedValue(mockComments),
+        clearEtagCache: vi.fn(),
+      }) as any);
+
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      const context = makeContext();
+      activate(context as any);
+      await vi.runAllTimersAsync();
+
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+
+      // First sync — comments fetched and cached
+      handler(mkEditor('file-a.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(__mockSetComments).toHaveBeenCalledWith(mockComments);
+
+      __mockSetComments.mockClear();
+
+      // Second sync — same CommentThreadSync instance, cache should serve data
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(__mockSetComments).toHaveBeenCalledWith(mockComments);
+    });
+  });
+
   describe('deactivation cleanup (22.1)', () => {
     it('should clean up all hoisted references on deactivate', async () => {
       mockGetGitHubToken.mockResolvedValue('test-token');
@@ -850,6 +1050,7 @@ describe('extension', () => {
       const { PrService } = await import('../src/pr-service');
       vi.mocked(PrService).mockImplementation(() => ({
         listReviewComments: vi.fn().mockResolvedValue(mockComments),
+        clearEtagCache: vi.fn(),
       }) as any);
 
       mockGetGitHubToken.mockResolvedValue('test-token');
@@ -1275,6 +1476,145 @@ describe('extension', () => {
       // Should NOT have opened any file
       expect(workspace.openTextDocument).not.toHaveBeenCalled();
       expect(window.showTextDocument).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('gitService guard branches (coverage)', () => {
+    const mockPr = {
+      owner: 'octocat',
+      repo: 'hello',
+      number: 42,
+      headSha: 'abc123',
+    };
+
+    const mkEditor = (name = 'readme.md') => ({
+      setDecorations: vi.fn(),
+      document: {
+        uri: Uri.file(`/workspace/docs/${name}`),
+        languageId: 'markdown',
+        fileName: `/workspace/docs/${name}`,
+      },
+    });
+
+    it('updatePRStatusBar returns early when gitService is undefined (line 48)', async () => {
+      let gitStateCallback: (() => void) | undefined;
+      const { GitService } = await import('../src/git-service');
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(true),
+        onDidChangeState: vi.fn().mockImplementation((cb: () => void) => {
+          gitStateCallback = cb;
+          return { dispose: vi.fn() };
+        }),
+      }) as any);
+
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      expect(gitStateCallback).toBeDefined();
+
+      // Deactivate clears gitService + statusBar
+      deactivate();
+      mockDetectCurrentPR.mockClear();
+
+      // Fire git state callback — updatePRStatusBar hits !gitService guard
+      gitStateCallback!();
+      await vi.runAllTimersAsync();
+
+      // detectCurrentPR is NOT called because updatePRStatusBar returned early
+      expect(mockDetectCurrentPR).not.toHaveBeenCalled();
+
+      vi.mocked(GitService).mockImplementation(() => ({
+        isAvailable: vi.fn().mockReturnValue(false),
+        onDidChangeState: vi.fn().mockReturnValue(undefined),
+      }));
+    });
+
+    it('debouncedSync returns early when gitService is undefined (line 125)', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger first sync to populate cachedToken, prService, threadSync
+      const handler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      handler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Clear gitService only — prService/threadSync/commentCtrl remain set
+      __testResetGitService();
+      mockDetectCurrentPR.mockClear();
+
+      // Trigger another sync — same token so line 117 block is skipped,
+      // goes directly to !gitService guard at line 125
+      handler(mkEditor('file-b.md'));
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(mockDetectCurrentPR).not.toHaveBeenCalled();
+    });
+
+    it('replyToThread returns early when gitService is undefined (line 322)', async () => {
+      mockGetGitHubToken.mockResolvedValue('test-token');
+      mockDetectCurrentPR.mockResolvedValue(mockPr);
+
+      activate(makeContext() as any);
+      await vi.runAllTimersAsync();
+
+      // Trigger sync to create prService
+      const editorHandler = window.onDidChangeActiveTextEditor.mock.calls[0][0] as (e: unknown) => void;
+      __setActiveTextEditor(mkEditor());
+      editorHandler(mkEditor());
+      await vi.advanceTimersByTimeAsync(300);
+
+      // Spy on getParentCommentId to return a valid ID (pass line 316)
+      const { CommentController } = await import('../src/comment-controller');
+      const spy = vi.spyOn(CommentController.prototype, 'getParentCommentId').mockReturnValue(123);
+
+      const replyCall = commands.registerCommand.mock.calls.find(
+        ([name]: [string]) => name === 'gitnotate.replyToThread'
+      );
+      const replyHandler = replyCall![1] as (reply: any) => Promise<void>;
+
+      // Clear gitService only — commentCtrl and prService remain set
+      __testResetGitService();
+      mockDetectCurrentPR.mockClear();
+
+      await replyHandler({ thread: { comments: [] }, text: 'test reply' });
+      await vi.runAllTimersAsync();
+
+      // detectCurrentPR is NOT called — guard returned early at line 322
+      expect(mockDetectCurrentPR).not.toHaveBeenCalled();
+
+      spy.mockRestore();
+    });
+
+    it('tryInitialSync returns early when gitService is undefined (line 451)', async () => {
+      // Set active editor so !editor is false — tests the !gitService branch
+      __setActiveTextEditor(mkEditor());
+
+      activate(makeContext() as any);
+      // Deactivate before the 500ms timer fires — clears gitService
+      deactivate();
+
+      // Advance to 500ms — tryInitialSync fires with gitService = undefined
+      await vi.advanceTimersByTimeAsync(500);
+
+      // No crash means the guard worked correctly
+    });
+
+    it('setupGitWatcher returns early when gitService is undefined (line 475)', async () => {
+      activate(makeContext() as any);
+      // Deactivate before the 1000ms timer fires — clears gitService
+      deactivate();
+
+      // Advance to 1000ms — setupGitWatcher fires with gitService = undefined
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // No crash means the guard worked correctly
     });
   });
 });
