@@ -27,7 +27,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm --filter @gitnotate/core test && pnpm --filter @gitnotate/vscode-extension test
+        run: pnpm --filter @gitnotate/core build && pnpm --filter @gitnotate/core test && pnpm --filter @gitnotate/vscode-extension test
 
       - name: Build
         run: pnpm build
