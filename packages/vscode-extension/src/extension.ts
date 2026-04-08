@@ -494,6 +494,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push({ dispose: () => { if (gitWatcherTimer) clearTimeout(gitWatcherTimer); } });
 }
 
+/** @internal Test-only: reset gitService for guard branch coverage tests */
+export function __testResetGitService(): void {
+  gitService = undefined;
+}
+
 export function deactivate() {
   debug('Extension deactivating...');
   if (threadSync) {
