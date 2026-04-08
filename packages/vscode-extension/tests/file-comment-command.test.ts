@@ -54,6 +54,11 @@ describe('addFileCommentCommand', () => {
     await addFileCommentCommand();
 
     expect(window.showInformationMessage).toHaveBeenCalledWith('Select text first');
+    expect(window.showInputBox).not.toHaveBeenCalled();
+    expect(mockCreateSelector).not.toHaveBeenCalled();
+    expect(mockReadLocalSidecar).not.toHaveBeenCalled();
+    expect(mockWriteLocalSidecar).not.toHaveBeenCalled();
+    expect(mockAddAnnotation).not.toHaveBeenCalled();
   });
 
   it('should show error if no active editor', async () => {
@@ -62,6 +67,11 @@ describe('addFileCommentCommand', () => {
     await addFileCommentCommand();
 
     expect(window.showInformationMessage).toHaveBeenCalledWith('Select text first');
+    expect(window.showInputBox).not.toHaveBeenCalled();
+    expect(mockCreateSelector).not.toHaveBeenCalled();
+    expect(mockReadLocalSidecar).not.toHaveBeenCalled();
+    expect(mockWriteLocalSidecar).not.toHaveBeenCalled();
+    expect(mockAddAnnotation).not.toHaveBeenCalled();
   });
 
   it('should use anchor engine for text selector creation', async () => {
@@ -219,5 +229,7 @@ describe('addFileCommentCommand', () => {
 
     expect(mockReadLocalSidecar).not.toHaveBeenCalled();
     expect(mockWriteLocalSidecar).not.toHaveBeenCalled();
+    expect(mockCreateSelector).not.toHaveBeenCalled();
+    expect(mockAddAnnotation).not.toHaveBeenCalled();
   });
 });
