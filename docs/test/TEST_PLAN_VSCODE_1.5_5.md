@@ -165,7 +165,7 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 44.1 | revealByCommentId finds item | Call `revealByCommentId(existingId)`. | `treeView.reveal(item, { select: true, focus: false, expand: true })` called. | ✅ Passed |
 | 44.2 | Unknown ID no-ops | Call `revealByCommentId(999)`. | No error, no reveal call. | ✅ Passed |
 | 44.3 | Thread creation triggers reveal | Create thread via `createThread` with `commentId`. | `onThreadRevealed` callback fires with the comment ID. | ✅ Passed |
-| 44.4 | Editor thread → sidebar highlight | Open a file with comment threads. Click/expand a thread in the editor. | The corresponding comment in the Gitnotate sidebar is highlighted/selected/revealed. | ⬜ Manual |
+| 44.4 | Sidebar click → editor + sidebar sync | 1. Open a PR branch with `^gn` comments. 2. Make the Gitnotate sidebar visible (Activity Bar → Gitnotate icon). 3. Click a comment item in the sidebar tree. 4. Observe: the file opens at the annotated range and the comment thread expands in the editor. | The clicked comment item remains selected/highlighted in the sidebar tree after the editor navigates. Sidebar selection and editor thread are in sync. | ✅ Manual Passed |
 
 ---
 
@@ -174,8 +174,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | # | Test | Steps | Expected | Status |
 |---|------|-------|----------|--------|
 | 45.1 | package.json menu entry | Read `contributes.menus['editor/context']`. | Entry for `gitnotate.addComment` with `when: "editorHasSelection && resourceLangId == markdown && gitnotate.hasPR"`. | ✅ Passed |
-| 45.2 | Right-click shows "Add Comment" | Open a markdown file on a PR branch. Select text. Right-click. | "Gitnotate: Add Comment" appears in the context menu. Click → comment input opens. | ⬜ Manual |
-| 45.3 | Hidden without text selection | Right-click in a markdown file without selecting text. | "Gitnotate: Add Comment" does NOT appear. | ⬜ Manual |
+| 45.2 | Right-click shows "Add Comment" | Open a markdown file on a PR branch. Select text. Right-click. | "Gitnotate: Add Comment" appears in the context menu. Click → comment input opens. | ✅ Manual Passed |
+| 45.3 | Hidden without text selection | Right-click in a markdown file without selecting text. | "Gitnotate: Add Comment" does NOT appear. | ✅ Manual Passed |
 | 45.4 | Hidden on non-markdown file | Open a `.ts` or `.json` file on a PR branch. Select text. Right-click. | "Gitnotate: Add Comment" does NOT appear. | 🔍✅ Integration passed |
 
 ---
@@ -234,12 +234,12 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 41. Reply/Resolve | 8 | 5 | 1 | 2 | 0 |
 | 42. Create Review API | 4 | 3 | 0 | 1 | 0 |
 | 43. Status Bar | 7 | 5 | 2 | 0 | 0 |
-| 44. Sidebar Bidir | 4 | 3 | 0 | 1 | 0 |
-| 45. Context Menu | 4 | 1 | 1 | 2 | 0 |
+| 44. Sidebar Bidir | 4 | 3 | 0 | 0 | 0 | ✅ 44.4 manual passed |
+| 45. Context Menu | 4 | 1 | 1 | 0 | 0 | ✅ 45.2, 45.3 manual passed |
 | 46. Error UX | 7 | 5 | 1 | 1 | 0 |
 | 47. Output Channel | 5 | 4 | 1 | 0 | 0 |
 | 48. Anchor Resolution | 10 | 8 | 0 | 2 | 0 |
-| **TOTAL** | **84** | **57 ✅** | **7 ✅** | **20** | **0** |
+| **TOTAL** | **84** | **57 ✅** | **7 ✅** | **17** | **0** |
 
 ---
 
@@ -266,8 +266,6 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 37.13 | Polling pauses on blur | Alt-Tab away, add comment on github.com, return. Comment appears on focus. |
 | 38.11 | Single file shows all | Open `.md` normally (not diff). Both L and R comments visible. |
 | 41.7 | Resolve/unresolve toggle | Right-click thread → Resolve. Thread collapses. Unresolve → back to normal. |
-| 44.4 | Editor → sidebar reveal | Expand thread in editor → sidebar highlights corresponding item. |
-| 45.2 | Context menu "Add Comment" | Select text in PR markdown, right-click → "Gitnotate: Add Comment" visible. |
 | 46.6 | "Sign in" error action | Sign out, open PR file. Error with "Sign in to GitHub" button. Click → auth starts. |
 
 **Priority 3 — Edge cases (test if time permits):**
@@ -279,7 +277,6 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 37.14 | Poll interval setting | Change `gitnotate.pollInterval` to 15 → polling cadence changes. |
 | 38.12 | Inline diff behavior | Set `diffEditor.renderSideBySide: false`. Document behavior. |
 | 42.4 | Pending review coexistence | Start GH PR extension review, then post Gitnotate comment. No 422 error. |
-| 45.3 | Menu hidden without selection | Right-click without selection → "Add Comment" not visible. |
 | 48.10 | Anchor: delete lines above | Delete 2 lines above comment → thread shifts up by 2. |
 
 ### 🔍 Recommended spot-checks (one per category, first time only)
@@ -293,3 +290,23 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | Context menu negative | 45.4 | Open `.ts` file, select text, right-click → no "Add Comment" |
 | Error retry | 46.7 | Lose network → error with "Retry" button → restore → click works |
 | Output channel | 47.5 | View → Output → "Gitnotate" → structured log lines appear |
+
+---
+
+## Bugs Found During Testing
+
+### Bug A: Sidebar click opened regular file instead of diff view (FIXED)
+
+**Found during**: 44.4 testing
+**Symptom**: Clicking a comment in the Gitnotate sidebar opened the file in a regular editor tab, even when a side-by-side diff view was already open for the same file.
+**Root cause**: `goToComment` command always created a `file://` URI and called `showTextDocument()`, ignoring existing diff tabs.
+**Fix**: `goToComment` now searches `tabGroups.all` for a `TabInputTextDiff` tab matching the file path. If found, opens the diff's modified URI to focus the diff view. Falls back to regular file when no diff tab exists.
+**Commit**: `fix(extension): goToComment navigates to existing diff tab`
+
+### Bug B: Highlights (wavy underlines) disappeared after initial render (FIXED)
+
+**Found during**: 44.4 testing
+**Symptom**: Comment threads appeared but wavy underline highlights were missing.
+**Root cause**: `renderComments` fingerprint optimization returned empty `Map` when data was unchanged. Callers interpreted empty ranges as "no highlights needed" and called `clearHighlights()`. Any re-sync trigger (window focus, save, git state change) erased wavy underlines.
+**Fix**: `renderComments` returns `null` on fingerprint skip. `syncForDocument` and `syncForDiff` propagate `null`. `debouncedSync` preserves current highlights when `null` is returned.
+**Commit**: `fix(sync): preserve highlights on fingerprint-skip re-syncs`
