@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-04-08 (VSCode Extension)
+
+### Added
+- Marketplace README with features, getting started, commands, and settings
+- `SCM Providers` category for better Marketplace discoverability
+
+### Fixed
+- `.vscodeignore` excludes test artifacts from `.vsix` package (219KB → 47KB)
+- Open VSX publish step skipped when `OVSX_PAT` secret is not configured
+- Added `repository` and `license` fields to `package.json`
+
 ## [0.1.0] — 2026-04-08 (VSCode Extension)
 
 ### Added (VSCode Extension — Phase 1.5 Increment 5)
