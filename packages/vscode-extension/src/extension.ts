@@ -45,7 +45,10 @@ async function updatePRStatusBar(): Promise<void> {
   const token = await getGitHubToken();
   debug('Auth token:', token ? 'present' : 'absent');
 
-  if (!gitService || !statusBar) return;
+  if (!gitService || !statusBar) {
+    debug('updatePRStatusBar: gitService or statusBar not available — skipping');
+    return;
+  }
 
   statusBar.setLoading();
   const pr = await detectCurrentPR(gitService, token);
@@ -122,7 +125,10 @@ export function activate(context: vscode.ExtensionContext) {
       debug('Comment sync: recreated PrService + CommentThreadSync (token changed)');
     }
 
-    if (!gitService) return;
+    if (!gitService) {
+      debug('Comment sync: gitService not available — skipping');
+      return;
+    }
     const pr = await detectCurrentPR(gitService, token);
     if (!pr) {
       debug('Comment sync: no PR found — skipping');
@@ -319,7 +325,10 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const token = await getGitHubToken();
-        if (!token || !gitService) return;
+        if (!token || !gitService) {
+          debug('replyToThread: token or gitService not available — skipping');
+          return;
+        }
         const pr = await detectCurrentPR(gitService, token);
         if (!pr) return;
 
@@ -448,7 +457,10 @@ export function activate(context: vscode.ExtensionContext) {
 
   const tryInitialSync = () => {
     const editor = vscode.window.activeTextEditor;
-    if (!editor || !gitService) return;
+    if (!editor || !gitService) {
+      debug('Initial sync: editor or gitService not available — skipping');
+      return;
+    }
 
     if (!gitService.isAvailable()) {
       retryCount++;
@@ -472,7 +484,10 @@ export function activate(context: vscode.ExtensionContext) {
   let gitWatcherRetries = 0;
   let gitWatcherTimer: ReturnType<typeof setTimeout> | undefined;
   const setupGitWatcher = () => {
-    if (!gitService) return;
+    if (!gitService) {
+      debug('Git watcher: gitService not available — skipping');
+      return;
+    }
     const disposable = gitService.onDidChangeState(() => {
       debug('Git state changed — re-syncing');
       threadSync?.stopPolling();
