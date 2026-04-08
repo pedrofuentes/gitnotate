@@ -166,6 +166,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 44.2 | Unknown ID no-ops | Call `revealByCommentId(999)`. | No error, no reveal call. | ✅ Passed |
 | 44.3 | Thread creation triggers reveal | Create thread via `createThread` with `commentId`. | `onThreadRevealed` callback fires with the comment ID. | ✅ Passed |
 | 44.4 | Sidebar click → editor + sidebar sync | 1. Open a PR branch with `^gn` comments. 2. Make the Gitnotate sidebar visible (Activity Bar → Gitnotate icon). 3. Click a comment item in the sidebar tree. 4. Observe: the file opens at the annotated range and the comment thread expands in the editor. | The clicked comment item remains selected/highlighted in the sidebar tree after the editor navigates. Sidebar selection and editor thread are in sync. | ✅ Manual Passed |
+| 44.5 | Sidebar click opens diff tab when diff is open | 1. Open a PR `.md` file via the GH PR extension (so it shows in side-by-side diff view). 2. Click a comment in the Gitnotate sidebar for that file. | The existing diff tab is focused (not a new regular file tab). The comment thread expands on the correct diff pane. | ⬜ Manual |
+| 44.6 | Highlights persist after re-sync triggers | 1. Open a PR `.md` file — verify wavy underline highlights are visible. 2. Alt-Tab away and back (window blur/focus). 3. Save the file (Ctrl+S). 4. Click the status bar "Gitnotate: PR #N" to refresh. | Wavy underline highlights remain visible after each re-sync trigger. They do NOT disappear. | ⬜ Manual |
 
 ---
 
@@ -234,12 +236,12 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 41. Reply/Resolve | 8 | 5 | 1 | 2 | 0 |
 | 42. Create Review API | 4 | 3 | 0 | 1 | 0 |
 | 43. Status Bar | 7 | 5 | 2 | 0 | 0 |
-| 44. Sidebar Bidir | 4 | 3 | 0 | 0 | 0 | ✅ 44.4 manual passed |
+| 44. Sidebar Bidir | 6 | 3 | 0 | 2 | 0 | ✅ 44.4 manual passed; 44.5, 44.6 regression |
 | 45. Context Menu | 4 | 1 | 1 | 0 | 0 | ✅ 45.2, 45.3 manual passed |
 | 46. Error UX | 7 | 5 | 1 | 1 | 0 |
 | 47. Output Channel | 5 | 4 | 1 | 0 | 0 |
 | 48. Anchor Resolution | 10 | 8 | 0 | 2 | 0 |
-| **TOTAL** | **84** | **57 ✅** | **7 ✅** | **17** | **0** |
+| **TOTAL** | **86** | **57 ✅** | **7 ✅** | **19** | **0** |
 
 ---
 
@@ -266,6 +268,8 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 37.13 | Polling pauses on blur | Alt-Tab away, add comment on github.com, return. Comment appears on focus. |
 | 38.11 | Single file shows all | Open `.md` normally (not diff). Both L and R comments visible. |
 | 41.7 | Resolve/unresolve toggle | Right-click thread → Resolve. Thread collapses. Unresolve → back to normal. |
+| 44.5 | Sidebar → diff tab | Open diff view, click sidebar comment → existing diff tab focused (not a new regular tab). |
+| 44.6 | Highlights survive re-sync | Open PR file with highlights. Alt-Tab away/back, save, manual refresh → highlights persist. |
 | 46.6 | "Sign in" error action | Sign out, open PR file. Error with "Sign in to GitHub" button. Click → auth starts. |
 
 **Priority 3 — Edge cases (test if time permits):**
