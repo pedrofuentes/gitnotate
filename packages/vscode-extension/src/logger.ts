@@ -46,6 +46,12 @@ function formatArgs(args: unknown[]): string {
 export class Logger {
   constructor(private channel: vscode.OutputChannel) {}
 
+  debug(component: string, ...args: unknown[]): void {
+    this.channel.appendLine(
+      `[${timestamp()}] [DEBUG] [${component}] ${formatArgs(args)}`
+    );
+  }
+
   info(component: string, ...args: unknown[]): void {
     this.channel.appendLine(
       `[${timestamp()}] [INFO] [${component}] ${formatArgs(args)}`

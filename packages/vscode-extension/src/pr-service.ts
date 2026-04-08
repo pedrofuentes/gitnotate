@@ -22,6 +22,18 @@ export interface ReviewComment {
 const BASE_URL = 'https://api.github.com';
 const PER_PAGE = 100;
 const MAX_PAGES = 10;
+const FETCH_TIMEOUT_MS = 15_000;
+
+function isTimeoutOrAbortError(err: unknown): boolean {
+  return (
+    err instanceof DOMException &&
+    (err.name === 'TimeoutError' || err.name === 'AbortError')
+  );
+}
+
+function truncateBody(body: string, max = 200): string {
+  return body.length > max ? body.slice(0, max) + '…' : body;
+}
 
 export class PrService {
   private log: Logger | undefined;
@@ -61,27 +73,32 @@ export class PrService {
 
     try {
       this.log?.info('PrService', 'POST', url);
-      console.log('[Gitnotate] POST', url);
-      console.log('[Gitnotate] Payload:', JSON.stringify(payload, null, 2));
+      this.log?.debug('PrService', 'POST', url);
+      this.log?.debug('PrService', 'Payload:', JSON.stringify(payload, null, 2));
 
       const response = await fetch(url, {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '(could not read body)');
         console.error('[Gitnotate] createReviewComment failed:', response.status, response.statusText);
-        console.error('[Gitnotate] Response body:', errorBody);
+        this.log?.debug('PrService', 'Response body:', truncateBody(errorBody));
         this.log?.error('PrService', 'createReviewComment failed:', response.status, response.statusText);
         return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
       }
 
-      console.log('[Gitnotate] createReviewComment succeeded:', response.status);
+      this.log?.debug('PrService', 'createReviewComment succeeded:', response.status);
       this.log?.info('PrService', 'createReviewComment succeeded:', response.status);
       return { ok: true };
     } catch (err) {
+      if (isTimeoutOrAbortError(err)) {
+        this.log?.error('PrService', 'createReviewComment timed out');
+        return { ok: false, userMessage: 'GitHub API request timed out. Please try again.' };
+      }
       console.error('[Gitnotate] createReviewComment failed:', err);
       this.log?.error('PrService', 'createReviewComment network error:', err);
       return { ok: false, userMessage: 'Network error — check your connection and try again.' };
@@ -131,22 +148,21 @@ export class PrService {
     };
 
     try {
-      console.log('[Gitnotate] POST (review)', url);
+      this.log?.debug('PrService', 'POST (review)', url);
       const response = await fetch(url, {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '(could not read body)');
         console.error('[Gitnotate] createReviewWithComment failed:', response.status, response.statusText);
-        console.error('[Gitnotate] Response body:', errorBody);
+        this.log?.debug('PrService', 'Response body:', truncateBody(errorBody));
 
-        // If a pending review exists, we cannot add comments to it via REST API
-        // (GitHub API limitation — no endpoint for appending to pending reviews)
         if (response.status === 422 && errorBody.includes('pending review')) {
-          console.log('[Gitnotate] Pending review detected — cannot post while a review is pending');
+          this.log?.debug('PrService', 'Pending review detected — cannot post while a review is pending');
           return {
             ok: false,
             userMessage: 'Cannot post comment: you have a pending review on this PR. Submit or discard it first on github.com, then try again.',
@@ -157,9 +173,13 @@ export class PrService {
       }
 
       const data = (await response.json()) as { id: number };
-      console.log('[Gitnotate] createReviewWithComment succeeded:', response.status);
+      this.log?.debug('PrService', 'createReviewWithComment succeeded:', response.status);
       return { ok: true, id: data.id };
     } catch (err) {
+      if (isTimeoutOrAbortError(err)) {
+        this.log?.error('PrService', 'createReviewWithComment timed out');
+        return { ok: false, userMessage: 'GitHub API request timed out. Please try again.' };
+      }
       console.error('[Gitnotate] createReviewWithComment failed:', err);
       return { ok: false, userMessage: 'Network error — check your connection and try again.' };
     }
@@ -177,24 +197,29 @@ export class PrService {
     const payload = { body, in_reply_to: inReplyToId };
 
     try {
-      console.log('[Gitnotate] POST (reply)', url);
+      this.log?.debug('PrService', 'POST (reply)', url);
       const response = await fetch(url, {
         method: 'POST',
         headers: this.headers(),
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => '(could not read body)');
         console.error('[Gitnotate] createReplyComment failed:', response.status, response.statusText);
-        console.error('[Gitnotate] Response body:', errorBody);
+        this.log?.debug('PrService', 'Response body:', truncateBody(errorBody));
         return { ok: false, userMessage: this.parseApiError(response.status, errorBody) };
       }
 
       const data = (await response.json()) as { id: number };
-      console.log('[Gitnotate] createReplyComment succeeded:', response.status);
+      this.log?.debug('PrService', 'createReplyComment succeeded:', response.status);
       return { ok: true, id: data.id };
     } catch (err) {
+      if (isTimeoutOrAbortError(err)) {
+        this.log?.error('PrService', 'createReplyComment timed out');
+        return { ok: false, userMessage: 'GitHub API request timed out. Please try again.' };
+      }
       console.error('[Gitnotate] createReplyComment failed:', err);
       return { ok: false, userMessage: 'Network error — check your connection and try again.' };
     }
@@ -211,7 +236,7 @@ export class PrService {
       while (page <= MAX_PAGES) {
         const url = `${BASE_URL}/repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=${PER_PAGE}&page=${page}`;
         this.log?.info('PrService', 'GET', url);
-        console.log('[Gitnotate] GET', url);
+        this.log?.debug('PrService', 'GET', url);
 
         const reqHeaders: Record<string, string> = this.headers();
 
@@ -226,6 +251,7 @@ export class PrService {
         const response = await fetch(url, {
           method: 'GET',
           headers: reqHeaders,
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
 
         if (page === 1 && response.status === 304) {
@@ -282,6 +308,10 @@ export class PrService {
 
       return allComments;
     } catch (err) {
+      if (isTimeoutOrAbortError(err)) {
+        this.log?.error('PrService', 'listReviewComments timed out');
+        return [];
+      }
       console.error('[Gitnotate] listReviewComments failed:', err);
       this.log?.error('PrService', 'listReviewComments network error:', err);
       return [];
