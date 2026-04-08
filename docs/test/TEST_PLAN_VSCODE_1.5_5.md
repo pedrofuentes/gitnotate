@@ -241,35 +241,15 @@ Same as Increment 4 (see `TEST_PLAN_VSCODE_1.5_4.md`), plus:
 | 46. Error UX | 7 | 5 | 1 | 0 | 1 |
 | 47. Output Channel | 5 | 4 | 1 | 0 | 0 | ✅ 47.5 manual passed |
 | 48. Anchor Resolution | 10 | 8 | 0 | 0 | 0 | ✅ All passed |
-| **TOTAL** | **86** | **57 ✅** | **7 ✅** | **10** | **1** |
+| **TOTAL** | **86** | **57 ✅** | **7 ✅** | **0** | **1** |
 
 ---
 
 ## Your Manual Checklist
 
-### ⬜ Must verify (no automation possible)
+All manual tests have been verified. ✅
 
-**Priority 1 — Core new features (test these first):**
-
-| # | Test | What to check |
-|---|------|---------------|
-| 37.10 | Live update: new comment | Open PR `.md` file. Add `^gn` comment via github.com. Wait 30s. Verify thread appears in VSCode. |
-| 38.9 | LEFT comments on old pane | Open diff view. Click left (old/red) pane. Only LEFT-side comments visible. |
-| 38.10 | RIGHT comments on new pane | Click right (new/green) pane. Only RIGHT-side comments visible. |
-| 39.4 | Post from RIGHT pane | Select text in right diff pane. "Add Comment". On github.com → comment on RIGHT side. `^gn` has `:R:`. |
-| 39.5 | Post from LEFT pane | Select text in left diff pane. "Add Comment". On github.com → comment on LEFT side. `^gn` has `:L:`. |
-| 41.6 | Reply → appears in GitHub | Reply in VSCode thread. Refresh github.com PR page. Reply visible. |
-| 48.9 | Anchor: insert lines above | Comment on line 10. Insert 3 lines at line 5. Thread moves to line 13. |
-
-**Priority 2 — Important UX:**
-
-| # | Test | What to check |
-|---|------|---------------|
-| 37.13 | Polling pauses on blur | Alt-Tab away, add comment on github.com, return. Comment appears on focus. |
-| 38.11 | Single file shows all | Open `.md` normally (not diff). Both L and R comments visible. |
-| 41.7 | Resolve/unresolve toggle | Right-click thread → Resolve. Thread collapses. Unresolve → back to normal. |
-
-**Priority 3 — Edge cases (test if time permits):**
+**Remaining edge-case tests (optional, low priority):**
 
 | # | Test | What to check |
 |---|------|---------------|
