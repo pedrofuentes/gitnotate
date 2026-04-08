@@ -90,7 +90,7 @@ Gitnotate follows [Semantic Versioning](https://semver.org/):
 
 4. **Verify the PAT works** (optional but recommended)
    ```bash
-   npx vsce login pedrofuentes
+   npx @vscode/vsce login pedrofuentes
    # Paste your PAT when prompted — should show "Authentication successful"
    ```
 
@@ -110,8 +110,8 @@ If the automated workflow fails or you need to publish manually:
 
 ```bash
 cd packages/vscode-extension
-npx vsce package --no-dependencies
-npx vsce publish --no-dependencies -p $VSCE_PAT
+npx @vscode/vsce package --no-dependencies
+npx @vscode/vsce publish --no-dependencies -p $VSCE_PAT
 ```
 
 ### Updates
@@ -142,7 +142,7 @@ other open-source VS Code forks.
 
 ```bash
 cd packages/vscode-extension
-npx vsce package --no-dependencies
+npx @vscode/vsce package --no-dependencies
 npx ovsx publish *.vsix -p $OVSX_PAT
 ```
 
@@ -259,7 +259,7 @@ pnpm install
 pnpm build
 
 # Package the extension
-npx vsce package --no-dependencies
+npx @vscode/vsce package --no-dependencies
 
 # Test the .vsix locally
 code --install-extension gitnotate-*.vsix

@@ -4,7 +4,7 @@
     {
       "label": "build-vscode-extension",
       "type": "shell",
-      "command": "pnpm --filter @gitnotate/core build && pnpm --filter @gitnotate/vscode-extension build",
+      "command": "pnpm --filter @gitnotate/core build && pnpm --filter gitnotate build",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -18,7 +18,7 @@
     {
       "label": "watch-vscode-extension",
       "type": "shell",
-      "command": "pnpm --filter @gitnotate/vscode-extension watch",
+      "command": "pnpm --filter gitnotate watch",
       "options": {
         "cwd": "${workspaceFolder}"
       },

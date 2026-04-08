@@ -60,7 +60,7 @@ jobs:
         run: pnpm --filter @gitnotate/core build
 
       - name: Run tests
-        run: pnpm --filter @gitnotate/core test && pnpm --filter @gitnotate/browser-extension test && pnpm --filter @gitnotate/vscode-extension test
+        run: pnpm --filter @gitnotate/core test && pnpm --filter @gitnotate/browser-extension test && pnpm --filter gitnotate test
 
   build:
     name: Build
@@ -88,7 +88,7 @@ jobs:
           path: packages/browser-extension/dist/
 
       - name: Package VSCode extension
-        run: cd packages/vscode-extension && npx vsce package --no-dependencies
+        run: cd packages/vscode-extension && npx @vscode/vsce package --no-dependencies
 
       - name: Upload VSCode extension artifact
         uses: actions/upload-artifact@v4

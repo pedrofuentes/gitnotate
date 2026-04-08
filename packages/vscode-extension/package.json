@@ -1,5 +1,5 @@
 {
-  "name": "@gitnotate/vscode-extension",
+  "name": "gitnotate",
   "displayName": "Gitnotate",
   "description": "Sub-line commenting for Markdown files in GitHub PR reviews",
   "version": "0.1.0",
@@ -153,7 +153,7 @@
     "test:integration:compile": "tsc -p tsconfig.integration.json",
     "test:integration": "pnpm test:integration:compile && vscode-test",
     "lint": "eslint src/",
-    "package": "vsce package --no-dependencies"
+    "package": "npx @vscode/vsce package --no-dependencies"
   },
   "dependencies": {
     "@gitnotate/core": "workspace:*"

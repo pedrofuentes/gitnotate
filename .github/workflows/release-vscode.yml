@@ -27,16 +27,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm --filter @gitnotate/core build && pnpm --filter @gitnotate/core test && pnpm --filter @gitnotate/vscode-extension test
+        run: pnpm --filter @gitnotate/core build && pnpm --filter @gitnotate/core test && pnpm --filter gitnotate test
 
       - name: Build
         run: pnpm build
 
       - name: Package VSCode extension
-        run: cd packages/vscode-extension && npx vsce package --no-dependencies
+        run: cd packages/vscode-extension && npx @vscode/vsce package --no-dependencies
 
       - name: Publish to VS Code Marketplace
-        run: cd packages/vscode-extension && npx vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
+        run: cd packages/vscode-extension && npx @vscode/vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX
         run: cd packages/vscode-extension && npx ovsx publish *.vsix -p ${{ secrets.OVSX_PAT }}
