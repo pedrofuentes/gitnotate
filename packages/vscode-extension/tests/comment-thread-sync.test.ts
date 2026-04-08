@@ -1013,4 +1013,89 @@ describe('CommentThreadSync', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('fetch error preserves cached state (#27)', () => {
+    it('syncForDocument should return cached data when fetch fails and cache exists', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache with a successful sync
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      // Now make fetch fail
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      sync.invalidateCache();
+
+      // Re-sync should return null (preserve UI) instead of [] (clear UI)
+      const result = await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      expect(result).toBeNull();
+    });
+
+    it('syncForDocument should return empty array when fetch fails and no cache exists', async () => {
+      const prService = makeMockPrService([]);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      const result = await sync.syncForDocument(uri, 'docs/readme.md', pr);
+      expect(result).toEqual([]);
+    });
+
+    it('syncForDocument should still show error toast when preserving cache', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const uri = Uri.file('/workspace/docs/readme.md');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      // Make fetch fail
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('API timeout'));
+      sync.invalidateCache();
+
+      await sync.syncForDocument(uri, 'docs/readme.md', pr);
+
+      // Error toast should still be shown
+      const { window } = await import('../__mocks__/vscode');
+      expect(window.showErrorMessage).toHaveBeenCalled();
+    });
+
+    it('syncForDiff should return null when fetch fails and cache exists', async () => {
+      const comment = makeComment({ id: 1, path: 'docs/readme.md', side: 'RIGHT' });
+      const prService = makeMockPrService([comment]);
+      const sync = new CommentThreadSync(prService, commentController);
+      const originalUri = Uri.parse('git:/workspace/docs/readme.md?ref=old');
+      const modifiedUri = Uri.parse('git:/workspace/docs/readme.md?ref=new');
+      const pr = makePr();
+
+      // Populate cache
+      await sync.syncForDiff(originalUri, modifiedUri, 'docs/readme.md', pr);
+
+      // Make fetch fail
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      sync.invalidateCache();
+
+      // Should return null (preserve UI) instead of empty ranges
+      const result = await sync.syncForDiff(originalUri, modifiedUri, 'docs/readme.md', pr);
+      expect(result).toBeNull();
+    });
+
+    it('syncForDiff should return empty ranges when fetch fails and no cache exists', async () => {
+      const prService = makeMockPrService([]);
+      (prService.listReviewComments as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+      const sync = new CommentThreadSync(prService, commentController);
+      const originalUri = Uri.parse('git:/workspace/docs/readme.md?ref=old');
+      const modifiedUri = Uri.parse('git:/workspace/docs/readme.md?ref=new');
+      const pr = makePr();
+
+      const result = await sync.syncForDiff(originalUri, modifiedUri, 'docs/readme.md', pr);
+      expect(result).toEqual({ leftRanges: [], rightRanges: [] });
+    });
+  });
 });

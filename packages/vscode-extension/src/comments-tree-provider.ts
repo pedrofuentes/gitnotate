@@ -148,6 +148,7 @@ export class CommentsTreeProvider implements vscode.TreeDataProvider<TreeItemBas
     this.state = state;
     this.hasData = false;
     this.fileGroups = [];
+    this.commentItemCache.clear();
 
     if (state === 'noPr' || state === 'noAuth') {
       void vscode.commands.executeCommand('setContext', 'gitnotate.hasPR', false);
