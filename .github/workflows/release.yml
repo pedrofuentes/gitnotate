@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["browser-v*"]
 
 concurrency:
   group: release-${{ github.ref }}
