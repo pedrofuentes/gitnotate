@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gitnotate — Sub-line Commenting for GitHub PR Reviews</title>
-  <meta name="description" content="Gitnotate is a browser extension that adds sub-line commenting to Markdown files in GitHub PR reviews.">
+  <meta name="description" content="Gitnotate adds sub-line commenting to Markdown files in GitHub PR reviews — available as a Chrome/Edge browser extension and a VSCode extension.">
   <link rel="icon" type="image/png" href="./favicon.png">
   <style>
     *, *::before, *::after {
@@ -335,6 +335,10 @@
         Comment on specific words, sentences, or phrases within Markdown files — not just whole lines. Gitnotate brings precision to your code review workflow.
       </p>
       <div class="cta-group">
+        <a href="https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate" class="btn btn-primary" title="Install from VS Code Marketplace">
+          <svg viewBox="0 0 24 24"><path d="M17.583 2.213L12.52 6.672 8.122 3.42 2 5.54v12.917l6.122 2.12 4.398-3.25 5.063 4.457L22 19.67V4.33l-4.417-2.117zM8.122 16.48l-4.016-1.397V8.916l4.016 1.398v6.166zm4.398-1.478l-3.29 2.433V6.564l3.29 2.434v6.004zM20 18.276l-2.417 1.06-3.583-3.155V7.82l3.583-3.155L20 5.724v12.552z"/></svg>
+          Install for VS Code
+        </a>
         <a href="https://chrome.google.com/webstore/detail/agfdgeojcagbmadfffiiccgfhgmakngp" class="btn btn-primary" title="Install from Chrome Web Store">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
           Install for Chrome
@@ -362,7 +366,7 @@
       </div>
       <div class="feature">
         <h3><span class="icon">🔒</span> Privacy First</h3>
-        <p>All data stays in your browser. No servers, no analytics, no tracking. Gitnotate makes zero network requests.</p>
+        <p>The browser extension stores preferences locally and makes zero network requests. The VSCode extension authenticates through VSCode's built-in GitHub auth — no tokens to manage.</p>
       </div>
       <div class="feature">
         <h3><span class="icon">🪶</span> Tiny Footprint</h3>
@@ -376,18 +380,31 @@
         <h3><span class="icon">⚡</span> Zero Config</h3>
         <p>Install, enable a repo, and start reviewing. No tokens, no setup, no accounts. Works on any repository with pull requests.</p>
       </div>
+      <div class="feature">
+        <h3><span class="icon">🖥️</span> Browser &amp; Editor</h3>
+        <p>Review on github.com with the Chrome/Edge extension, or directly in VSCode with native comment threads, a sidebar, reply &amp; resolve, and live polling.</p>
+      </div>
     </section>
 
     <!-- Install Section -->
     <div class="install-section">
       <h2>📦 Install</h2>
       <div class="install-tabs">
-        <button class="install-tab active" data-tab="chrome">Chrome Web Store</button>
+        <button class="install-tab active" data-tab="vscode">VS Code Marketplace</button>
+        <button class="install-tab" data-tab="chrome">Chrome Web Store</button>
         <button class="install-tab" data-tab="edge">Edge Add-ons</button>
         <button class="install-tab" data-tab="release">From GitHub Release</button>
         <button class="install-tab" data-tab="source">From Source</button>
       </div>
-      <div id="panel-chrome" class="install-panel active">
+      <div id="panel-vscode" class="install-panel active">
+        <ol>
+          <li>Open the <a href="https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate">Gitnotate page on VS Code Marketplace</a>, or search "Gitnotate" in the Extensions view (<code>Ctrl+Shift+X</code>)</li>
+          <li>Click <strong>Install</strong></li>
+          <li>Open a repo with an active PR — sign in to GitHub when prompted</li>
+          <li>Select text in a Markdown file and right-click → <strong>Gitnotate: Add Comment</strong></li>
+        </ol>
+      </div>
+      <div id="panel-chrome" class="install-panel">
         <ol>
           <li>Visit the <a href="https://chrome.google.com/webstore/detail/agfdgeojcagbmadfffiiccgfhgmakngp">Gitnotate page on Chrome Web Store</a></li>
           <li>Click <strong>Add to Chrome</strong></li>

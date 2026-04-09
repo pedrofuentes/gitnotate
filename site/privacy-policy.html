@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy — Gitnotate</title>
-  <meta name="description" content="Privacy policy for the Gitnotate browser extension.">
+  <meta name="description" content="Privacy policy for the Gitnotate browser extension and VSCode extension.">
   <link rel="icon" type="image/png" href="./favicon.png">
   <style>
     *, *::before, *::after {
@@ -248,17 +248,24 @@
 
     <div class="summary">
       <p>
-        <strong>The short version:</strong> Gitnotate stores your preferences locally in your browser and does not make any network requests.
-        We do not collect, track, or share any personal information. There are no third-party servers, no analytics, and no telemetry.
+        <strong>The short version:</strong> Gitnotate stores your preferences locally and does not collect, track, or share any personal information.
+        The browser extension makes no network requests of its own.
+        The VSCode extension communicates only with GitHub's API using VSCode's built-in authentication — no data is sent to any Gitnotate servers.
+        There are no analytics and no telemetry in either platform.
       </p>
     </div>
 
     <!-- What Gitnotate Does -->
     <h2>What Gitnotate Does</h2>
     <p>
-      Gitnotate is a browser extension for Chrome and Edge that adds sub-line commenting to Markdown files in GitHub pull request reviews.
-      It lets you select specific words, phrases, or sentences within rendered Markdown content and attach review comments to those selections —
+      Gitnotate adds sub-line commenting to Markdown files in GitHub pull request reviews.
+      It lets you select specific words, phrases, or sentences and attach review comments to those selections —
       going beyond GitHub's built-in line-level commenting.
+    </p>
+    <p>
+      Gitnotate is available as a <strong>Chrome/Edge browser extension</strong> and a <strong>VSCode extension</strong>.
+      The browser extension enhances the GitHub web interface directly.
+      The VSCode extension provides native comment threads, a sidebar, reply &amp; resolve, and live polling — all within your editor.
     </p>
     <p>
       Comments created by Gitnotate are stored as standard GitHub PR review comments, visible to all participants in the pull request.
@@ -283,6 +290,7 @@
 
     <!-- How Information Is Stored -->
     <h2>How Information Is Stored</h2>
+    <h3>Browser Extension</h3>
     <p>
       All data is stored locally in your browser using the <code>chrome.storage.local</code> API. This means:
     </p>
@@ -291,13 +299,18 @@
       <li>Data is sandboxed to the extension and cannot be accessed by websites or other extensions</li>
       <li>Data persists until you explicitly clear it or uninstall the extension</li>
     </ul>
+    <h3>VSCode Extension</h3>
+    <p>
+      The VSCode extension stores its settings (enabled repositories, poll interval) in VSCode's standard workspace and user settings. Authentication is handled entirely by VSCode's built-in GitHub authentication provider — Gitnotate never sees or stores your credentials or tokens.
+    </p>
 
     <hr class="section-divider">
 
     <!-- Information Transmitted -->
     <h2>Information Transmitted</h2>
+    <h3>Browser Extension</h3>
     <p>
-      Gitnotate does <strong>not</strong> make any network requests of its own. It operates entirely by reading and modifying the GitHub page you are viewing in your browser. Specifically, Gitnotate does <strong>not</strong>:
+      The browser extension does <strong>not</strong> make any network requests of its own. It operates entirely by reading and modifying the GitHub page you are viewing. It does <strong>not</strong>:
     </p>
     <ul>
       <li>Send data to any third-party servers</li>
@@ -306,13 +319,23 @@
       <li>Include any telemetry, crash reporting, or usage monitoring</li>
       <li>Make network requests to any domain</li>
     </ul>
+    <h3>VSCode Extension</h3>
+    <p>
+      The VSCode extension communicates with <strong>GitHub's API only</strong> (api.github.com) to read and post PR review comments. These requests are authenticated through VSCode's built-in GitHub authentication — the same mechanism used by other GitHub-related VSCode extensions. The VSCode extension does <strong>not</strong>:
+    </p>
+    <ul>
+      <li>Send data to any Gitnotate servers (there are none)</li>
+      <li>Use any analytics, telemetry, or tracking services</li>
+      <li>Contact any domain other than GitHub's API</li>
+    </ul>
 
     <hr class="section-divider">
 
     <!-- Permissions Explained -->
     <h2>Permissions Explained</h2>
+    <h3>Browser Extension</h3>
     <p>
-      Gitnotate requests the minimum browser permissions necessary to function:
+      The browser extension requests the minimum permissions necessary to function:
     </p>
     <table class="permission-table">
       <thead>
@@ -336,6 +359,15 @@
         </tr>
       </tbody>
     </table>
+    <h3>VSCode Extension</h3>
+    <p>
+      The VSCode extension uses standard VSCode extension APIs and requests no special permissions beyond what is declared in its manifest:
+    </p>
+    <ul>
+      <li><strong>GitHub Authentication</strong> — Uses VSCode's built-in GitHub auth provider. You control sign-in/sign-out through VSCode.</li>
+      <li><strong>Comment Controller</strong> — Creates native VSCode comment threads anchored to text ranges in editors.</li>
+      <li><strong>Tree View</strong> — Displays a sidebar listing all PR comments for quick navigation.</li>
+    </ul>
 
     <hr class="section-divider">
 
@@ -356,12 +388,19 @@
     <!-- Data Retention & Deletion -->
     <h2>Data Retention &amp; Deletion</h2>
     <p>
-      Your data is stored locally and you have full control over it. To delete your data:
+      Your data is stored locally and you have full control over it:
     </p>
+    <h3>Browser Extension</h3>
     <ul>
       <li><strong>Disable repos:</strong> Open the Gitnotate extension popup and disable individual repositories</li>
       <li><strong>Clear all extension data:</strong> Go to your browser's extension management page, find Gitnotate, and select "Clear data" or "Remove"</li>
       <li><strong>Uninstall the extension:</strong> Removing the extension from your browser deletes all associated local storage data</li>
+    </ul>
+    <h3>VSCode Extension</h3>
+    <ul>
+      <li><strong>Disable repos:</strong> Remove entries from the <code>gitnotate.enabledRepos</code> setting</li>
+      <li><strong>Sign out:</strong> Revoke GitHub access through VSCode's Accounts menu</li>
+      <li><strong>Uninstall:</strong> Removing the extension from VSCode clears its settings and cached data</li>
     </ul>
     <p>
       Comments you have already posted to GitHub via Gitnotate are standard GitHub PR comments.

@@ -24,11 +24,19 @@ See [ROADMAP.md](./ROADMAP.md) for the full architecture, research, and implemen
 
 ## Installation
 
+### VS Code Marketplace
+1. Search "Gitnotate" in the Extensions view (`Ctrl+Shift+X`) or visit the [VS Code Marketplace page](https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate)
+2. Click **Install**
+3. Open a repo with an active PR — sign in to GitHub when prompted
+4. Select text in a Markdown file and right-click → **Gitnotate: Add Comment**
+
 ### Chrome Web Store
-Coming soon — [install from release](#install-from-github-release) in the meantime.
+1. Visit the [Gitnotate page on Chrome Web Store](https://chrome.google.com/webstore/detail/agfdgeojcagbmadfffiiccgfhgmakngp)
+2. Click **Add to Chrome**
 
 ### Edge Add-ons
-Coming soon — same extension works on both browsers (Manifest V3).
+1. Visit the [Gitnotate page on Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/gitnotate/nkbdpjplkeeoncbdelkfneinclinnemp)
+2. Click **Get** to install
 
 ### Install from GitHub Release
 1. Download `gitnotate-v0.1.0.zip` from the [latest release](https://github.com/pedrofuentes/gitnotate/releases/latest)
@@ -67,11 +75,8 @@ The VSCode extension brings sub-line commenting directly into your editor for Gi
 - **Side-aware diffs** — comments placed on the correct side (old/new) in diff views
 - **Diff-aware anchoring** — comment threads follow text through local edits
 
-### Install from Source
-1. Clone the repo: `git clone https://github.com/pedrofuentes/gitnotate.git`
-2. Install dependencies: `pnpm install`
-3. Build: `pnpm build`
-4. In VSCode: Run → Start Debugging (F5) to launch the extension development host
+### Install
+Search "Gitnotate" in VSCode's Extensions view or install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate).
 
 ### Setup
 1. Open a repository with an active PR
@@ -81,8 +86,7 @@ The VSCode extension brings sub-line commenting directly into your editor for Gi
 
 ## Status
 
-🚀 **v0.1.0** — Browser extension for Chrome/Edge.
-🟢 **Phase 1.5** — VSCode extension (all 5 increments complete). Pre-release.
+🚀 **v0.1.0** — Browser extension for Chrome/Edge and VSCode extension — all live.
 
 ## License
 
