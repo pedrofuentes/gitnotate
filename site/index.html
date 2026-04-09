@@ -335,10 +335,6 @@
         Comment on specific words, sentences, or phrases within Markdown files — not just whole lines. Gitnotate brings precision to your code review workflow.
       </p>
       <div class="cta-group">
-        <a href="https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate" class="btn btn-primary" title="Install from VS Code Marketplace">
-          <svg viewBox="0 0 24 24"><path d="M17.583 2.213L12.52 6.672 8.122 3.42 2 5.54v12.917l6.122 2.12 4.398-3.25 5.063 4.457L22 19.67V4.33l-4.417-2.117zM8.122 16.48l-4.016-1.397V8.916l4.016 1.398v6.166zm4.398-1.478l-3.29 2.433V6.564l3.29 2.434v6.004zM20 18.276l-2.417 1.06-3.583-3.155V7.82l3.583-3.155L20 5.724v12.552z"/></svg>
-          Install for VS Code
-        </a>
         <a href="https://chrome.google.com/webstore/detail/agfdgeojcagbmadfffiiccgfhgmakngp" class="btn btn-primary" title="Install from Chrome Web Store">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
           Install for Chrome
@@ -346,6 +342,10 @@
         <a href="https://microsoftedge.microsoft.com/addons/detail/gitnotate/nkbdpjplkeeoncbdelkfneinclinnemp" class="btn btn-primary" title="Install from Edge Add-ons">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
           Install for Edge
+        </a>
+        <a href="https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate" class="btn btn-primary" title="Install from VS Code Marketplace">
+          <svg viewBox="0 0 24 24"><path d="M17.583 2.213L12.52 6.672 8.122 3.42 2 5.54v12.917l6.122 2.12 4.398-3.25 5.063 4.457L22 19.67V4.33l-4.417-2.117zM8.122 16.48l-4.016-1.397V8.916l4.016 1.398v6.166zm4.398-1.478l-3.29 2.433V6.564l3.29 2.434v6.004zM20 18.276l-2.417 1.06-3.583-3.155V7.82l3.583-3.155L20 5.724v12.552z"/></svg>
+          Install for VS Code
         </a>
         <a href="https://github.com/pedrofuentes/gitnotate" class="btn btn-secondary">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.8-.22 1.65-.33 2.5-.33.85 0 1.7.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/></svg>
@@ -390,21 +390,13 @@
     <div class="install-section">
       <h2>📦 Install</h2>
       <div class="install-tabs">
-        <button class="install-tab active" data-tab="vscode">VS Code Marketplace</button>
-        <button class="install-tab" data-tab="chrome">Chrome Web Store</button>
+        <button class="install-tab active" data-tab="chrome">Chrome Web Store</button>
         <button class="install-tab" data-tab="edge">Edge Add-ons</button>
+        <button class="install-tab" data-tab="vscode">VS Code Marketplace</button>
         <button class="install-tab" data-tab="release">From GitHub Release</button>
         <button class="install-tab" data-tab="source">From Source</button>
       </div>
-      <div id="panel-vscode" class="install-panel active">
-        <ol>
-          <li>Open the <a href="https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate">Gitnotate page on VS Code Marketplace</a>, or search "Gitnotate" in the Extensions view (<code>Ctrl+Shift+X</code>)</li>
-          <li>Click <strong>Install</strong></li>
-          <li>Open a repo with an active PR — sign in to GitHub when prompted</li>
-          <li>Select text in a Markdown file and right-click → <strong>Gitnotate: Add Comment</strong></li>
-        </ol>
-      </div>
-      <div id="panel-chrome" class="install-panel">
+      <div id="panel-chrome" class="install-panel active">
         <ol>
           <li>Visit the <a href="https://chrome.google.com/webstore/detail/agfdgeojcagbmadfffiiccgfhgmakngp">Gitnotate page on Chrome Web Store</a></li>
           <li>Click <strong>Add to Chrome</strong></li>
@@ -418,6 +410,14 @@
           <li>The Gitnotate icon appears in your toolbar — you're ready!</li>
         </ol>
         <p class="install-note">Edge can also install extensions from the <a href="https://chrome.google.com/webstore/detail/agfdgeojcagbmadfffiiccgfhgmakngp">Chrome Web Store</a>.</p>
+      </div>
+      <div id="panel-vscode" class="install-panel">
+        <ol>
+          <li>Open the <a href="https://marketplace.visualstudio.com/items?itemName=pedrofuentes.gitnotate">Gitnotate page on VS Code Marketplace</a>, or search "Gitnotate" in the Extensions view (<code>Ctrl+Shift+X</code>)</li>
+          <li>Click <strong>Install</strong></li>
+          <li>Open a repo with an active PR — sign in to GitHub when prompted</li>
+          <li>Select text in a Markdown file and right-click → <strong>Gitnotate: Add Comment</strong></li>
+        </ol>
       </div>
       <div id="panel-release" class="install-panel">
         <ol>
