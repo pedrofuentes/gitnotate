@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-04-09 (VSCode Extension)
+
+### Fixed
+- Added icon to Marketplace listing (128×128 PNG)
+
 ## [0.1.1] — 2026-04-08 (VSCode Extension)
 
 ### Added

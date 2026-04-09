@@ -2,7 +2,7 @@
   "name": "gitnotate",
   "displayName": "Gitnotate",
   "description": "Sub-line commenting for Markdown files in GitHub PR reviews",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "pedrofuentes",
   "private": true,
   "repository": {
@@ -11,6 +11,7 @@
     "directory": "packages/vscode-extension"
   },
   "license": "MIT",
+  "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
