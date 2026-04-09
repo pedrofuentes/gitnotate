@@ -91,7 +91,7 @@ export class CommentThreadSync {
     relativePath: string,
     comments: ReviewComment[],
     uriMap: { LEFT?: vscode.Uri; RIGHT?: vscode.Uri }
-  ): Map<string, vscode.Range[]> {
+  ): Map<string, vscode.Range[]> | null {
     const fileComments = comments.filter((c) => c.path === relativePath);
 
     // Fingerprint check — skip re-render if data hasn't changed
