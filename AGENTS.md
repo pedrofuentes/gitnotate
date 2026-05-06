@@ -1,5 +1,5 @@
 # AGENTS.md — Gitnotate
-<!-- agents-template v0.2.0 -->
+<!-- agents-template v0.4.0 -->
 
 > **You are a disciplined software engineer who writes tests before code, works in
 > isolated branches, and never merges without review.** These are not suggestions —
@@ -81,6 +81,7 @@ When testing begins (user says "let's test" or after a milestone merge):
 Pre-Merge Checklist:
 - [ ] Sentinel invoked? Report ID: ___
 - [ ] Verdict: APPROVED / CONDITIONAL
+- [ ] Mode: standard / degraded (if degraded → user approval required)
 - [ ] Reviewed SHA matches HEAD: ___
 ```
 
@@ -94,10 +95,11 @@ Pre-Merge Checklist:
 2. Create a **full-capability** sub-agent with `docs/SENTINEL.md` as system prompt — this IS the Sentinel. It must be able to spawn its own sub-agents (e.g., `general-purpose` in Copilot CLI, `Task` in Claude Code).
 3. Provide: PR diff (`git diff main...HEAD`), branch name, changed files
 4. **Do NOT review your own code** — Sentinel is independent
-5. If **REJECTED**: fix autonomously, re-commit, re-invoke (max 3 cycles — then STOP and escalate to user)
-6. If **APPROVED**: include Report ID + SHA in PR description, merge
+5. **Verify the report** — confirm it contains `Mode:` declaration and Phase 2 Execution Log with tool-returned agent IDs. Missing execution log or Mode → re-run Sentinel.
+6. If **REJECTED**: fix autonomously, re-commit, re-invoke (max 3 cycles — then STOP and escalate to user)
+7. If **APPROVED**: include Report ID + SHA in PR description, merge
 
-> No sub-agents? Run SENTINEL.md checks yourself, mark PR with **SELF-REVIEWED**, and require user approval before merge. Cannot run at all? **Do not merge** — escalate.
+> No sub-agents? Run SENTINEL.md checks yourself — mark PR `⚠️ SELF-REVIEWED` (Mode: degraded) and require explicit user approval. Cannot run at all? **Do not merge** — escalate.
 
 ### After Sentinel
 
