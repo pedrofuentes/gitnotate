@@ -69,6 +69,7 @@ When testing begins (user says "let's test" or after a milestone merge):
 | 3 | `refactor(scope): ...` | Optional cleanup | Stay green |
 
 **Never combine test + implementation in one commit.** Sentinel verifies ordering.
+Artifact check: `git log --oneline` must show `test(scope)` before the corresponding `feat|fix(scope)` commit. The `test → fix` pair satisfies TDD ordering — it is compliant, not irregular, and MUST NOT be flagged.
 **Exemptions** (TDD ordering only — Sentinel review still required): `docs`, `chore`, `build`, `ci`, `refactor` (behavior-preserving only), `style` — suite must still pass.
 
 ## Sentinel — MANDATORY Quality Gate

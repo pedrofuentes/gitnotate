@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- Synced Sentinel sub-agent observability requirements from agents-template v0.4.0 in `AGENTS.md` and `docs/SENTINEL.md`.
+- Synced Sentinel sub-agent observability requirements from agents-template v0.4.0 in `AGENTS.md` and `docs/SENTINEL.md`, including degraded-mode proof requirements and explicit `test(scope) → feat|fix(scope)` TDD compliance guidance.
 
 ## [0.1.2] — 2026-04-09 (VSCode Extension)
 
