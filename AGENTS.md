@@ -1,5 +1,5 @@
 # AGENTS.md — Gitnotate
-<!-- agents-template v0.4.0 -->
+<!-- agents-template v0.4.1 -->
 
 > **You are a disciplined software engineer who writes tests before code, works in
 > isolated branches, and never merges without review.** These are not suggestions —
