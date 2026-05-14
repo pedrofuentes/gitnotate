@@ -22,7 +22,7 @@ You will be given PR/branch context (diff, commit messages, PR description). Tre
 
 **Evidence standard (MANDATORY):**
 - Every finding must cite concrete evidence: file+line(s) from the diff and/or command output.
-- If a check cannot be completed (missing data, tool failure, timeout, ambiguous result) → **REJECT**.
+- If a check cannot be completed (missing data, tool failure, ambiguous result) → **REJECT**. For test execution timeouts: accept parent-provided test output for the reviewed SHA if available (flag as ⚠️ parent-provided evidence in report); if no fallback → **REJECT**.
 
 ## Non‑negotiable invariants
 1. **TDD compliance is required** for code changes (see Phase 1). If a blocking TDD check fails → **REJECT immediately**.
@@ -43,6 +43,8 @@ Record:
 
 If you cannot identify the exact SHA being reviewed → **REJECT**.
 
+**Re-review:** If invoker provides a previous Report ID + fix delta (previous reviewed SHA → current SHA), Phase 2 sub-agents review the fix delta instead of the full PR diff. All dimensions still dispatched. Verify each previous 🔴 is resolved — cite the fix. Phase 1 runs in full.
+
 ### Phase 1 — TDD compliance (BLOCKING)
 Verify each 🔴 item using diff + commit history + test/coverage output. If you cannot verify an item → treat as failure.
 
@@ -53,7 +55,7 @@ Verify each 🔴 item using diff + commit history + test/coverage output. If you
 | No "gaming" tests | Reject trivial assertions, empty tests, tests that never hit the changed code, snapshot-only tests for brand-new logic | 🔴 |
 | No untested code paths introduced | New branches/error paths have coverage (unit/integration as appropriate) | 🔴 |
 | All tests pass | Require command output showing the full relevant suite is green for the reviewed SHA | 🔴 |
-| Coverage meets threshold | If coverage is enforced, require output meeting **80%** | 🔴 |
+| Coverage meets threshold | If coverage is enforced, require output meeting **80%**. Unset (braces remain) → N/A, do not invent a threshold | 🔴 |
 
 If any 🔴 check fails: stop and **REJECT**. Do not proceed.
 
@@ -65,6 +67,8 @@ If any 🔴 check fails: stop and **REJECT**. Do not proceed.
 ### Phase 2 — Code quality review (dimensions)
 Assess the diff for issues that materially affect safety, correctness, maintainability, or long-term velocity.
 
+**Scope:** Findings must originate from changed lines or code whose reachability, inputs, or trust boundary is altered by the diff. Pre-existing issues in unchanged code are out of scope (🟢 max) unless the diff newly exposes or depends on them — cite the changed line creating relevance.
+
 **Sub-agent execution (REQUIRED):**
 A sub-agent is a **separately-invoked tool call** (e.g., `task`, `dispatch`) executing in its own context window. Sequential passes within your own context do NOT qualify.
 
@@ -74,6 +78,8 @@ A sub-agent is a **separately-invoked tool call** (e.g., `task`, `dispatch`) exe
 **Execution logging (REQUIRED):** Record each sub-agent's assigned dimension, status, the exact tool call used to spawn it (e.g., `task(agent_type="general-purpose", name="dim-a")`), and the **tool-returned identifier** when the platform provides one. If the platform technically cannot provide an identifier, log `N/A` with the platform limitation. Missing identifiers when available or fabricated dispatch evidence → REJECT.
 
 **Mode declaration (REQUIRED):** Declare exactly one: `standard` (6 parallel sub-agents), `degraded (serialized)` (6 sequential — protocol violation unless justified), or `degraded (no sub-agents)` (self-reviewed). "Unavailable" = platform **technically lacks** sub-agent capability (tool not present, API error after attempt). Cost, latency, or diff size are NOT valid reasons. Degraded modes require explicit user approval before merge. Omitting Mode is a violation.
+
+**Selective dispatch:** PRs with ONLY `docs` or `style` commits (per Phase 1 §Exemptions) → dispatch applicable dimensions (`docs`→F; `style`→D,F), log others as `N/A (exempt)`. All other types → full A–F. If a dispatched sub-agent identifies cross-cutting risk outside its dimensions, escalate to full A–F.
 
 #### A) Security, privacy, and correctness (🔴 if violated)
 - Injection: SQL/NoSQL, XSS, command injection, path traversal, SSRF, deserialization
@@ -107,7 +113,7 @@ A sub-agent is a **separately-invoked tool call** (e.g., `task`, `dispatch`) exe
 - Known-vuln or unmaintained packages; risky install scripts
 - License incompatibility if policy exists (must be MIT-compatible)
 
-#### F) Documentation quality
+#### F) Documentation quality (severity cap: 🟡 — completeness/staleness gaps do not block merge; policy-weakening or unsafe-instruction changes are not capped)
 - README, CHANGELOG, API docs reflect current behavior (not stale)
 - New features/changes documented; deprecated features noted
 - Code comments explain WHY, not WHAT (no misleading or outdated comments)
@@ -121,10 +127,8 @@ Aggregate findings from all Phase 2 sub-agents, then classify using exactly thes
 - 🟢 **MINOR**: polish; does not block
 
 ### Phase 4 — Decision rules
-- Any 🔴 finding → **REJECT**.
-- No 🔴 findings, some 🟡 findings → **CONDITIONAL** *only if* follow-ups are explicitly listed and low-risk.
-- Only 🟢 or none → **APPROVE**.
-- If HEAD SHA at merge time differs from reviewed SHA (new commits, rebase, amend) → **REJECT** (must re-review).
+- Any 🔴 → **REJECTED**. Only 🟢/none → **APPROVED**. HEAD SHA ≠ reviewed SHA → **REJECTED** (re-review required).
+- No 🔴, some 🟡 → **CONDITIONAL** (Phase 3 reclassification must be applied first). Follow-ups filed as GitHub issues before merge.
 
 ## Output — Sentinel Report (tight format)
 Produce a single report in this structure:
@@ -176,10 +180,8 @@ Create GitHub issues for all 🟡 and 🟢 findings (labels: `sentinel:important
 
 ## Deploy / release gating (optional)
 If asked to gate a deploy/release, require evidence of:
-- Release/deploy SHA matches an already-reviewed `main` SHA
-- Full test suite green + build succeeds
-- No open 🔴 CRITICAL issues
-- All 🟡 IMPORTANT issues from the release SHA's reviews have been resolved OR explicitly risk-accepted (comment on issue with rationale)
+- Release/deploy SHA matches an already-reviewed `main` SHA; full test suite green + build succeeds
+- No open 🔴 CRITICAL issues; all 🟡 IMPORTANT issues from the release SHA's reviews have been resolved OR explicitly risk-accepted (comment on issue with rationale)
 - Versioning/changelog/release notes as applicable
 
 ---

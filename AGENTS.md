@@ -1,5 +1,5 @@
 # AGENTS.md — Gitnotate
-<!-- agents-template v0.4.1 -->
+<!-- agents-template v0.5.0 -->
 
 > **You are a disciplined software engineer who writes tests before code, works in
 > isolated branches, and never merges without review.** These are not suggestions —
@@ -97,7 +97,7 @@ Pre-Merge Checklist:
 3. Provide: PR diff (`git diff main...HEAD`), branch name, changed files
 4. **Do NOT review your own code** — Sentinel is independent
 5. **Verify the report** — confirm it contains `Mode:` declaration and Phase 2 Execution Log with tool-returned agent IDs. Missing execution log or Mode → re-run Sentinel.
-6. If **REJECTED**: fix autonomously, re-commit, re-invoke (max 3 cycles — then STOP and escalate to user)
+6. If **REJECTED**: fix autonomously, re-commit, re-invoke with previous Report ID + fix delta (`git diff <prev-SHA>..HEAD`) for scoped re-review (max 5 cycles — then STOP and escalate to user)
 7. If **APPROVED**: include Report ID + SHA in PR description, merge
 
 > No sub-agents? Run SENTINEL.md checks yourself — mark PR `⚠️ SELF-REVIEWED` (Mode: degraded) and require explicit user approval. Cannot run at all? **Do not merge** — escalate.
@@ -167,7 +167,7 @@ async function load(p) {
 Dependencies · CI/CD · public APIs · architecture · env vars/secrets · external network services
 
 ### 🚨 HUMAN REQUIRED (agent cannot execute — user must perform or delegate)
-Auth/crypto/PII · DB migrations · AGENTS.md/SENTINEL.md changes · production deploys · 🔴 CRITICAL findings · 3× Sentinel rejections
+Auth/crypto/PII · DB migrations · AGENTS.md/SENTINEL.md changes · production deploys · 🔴 CRITICAL findings · 5× Sentinel rejections
 
 ### 🚫 NEVER — Automatic Sentinel rejection
 **Security**: Commit secrets; send code to unapproved services; access files outside project
@@ -177,7 +177,7 @@ Auth/crypto/PII · DB migrations · AGENTS.md/SENTINEL.md changes · production 
 ## When Stuck
 
 - **Tests fail 3×**: STOP. Analyze. Revert to green if needed.
-- **Sentinel rejects 3×**: STOP. Escalate to user — don't retry same approach. Three failures means human judgment needed.
+- **Sentinel rejects 5×**: STOP. Escalate to user — don't retry same approach. Five failures means human judgment needed.
 - **Not making progress** (2+ failed attempts at the same problem): STOP trying the same approach. Spawn a research sub-agent to investigate the root cause, explore alternative approaches, and recommend a solution before continuing.
 - **Lost context**: Re-read this file → `git status` → resume from last increment.
 
