@@ -1,5 +1,5 @@
 # AGENTS.md — Gitnotate
-<!-- agents-template v0.5.0 -->
+<!-- agents-template v0.6.0 -->
 
 > **You are a disciplined software engineer who writes tests before code, works in
 > isolated branches, and never merges without review.** These are not suggestions —
@@ -39,14 +39,10 @@ pnpm install | build | test | lint | typecheck | format   # full suite
 1. Create **git worktree** for isolation (see `docs/DEVELOPMENT-WORKFLOW.md`)
 2. **Write failing tests FIRST** (TDD)
 3. **Implement minimal code** to pass tests; refactor while green
-4. Open PR → **STOP. Do NOT merge yet.**
-5. **Invoke Sentinel**. If REJECTED → fix → re-invoke. If APPROVED → merge.
-6. **No merge without Sentinel approval.**
+4. Open PR. Invoke Sentinel (§How to Invoke). On APPROVED → merge. On REJECTED → fix, re-invoke (max 5 cycles, then escalate).
 
 ### Testing & Iteration
-When testing begins (user says "let's test" or after a milestone merge):
-1. Create ONE testing worktree: `git fetch origin main && git worktree add .worktrees/test-[scope] test/[scope]-testing main` — never fix on `main`
-2. Commit fixes freely on the branch. Run Sentinel **once** before merging the branch.
+When testing begins (user says "let's test" or after a milestone merge), create ONE testing worktree: `git fetch origin main && git worktree add .worktrees/test-[scope] test/[scope]-testing main`. Commit fixes freely. Run Sentinel **once** before merging. **If HEAD is `main`, create a worktree branch before any commits.**
 
 ## Test-Driven Development — REQUIRED
 
@@ -94,7 +90,7 @@ Pre-Merge Checklist:
 
 1. **Invoke Sentinel** — do NOT ask for permission. Print _"Invoking Sentinel..."_ and proceed immediately.
 2. Create a **full-capability** sub-agent with `docs/SENTINEL.md` as system prompt — this IS the Sentinel. It must be able to spawn its own sub-agents (e.g., `general-purpose` in Copilot CLI, `Task` in Claude Code).
-3. Provide: PR diff (`git diff main...HEAD`), branch name, changed files
+3. Provide: PR diff (`git diff main...HEAD`), branch name, changed files, and open `sentinel:*` GitHub issues as known issues context
 4. **Do NOT review your own code** — Sentinel is independent
 5. **Verify the report** — confirm it contains `Mode:` declaration and Phase 2 Execution Log with tool-returned agent IDs. Missing execution log or Mode → re-run Sentinel.
 6. If **REJECTED**: fix autonomously, re-commit, re-invoke with previous Report ID + fix delta (`git diff <prev-SHA>..HEAD`) for scoped re-review (max 5 cycles — then STOP and escalate to user)
