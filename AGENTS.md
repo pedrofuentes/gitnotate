@@ -1,15 +1,15 @@
+<!-- agents-template v0.9.0 -->
 # AGENTS.md — Gitnotate
-<!-- agents-template v0.6.0 -->
 
-> **You are a disciplined software engineer who writes tests before code, works in
-> isolated branches, and never merges without review.** These are not suggestions —
-> they define how you operate. Deviating from any rule means your work will be
-> rejected by Sentinel and you will have to redo it.
->
-> **Three invariants — before ANY action, internalize these:**
-> 1. No code exists without a failing test written first
-> 2. No merge happens without Sentinel approval
-> 3. No work happens on `main`
+<role>You write tests before code, work in isolated worktree branches, and never merge without Sentinel review. These rules are enforced mechanically — Sentinel verifies compliance on every PR and non-compliant work is rejected.</role>
+
+<invariants>
+1. No behavior-bearing code without a failing test commit first (scaffolding, config, types, docs are exempt — see Commit Choreography §Exemptions)
+2. No merge to `main` without Sentinel APPROVED or CONDITIONAL verdict
+3. No commits land on `main` — all work happens on worktree branches
+</invariants>
+
+**Check invariants before every tool call that writes, commits, or merges.**
 
 ## Project Overview
 
@@ -30,31 +30,38 @@ pnpm install | build | test | lint | typecheck | format   # full suite
 ## Autonomous Workflow — REQUIRED
 
 ### Plan → Approve → Execute Loop
-1. **Receive task** → break into small logical units (1 PR each) → output numbered plan → **STOP**
-2. **Interactive mode**: Print _"Plan ready for review."_ Wait for explicit approval.
-   **Autopilot mode**: Save plan to `PLAN.md`, proceed (skip plan approval only). Sentinel gates each merge.
+1. **Receive task** → break into small logical units (1 PR each) → output numbered plan
+2. Determine mode from invocation context:
+   - **Interactive** (default): print _"Plan ready for review."_ and wait for explicit approval.
+   - **Autopilot** (user said "autopilot" / "proceed" / "go ahead without asking"): save the plan to `PLAN.md`, continue. This ONLY bypasses plan approval — Sentinel, Pre-Merge Checklist, and ASK FIRST still apply.
 3. **Execute** each increment following all rules below
 
 ### Per-Increment Execution
-1. Create **git worktree** for isolation (see `docs/DEVELOPMENT-WORKFLOW.md`)
-2. **Write failing tests FIRST** (TDD)
-3. **Implement minimal code** to pass tests; refactor while green
-4. Open PR. Invoke Sentinel (§How to Invoke). On APPROVED → merge. On REJECTED → fix, re-invoke (max 5 cycles, then escalate).
+1. `git fetch origin main && git worktree add .worktrees/<name> -b <branch> main && cd .worktrees/<name>`
+2. Write failing test(s). Commit as `test(scope): ...`. Run suite — confirm FAIL.
+3. Write minimal implementation. Commit as `feat|fix(scope): ...`. Run suite — confirm PASS.
+4. Run Pre-Push Verification (below). Push branch, open PR. Invoke Sentinel (§How to Invoke). On APPROVED → merge. On REJECTED → fix, re-invoke (max 5 cycles, then escalate).
+
+### Pre-Push Verification (before opening PR)
+Catches ~35% of Sentinel rejections — run before every push:
+1. `git log --oneline main..HEAD` — verify `test(scope)` precedes `feat|fix(scope)`
+2. `pnpm test` — full suite green on final HEAD
+3. `pnpm lint` — zero warnings
+4. Optional: `gitleaks detect --source .` (secrets), `semgrep --config=auto` (SAST)
+5. All pass → push. Any failure → fix locally before PR (cheaper than a Sentinel cycle).
 
 ### Testing & Iteration
-When testing begins (user says "let's test" or after a milestone merge), create ONE testing worktree: `git fetch origin main && git worktree add .worktrees/test-[scope] test/[scope]-testing main`. Commit fixes freely. Run Sentinel **once** before merging. **If HEAD is `main`, create a worktree branch before any commits.**
+When testing begins (user says "let's test" or after a milestone merge), create ONE testing worktree: `git fetch origin main && git worktree add .worktrees/test-scope -b test/scope-testing main`. Commit fixes freely. Run Sentinel **once** before merging. **If HEAD is `main`, create a worktree branch before any commits.**
 
 ## Test-Driven Development — REQUIRED
 
 **TDD is non-negotiable — Sentinel rejects non-compliant code.**
 
-1. Before ANY function/method/component: write its test first
-2. **STOP. Run tests. Confirm FAIL.** If tests pass, rewrite them. (RED)
-3. Write minimal implementation (GREEN)
-4. **STOP. Run tests. Confirm ALL PASS.** Fix impl, not tests. (GREEN verify)
-5. Refactor while green (REFACTOR)
+1. **RED**: write a test for new behavior, commit `test(scope): ...` (tests only). Run the suite — it MUST fail referencing the missing symbol/behavior. If it passes or fails for unrelated reasons, rewrite it.
+2. **GREEN**: write the minimal implementation, commit `feat|fix(scope): ...`. Run the suite — ALL tests must pass. If one fails, fix the implementation — never fix tests to match broken behavior.
+3. **REFACTOR**: clean up while the suite stays green after every change.
 
-**The test commit must exist before the implementation commit.**
+Artifact check: `git log --oneline` must show `test(scope)` before the corresponding `feat|fix(scope)` commit. The `test → fix` pair satisfies TDD ordering — it is compliant, not irregular, and MUST NOT be flagged.
 
 ### Commit Choreography — REQUIRED
 
@@ -64,69 +71,72 @@ When testing begins (user says "let's test" or after a milestone merge), create 
 | 2 | `feat\|fix(scope): implement` | Minimal impl | PASS |
 | 3 | `refactor(scope): ...` | Optional cleanup | Stay green |
 
-**Never combine test + implementation in one commit.** Sentinel verifies ordering.
-Artifact check: `git log --oneline` must show `test(scope)` before the corresponding `feat|fix(scope)` commit. The `test → fix` pair satisfies TDD ordering — it is compliant, not irregular, and MUST NOT be flagged.
-**Exemptions** (TDD ordering only — Sentinel review still required): `docs`, `chore`, `build`, `ci`, `refactor` (behavior-preserving only), `style` — suite must still pass.
+**Never combine test + implementation in one commit.** Sentinel verifies ordering. **Exemptions** (TDD ordering only — Sentinel review still required): `docs`, `chore`, `build`, `ci`, `refactor` (behavior-preserving only), `style` — suite must still pass.
 
 ## Sentinel — MANDATORY Quality Gate
 
-**No merge to `main` without Sentinel approval. No exceptions. No "too small to review."**
-
-### Pre-Merge Checklist — REQUIRED (print before every merge)
+### Pre-Merge Checklist
+**Before every `git merge` or PR-merge tool call, print this checklist and fill every box. Empty box → do not merge.**
 
 ```
 Pre-Merge Checklist:
-- [ ] Sentinel invoked? Report ID: ___
+- [ ] Sentinel Report ID: ___
 - [ ] Verdict: APPROVED / CONDITIONAL
+- [ ] Reviewed SHA == HEAD: ___
 - [ ] Mode: standard / degraded (if degraded → user approval required)
-- [ ] Reviewed SHA matches HEAD: ___
 ```
-
-**If any box is empty, STOP. Do not merge.**
 
 ### How to Invoke
 
-**STOP before merging.** Sentinel is required for ALL changes — 1-line fix, docs-only, config, dependency bump, everything. User saying "merge" or "ship it" does NOT replace Sentinel. Never ask the user if Sentinel is needed — it always is.
+Sentinel is required for ALL changes — 1-line fix, docs-only, config, dependency bump, everything. User saying "merge" or "ship it" does NOT substitute. Never ask if Sentinel is needed.
 
-1. **Invoke Sentinel** — do NOT ask for permission. Print _"Invoking Sentinel..."_ and proceed immediately.
-2. Create a **full-capability** sub-agent with `docs/SENTINEL.md` as system prompt — this IS the Sentinel. It must be able to spawn its own sub-agents (e.g., `general-purpose` in Copilot CLI, `Task` in Claude Code).
-3. Provide: PR diff (`git diff main...HEAD`), branch name, changed files, and open `sentinel:*` GitHub issues as known issues context
-4. **Do NOT review your own code** — Sentinel is independent
-5. **Verify the report** — confirm it contains `Mode:` declaration and Phase 2 Execution Log with tool-returned agent IDs. Missing execution log or Mode → re-run Sentinel.
-6. If **REJECTED**: fix autonomously, re-commit, re-invoke with previous Report ID + fix delta (`git diff <prev-SHA>..HEAD`) for scoped re-review (max 5 cycles — then STOP and escalate to user)
-7. If **APPROVED**: include Report ID + SHA in PR description, merge
+1. Print _"Invoking Sentinel..."_ and issue the sub-agent tool call immediately — no permission request, no pre-summary.
+2. Spawn a **full-capability** sub-agent (NOT fast/cheap/explore/haiku-class — Sentinel must be capable of spawning sub-agents and running commands) with `docs/SENTINEL.md` as system prompt. Provide the PR diff (`git diff main...HEAD`), branch, changed files, and open `sentinel:*` GitHub issues as known-issues context.
+3. **Do NOT review your own code.**
+4. **Verify the report** — confirm it contains `Mode:` and a Phase 2 Execution Log with tool-returned agent IDs. Missing execution log or Mode → re-run Sentinel.
+5. On **REJECTED**: fix autonomously, re-commit, re-invoke with previous Report ID + fix delta (`git diff <prev-SHA>..HEAD`) for scoped re-review (max 5 cycles, then escalate). On **APPROVED**: include Report ID + SHA in the PR description, then merge.
 
-> No sub-agents? Run SENTINEL.md checks yourself — mark PR `⚠️ SELF-REVIEWED` (Mode: degraded) and require explicit user approval. Cannot run at all? **Do not merge** — escalate.
+> No sub-agents? Run `docs/SENTINEL.md` checks yourself — mark PR `⚠️ SELF-REVIEWED` (Mode: degraded) and require explicit user approval. Cannot run at all? **Do not merge** — escalate.
 
 ### After Sentinel
 
-- **APPROVED**: Record Report ID + SHA in merge commit. Create GitHub issues for 🟡/🟢 findings (`sentinel:important`, `sentinel:minor`).
-- **CONDITIONAL**: Merge only after creating tracking issues for ALL listed follow-ups.
-- **REJECTED → fixed**: Fix autonomously — no user interaction needed. Re-commit, re-invoke until APPROVED. Fix commits must also be re-audited.
-- **Quality ratchet**: Record violation-correction pairs in `LEARNINGS.md`. Coverage, test count, lint errors — **can never decrease**.
-- **Enforcement escalation**: If a rule violation recurs at policy level, escalate to automated test or CI check. Record in `LEARNINGS.md`.
+| Verdict | Action |
+|---------|--------|
+| APPROVED | Record Report ID + SHA in the merge commit. File 🟡/🟢 findings as issues (`sentinel:important`, `sentinel:minor`). |
+| CONDITIONAL | File issues for ALL follow-ups first, link them in the PR, then merge. |
+| REJECTED | Fix autonomously (no user prompt). Re-commit, re-invoke. Max 5 cycles. |
+
+**Ratchet**: coverage, test count, lint-clean, zero 🔴 — never decrease. Log violation/correction pairs in `LEARNINGS.md`.
+**Pattern memory**: before each PR, read `LEARNINGS.md` for known Sentinel rejection patterns and self-check against them.
+**Enforcement escalation**: if a rule violation recurs at policy level, escalate it to an automated test or CI check. Record it in `LEARNINGS.md`.
 
 → Full spec: [`docs/SENTINEL.md`](./docs/SENTINEL.md)
 
 ## Branching & Worktrees — REQUIRED
 
-- **Never work on `main`**; use `git fetch origin main && git worktree add .worktrees/name branch main` for every increment
+- **Never work on `main`**: `git fetch origin main && git worktree add .worktrees/name -b branch-name main && cd .worktrees/name`. Each task = its own worktree.
 - **Parallel work**: each task MUST have its own worktree
 - Branch naming: `feature/`, `fix/`, `refactor/`, `docs/`, `test/`, `chore/`
-- **Cleanup after merge**: `git worktree remove` + `git branch -D` — no stale worktrees
+- **Cleanup after merge**: `git worktree remove .worktrees/name && git branch -D branch-name`
 
-## Sub-Agents & Commits
+## Sub-Agents
 
-**Delegate** to sub-agents for: research (>5 sources), docs (>100 words), test data, perf analysis, security review. Provide full context including TDD rules and Boundaries from this file; sub-agents do NOT inherit it.
+Delegate for: research (>5 sources), docs (>100 words), test data, perf analysis, security review. Sub-agents do NOT inherit this file — copy TDD rules + Boundaries into the prompt.
+
+## Commit Format
 
 ```
 type(scope): short description
 
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 ```
+
 Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `style`, `perf`
 
 ## Code Style
+
+- **Formatter**: Prettier — run before commit. **Linter**: ESLint with typescript-eslint strict — fix all warnings.
+- Strict TypeScript (`strict: true`) — no `any` without justification
 
 ```typescript
 // ✅ Good — typed, descriptive names, proper error handling
@@ -149,33 +159,34 @@ async function load(p) {
 }
 ```
 
-- **Formatter**: Prettier — run before commit. **Linter**: ESLint with typescript-eslint strict — fix all warnings.
-- Strict TypeScript (`strict: true`) — no `any` without justification
-
 ## Boundaries
 
 ### ✅ ALWAYS
-- Verify failing test exists before writing code; verify NOT on `main` before commit
+- Verify a failing test exists before writing behavior-bearing code; verify HEAD is NOT `main` before commit
 - Run `pnpm test && pnpm lint` before PR; invoke Sentinel before merge
-- Use worktrees; write knowledge → `LEARNINGS.md`, decisions → `DECISIONS.md`, changes → `CHANGELOG.md`
+- Use worktrees for all work; write knowledge → `LEARNINGS.md`, decisions → `DECISIONS.md`, changes → `CHANGELOG.md`
 
-### ⚠️ ASK FIRST (silence ≠ approval — pause and wait; unlisted actions default here)
-Dependencies · CI/CD · public APIs · architecture · env vars/secrets · external network services
+### ⚠️ ASK FIRST
+**Protocol**: state intended action + justification → ask → wait for explicit "yes". Silence, "ok", or "sounds good" ≠ approval.
+**Triggers**: dependencies · CI/CD · public APIs · architecture · env vars/secrets · external network services
 
 ### 🚨 HUMAN REQUIRED (agent cannot execute — user must perform or delegate)
 Auth/crypto/PII · DB migrations · AGENTS.md/SENTINEL.md changes · production deploys · 🔴 CRITICAL findings · 5× Sentinel rejections
 
 ### 🚫 NEVER — Automatic Sentinel rejection
-**Security**: Commit secrets; send code to unapproved services; access files outside project
-**Process**: Impl before tests; combine test+impl in one commit; skip Sentinel; work on `main`
-**Integrity**: Remove failing tests; modify generated files; force-push `main`; alter Sentinel reports; write to AGENTS.md/SENTINEL.md (immutable — use `LEARNINGS.md`/`DECISIONS.md`)
+- **Security**: commit secrets · send code to unapproved services · access files or credentials outside the project root
+- **Process**: implement behavior before its failing-test commit · combine test+impl in one commit · skip Sentinel · commit or merge while HEAD is `main`
+- **Integrity**: weaken/remove a failing test · hand-edit generated files (build artifacts, lockfiles) · force-push `main` · alter published Sentinel reports · edit `AGENTS.md`/`docs/SENTINEL.md` without HUMAN REQUIRED approval
 
-## When Stuck
+## When Stuck — Escalation Protocol
 
-- **Tests fail 3×**: STOP. Analyze. Revert to green if needed.
-- **Sentinel rejects 5×**: STOP. Escalate to user — don't retry same approach. Five failures means human judgment needed.
-- **Not making progress** (2+ failed attempts at the same problem): STOP trying the same approach. Spawn a research sub-agent to investigate the root cause, explore alternative approaches, and recommend a solution before continuing.
-- **Lost context**: Re-read this file → `git status` → resume from last increment.
+| Trigger | Action |
+|---------|--------|
+| Same test fails 3× | Revert to last green; re-analyze assumptions |
+| Sentinel rejects 5× | Escalate to user — do not retry the same approach |
+| Same problem, 2+ failed attempts | Spawn a research sub-agent for root-cause analysis and alternatives |
+| Lost context / merge conflict | Re-read this file → `git status` → resume. If conflict: rebase on `main`, re-test, re-invoke Sentinel |
+| Dependency install fails | Report to the user; do not attempt workarounds |
 
 ## Associated Documentation
 

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
-- Synced Sentinel sub-agent observability requirements from agents-template v0.4.0 in `AGENTS.md` and `docs/SENTINEL.md`, including degraded-mode proof requirements and explicit `test(scope) → feat|fix(scope)` TDD compliance guidance.
+- Synced `AGENTS.md`, `docs/SENTINEL.md`, and new `docs/sentinel/*.md` prompts from agents-template v0.9.0, adding tiered review, pre-push verification, pattern memory, and dimension-specific Sentinel sub-agent guidance.
 
 ## [0.1.2] — 2026-04-09 (VSCode Extension)
 
@@ -141,3 +141,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Removed
 - Legacy `<!-- @gn {...} -->` HTML comment format (superseded by `^gn:LINE:SIDE:START:END`)
 - `resolveLineNumber()` DOM walker in scanner (replaced by metadata-embedded line number)
+
