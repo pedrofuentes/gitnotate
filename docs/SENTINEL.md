@@ -50,6 +50,8 @@ If you cannot identify the exact SHA being reviewed → **REJECT**.
 ### Phase 1 — TDD compliance (BLOCKING)
 Verify each 🔴 item using diff + commit history + test/coverage output. If you cannot verify an item → treat as failure.
 
+**Exemptions:** PRs containing ONLY `docs`, `chore`, `build`, `ci`, `refactor` (behavior-preserving), or `style` commits are exempt from checks 1–4; all except `refactor` also skip check 6 (no source code changed). Check 5 still applies — the existing suite must remain green.
+
 | Check | How to verify | Blocks? |
 |---|---|---|
 | Tests exist for new/changed behavior | Each new/changed behavior has new/updated tests that execute the change and assert outcomes | 🔴 |
@@ -79,9 +81,9 @@ A sub-agent is a **separately-invoked tool call** (e.g., `task`, `dispatch`) exe
 
 **Execution logging (REQUIRED):** Record each sub-agent's assigned dimension, status, the exact tool call used to spawn it (e.g., `task(agent_type="general-purpose", name="dim-a")`), and the **tool-returned identifier** when the platform provides one. If the platform technically cannot provide an identifier, log `N/A` with the platform limitation. Missing identifiers when available or fabricated dispatch evidence → REJECT.
 
-**Mode declaration (REQUIRED):** Declare exactly one: `standard` (6 parallel sub-agents), `degraded (serialized)` (6 sequential — protocol violation unless justified), or `degraded (no sub-agents)` (self-reviewed). "Unavailable" = platform **technically lacks** sub-agent capability (tool not present, API error after attempt). Cost, latency, or diff size are NOT valid reasons. Degraded modes require explicit user approval before merge. Omitting Mode is a violation.
+**Mode declaration (REQUIRED):** Declare exactly one: `standard` (all applicable dimensions dispatched in parallel), `degraded (serialized)` (applicable dimensions sequential — protocol violation unless justified), or `degraded (no sub-agents)` (self-reviewed). "Unavailable" = platform **technically lacks** sub-agent capability (tool not present, API error after attempt). Cost, latency, or diff size are NOT valid reasons. Degraded modes require explicit user approval before merge. Omitting Mode is a violation.
 
-**Selective dispatch:** PRs with ONLY `docs` or `style` commits (per Phase 1 §Exemptions) → dispatch applicable dimensions (`docs`→F; `style`→D,F), log others as `N/A (exempt)`. All other types → full A–F. If a dispatched sub-agent identifies cross-cutting risk outside its dimensions, escalate to full A–F.
+**Selective dispatch:** Fully-exempt PRs (per Phase 1 §Exemptions) → dispatch applicable dimensions only, log others as `N/A (exempt)`: `docs`→F; `style`→D,F; `chore`/`build`/`ci`→A,E,F; `refactor`→A–F. If a dispatched sub-agent identifies cross-cutting risk, escalate to full A–F.
 
 #### A) Security, privacy, and correctness (🔴 if violated)
 - Injection: SQL/NoSQL, XSS, command injection, path traversal, SSRF, deserialization
@@ -119,8 +121,7 @@ A sub-agent is a **separately-invoked tool call** (e.g., `task`, `dispatch`) exe
 - README, CHANGELOG, API docs reflect current behavior (not stale)
 - New features/changes documented; deprecated features noted
 - Code comments explain WHY, not WHAT (no misleading or outdated comments)
-- DECISIONS.md updated if architectural choices were made
-- LEARNINGS.md updated if gotchas were discovered
+- DECISIONS.md / LEARNINGS.md updated when applicable (content already in another companion doc satisfies if cited by path/section — duplication not required, 🟢 max)
 
 ### Phase 3 — Classify findings
 Aggregate findings from all Phase 2 sub-agents, then classify using exactly these priority levels:
