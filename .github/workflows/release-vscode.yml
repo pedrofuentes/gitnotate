@@ -5,6 +5,8 @@ on:
     tags: ["vscode-v*"]
   workflow_dispatch:
 
+permissions: {}
+
 concurrency:
   group: release-vscode-${{ github.ref }}
   cancel-in-progress: false

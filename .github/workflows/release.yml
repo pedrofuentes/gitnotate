@@ -4,6 +4,8 @@ on:
   push:
     tags: ["browser-v*"]
 
+permissions: {}
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
