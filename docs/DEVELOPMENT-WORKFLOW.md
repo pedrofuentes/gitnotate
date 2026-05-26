@@ -122,6 +122,86 @@ cd packages/browser-extension && pnpm build   # Builds to dist/
 # Load dist/ as unpacked extension in Chrome/Edge
 ```
 
-> **Not yet released:** The VSCode extension (`packages/vscode-extension`) and
-> GitHub Action (`packages/github-action`) are planned for Phase 2 and are not
-> included in the v0.1.0 release.
+## Releasing
+
+Gitnotate uses [Release Please](https://github.com/googleapis/release-please) for automated versioning and changelog generation, with manual tagging to trigger release workflows.
+
+### How It Works
+
+```
+push to main ──► Release Please creates/updates version-bump PR
+                  (bumps package.json, updates CHANGELOG.md)
+
+merge RP PR ──► version bump lands on main
+
+create tag ───► release workflow builds, packages, and publishes
+```
+
+The browser extension and VSCode extension are versioned **independently** — each gets its own Release Please PR and changelog (see [ADR-005](./DECISIONS.md#adr-005-independent-versioning-with-release-please)).
+
+### Automated: Version Bump PRs
+
+Release Please runs on every push to `main` and analyzes conventional commit messages:
+- `feat(browser):` → minor version bump for browser-extension
+- `fix(vscode):` → patch version bump for vscode-extension
+- `feat!:` or `BREAKING CHANGE:` → major version bump
+
+It creates (or updates) a PR per component with:
+- Updated `package.json` version
+- Updated `CHANGELOG.md` with categorized entries
+- Updated `.release-please-manifest.json`
+
+> **Note:** Release Please is configured with `skip-github-release: true`. It only creates PRs — it does not create GitHub releases or tags automatically. This is intentional (see ADR-005).
+
+### Manual: Cutting a Release
+
+After merging a Release Please PR, create a tag to trigger the release workflow:
+
+#### Browser Extension
+```bash
+# Check the version that was just bumped
+cat packages/browser-extension/package.json | grep '"version"'
+
+# Create and push the tag
+git tag browser-v<VERSION>    # e.g., browser-v0.3.0
+git push origin browser-v<VERSION>
+```
+
+This triggers `.github/workflows/release.yml`, which:
+1. Runs core + browser-extension tests
+2. Builds all packages
+3. Packages the browser extension as a `.zip`
+4. Creates a GitHub Release with the `.zip` attached
+
+#### VSCode Extension
+```bash
+# Check the version that was just bumped
+cat packages/vscode-extension/package.json | grep '"version"'
+
+# Create and push the tag
+git tag vscode-v<VERSION>    # e.g., vscode-v0.2.0
+git push origin vscode-v<VERSION>
+```
+
+This triggers `.github/workflows/release-vscode.yml`, which:
+1. Runs core + vscode-extension tests
+2. Builds all packages
+3. Packages the `.vsix`
+4. Publishes to the VS Code Marketplace (requires `VSCE_PAT` secret)
+5. Publishes to Open VSX (optional, requires `OVSX_PAT` secret)
+6. Creates a GitHub Release with the `.vsix` attached
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `release-please-config.json` | Monorepo config: components, changelog sections, `skip-github-release` |
+| `.release-please-manifest.json` | Current versions for each component |
+| `.github/workflows/release-please.yml` | Workflow that runs Release Please on push to main |
+
+### Tag Naming Convention
+
+| Package | Tag Pattern | Example |
+|---------|------------|---------|
+| Browser Extension | `browser-v*` | `browser-v0.3.0` |
+| VSCode Extension | `vscode-v*` | `vscode-v0.2.0` |
