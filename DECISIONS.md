@@ -53,3 +53,11 @@
 **Decision**: Primary auth via GitHub OAuth App; Personal Access Token as fallback.
 **Alternatives considered**: PAT only; GitHub App installation tokens.
 **Consequences**: OAuth provides better UX for most users. PAT fallback supports enterprise/restricted environments.
+
+### ADR-005: Independent Versioning with Release Please
+**Date**: 2026-05-25
+**Status**: Accepted
+**Context**: The monorepo ships two user-facing products — a browser extension and a VSCode extension — that evolve on independent timelines. A single version number would force synchronized releases even when only one package has changes. We also needed automated changelog generation and version bumping from conventional commits.
+**Decision**: Version browser-extension and vscode-extension independently using [Release Please](https://github.com/googleapis/release-please). Each package gets its own Release Please component, separate version-bump PRs, and independent changelogs. Release Please is configured with `skip-github-release: true` — it only creates version-bump PRs (updating `package.json`, `CHANGELOG.md`, and `.release-please-manifest.json`). After merging a Release Please PR, a developer manually creates a tag (`browser-vX.Y.Z` or `vscode-vX.Y.Z`) to trigger the corresponding release workflow.
+**Alternatives considered**: Single version for all packages (forces unnecessary releases); fully automated releases via Release Please GitHub releases (tags created by `GITHUB_TOKEN` don't trigger other workflows, would require a PAT); manual versioning without automation (error-prone, no changelog generation).
+**Consequences**: Each package can release independently without coordinating versions. Changelogs are generated automatically from conventional commits. The manual tagging step is intentional — it gives developers a final gate before publishing to the Chrome Web Store and VS Code Marketplace. Tag naming convention (`browser-v*`, `vscode-v*`) matches existing release workflows. Internal packages (`core`, `github-action`) are not configured for Release Please since they are not published independently.
