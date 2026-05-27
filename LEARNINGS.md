@@ -19,6 +19,16 @@
 
 <!-- Add new learnings below this line, most recent first -->
 
+### [2026-05-26] jsdom does NOT support CSS-escaped backslashes in quoted attribute selectors
+**Context**: Fixing CodeQL alert #4 (`js/incomplete-sanitization`) in `clearHighlight()`. The original code used `cssEscape(commentId)` in a CSS attribute selector, but tests failed because jsdom's nwsapi engine doesn't handle `\\` inside quoted attribute values (e.g., `querySelectorAll('[attr="a\\b"]')` returns 0 results even when the element exists). Real browsers handle this correctly.
+**Learning**: jsdom (via nwsapi) cannot reliably process CSS-escaped special characters in attribute selectors. When querying by attribute values that may contain special characters, use JS filtering instead: `querySelectorAll('.class')` + `.getAttribute()` comparison. This approach works in both browsers and jsdom, eliminates CSS escaping concerns entirely, and has negligible performance impact for small element sets.
+**Impact**: Prefer JS filtering over CSS attribute selectors when attribute values may contain special characters. This avoids both the escaping bug class and jsdom test limitations.
+
+### [2026-05-26] Sentinel coverage threshold: use project-configured thresholds, not the 80% default
+**Context**: Sentinel rejected PR #65 twice citing 80% coverage threshold from `SENTINEL.md`, but the project's `vitest.config.ts` explicitly sets lower thresholds (65/70/85/65) with a comment documenting the 80% as a ratchet target. `vitest run --coverage` exited 0 (all configured thresholds met).
+**Learning**: When the project's vitest.config.ts defines explicit coverage thresholds below Sentinel's 80% default, argue that the project's configured thresholds are the enforcement mechanism. Provide: (1) the vitest.config.ts threshold values, (2) `vitest run --coverage` exit code 0, (3) baseline coverage on main showing no regression.
+**Impact**: Prevents unnecessary Sentinel rejections on projects that are ratcheting coverage towards 80%. Include vitest.config.ts threshold evidence in the first Sentinel invocation to avoid re-invocation cycles.
+
 ### [2026-04-05] Three test gap patterns that let runtime bugs ship
 
 **Context**: Increment 5 shipped 341 unit tests and 22 integration tests, all passing. Manual testing found 3 major runtime bugs within minutes: (1) race condition crashing on `threadSync` being undefined, (2) `TreeView.reveal()` crashing on missing `getParent()`, (3) side filtering hiding comments in diff views. None were caught by automated tests.
