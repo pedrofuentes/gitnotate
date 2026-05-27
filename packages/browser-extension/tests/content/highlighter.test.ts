@@ -491,6 +491,20 @@ describe('clearHighlight', () => {
   it('should not crash when clearing a non-existent highlight', () => {
     expect(() => clearHighlight('does-not-exist')).not.toThrow();
   });
+
+  it('should clear a highlight whose comment ID contains a backslash', () => {
+    const file = buildDiffLine('file.ts', 1, 'alpha beta');
+    document.body.appendChild(file);
+
+    const commentId = 'id-with\\backslash';
+    highlightTextRange(makeInfo({ filePath: 'file.ts', lineNumber: 1, start: 0, end: 5, commentId }));
+
+    expect(document.querySelectorAll('.gn-highlight')).toHaveLength(1);
+
+    clearHighlight(commentId);
+
+    expect(document.querySelectorAll('.gn-highlight')).toHaveLength(0);
+  });
 });
 
 describe('clearAllHighlights', () => {
