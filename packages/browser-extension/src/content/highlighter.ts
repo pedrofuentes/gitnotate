@@ -244,11 +244,11 @@ export function clearAllHighlights(): void {
  * Remove highlights for a specific comment ID.
  */
 export function clearHighlight(commentId: string): void {
-  const spans = document.querySelectorAll<HTMLElement>(
-    `.gn-highlight[data-gn-comment-id="${commentId.replace(/"/g, '\\"')}"]`,
-  );
+  const spans = document.querySelectorAll<HTMLElement>('.gn-highlight');
   for (const span of spans) {
-    unwrapSpan(span);
+    if (span.getAttribute('data-gn-comment-id') === commentId) {
+      unwrapSpan(span);
+    }
   }
 }
 
