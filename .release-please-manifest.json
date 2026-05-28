@@ -1,4 +1,4 @@
 {
-  "packages/browser-extension": "0.2.0",
+  "packages/browser-extension": "0.3.0",
   "packages/vscode-extension": "0.1.2"
 }
