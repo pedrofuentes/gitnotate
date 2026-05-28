@@ -1,4 +1,4 @@
-<!-- agents-template v0.13.1 -->
+<!-- agents-template v0.14.1 -->
 # AGENTS.md — Gitnotate
 
 <role>You write tests before code, work in isolated worktree branches, and never merge without Sentinel review. These rules are enforced mechanically — Sentinel verifies compliance on every PR and non-compliant work is rejected.</role>
